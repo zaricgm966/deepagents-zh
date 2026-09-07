@@ -1,0 +1,314 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>检索 · Deep Agents</title><link rel="stylesheet" href="../style.css"><aside><a class="brand" href="../index.html">Deep Agents<span>中文离线文档</span></a><h3>入门与选型</h3><a href="overview.html">Deep Agents 概览</a><a href="quickstart.html">快速入门</a><a href="models.html">模型选择</a><a href="comparison.html">与 Claude Agent SDK 的对比</a><a href="code-link.html">Deep Agents Code 简介</a><h3>配置与核心能力</h3><a href="customization.html">自定义 Deep Agents</a><a href="tools.html">工具</a><a href="profiles.html">配置档案</a><a href="backends.html">文件系统后端</a><a href="interpreters.html">代码解释器</a><a href="sandboxes.html">沙箱</a><a href="memory.html">记忆</a><a href="skills.html">技能</a><a href="permissions.html">权限</a><a href="human-in-the-loop.html">人工介入</a><a href="multimodal.html">多模态输入与输出</a><h3>任务与上下文管理</h3><a href="context-engineering.html">上下文工程</a><a href="subagents.html">子智能体</a><a href="dynamic-subagents.html">动态子智能体</a><a href="async-subagents.html">异步子智能体</a><a href="streaming.html">流式输出</a><a href="event-streaming.html">事件流</a><a href="fault-tolerance.html">容错</a><a href="retrieval.html">检索</a><a href="rubric.html">评分标准</a><h3>应用教程</h3><a href="data-analysis.html">构建数据分析智能体</a><a href="content-builder.html">构建内容创作智能体</a><a href="deep-research.html">构建深度研究智能体</a><a href="rag.html">构建检索增强生成（RAG）智能体</a><h3>协议与集成</h3><a href="mcp.html">模型上下文协议（MCP）</a><a href="acp.html">智能体客户端协议（ACP）</a><a href="a2a.html">A2A 服务器</a><h3>前端开发</h3><a href="frontend--overview.html">前端集成概览</a><a href="frontend--sandbox.html">前端沙箱</a><a href="frontend--subagent-streaming.html">前端子智能体流式输出</a><a href="frontend--todo-list.html">前端待办事项列表</a><h3>生产环境与知识库</h3><a href="going-to-production.html">部署到生产环境</a><a href="openwiki.html">OpenWiki</a><h3>Coding Agent 源码解析</h3><a href="codex-source-analysis.html">Codex 源码解析</a><a href="claude-code-source-analysis.html">Claude Code 源码解析：公开 SDK 与运行时边界</a><h3>版本更新</h3><a href="changelog-py.html">Python 更新日志</a><a href="changelog-js.html">JavaScript / TypeScript 更新日志</a></aside><script src="../sidebar.js"></script><div class="reading-layout"><main><div class="meta">中文机器翻译 · 文档快照 2026-09-07 · <a href="https://docs.langchain.com/oss/python/deepagents/retrieval">在线原文</a> · <a href="../markdown/retrieval.md">编辑中文 Markdown</a> · <a href="../original-markdown/retrieval.md">英文原稿</a></div><h1 id="retrieval">检索</h1>
+<p>大型语言模型 (LLM) 功能强大，但有两个关键限制：</p>
+<ul>
+<li><strong id="finite-context">有限上下文</strong>：他们无法一次摄取整个语料库。</li>
+<li><strong id="static-knowledge">静态知识</strong>：他们的训练数据被冻结在某个时间点。</li>
+</ul>
+<p>检索通过在查询时获取相关的外部知识来解决这些问题。这是<strong id="retrieval-augmented-generation-rag">检索增强生成（RAG）</strong>的基础，通过上下文特定信息增强法学硕士的答案。</p>
+<h2 id="building-a-knowledge-base">建立知识库</h2>
+<p><strong id="knowledge-base">知识库</strong>是检索过程中使用的文档或结构化数据的存储库。</p>
+<p>如果您需要一个自定义知识库，您可以使用 LangChain 的文档加载器和矢量存储来根据您自己的数据构建一个知识库。</p>
+<p>如果您已经拥有知识库（例如 SQL 数据库、文档数据库、CRM 或内部文档系统），则<strong id="not">不需要</strong>需要重建它。你可以：</p>
+<ul>
+<li>将其连接为 Agentic RAG 中代理的<strong id="tool">工具</strong>。</li>
+<li>查询它并将检索到的内容作为上下文提供给 LLM <a href="#2-step-rag">(2-Step RAG)</a>。</li>
+</ul>
+<p>有关更多信息，请参阅以下教程来构建可搜索的知识库和最小的 RAG 工作流程：</p>
+<p><strong id="tutorial-semantic-search">教程：语义搜索</strong></p>
+<p><a href="https://docs.langchain.com/oss/python/langchain/knowledge-base">查看相关页面</a></p>
+<p>了解如何使用 LangChain 的文档加载器、嵌入和向量存储从您自己的数据创建可搜索的知识库。在本教程中，您将在 PDF 上构建一个搜索引擎，从而能够检索与查询相关的段落。您还将在此引擎之上实现一个最小的 RAG 工作流程，以了解如何将外部知识集成到 LLM 推理中。</p>
+<h3 id="from-retrieval-to-rag">从检索到 RAG</h3>
+<p>检索允许法学硕士在运行时访问相关上下文。但大多数现实世界的应用程序更进一步：它们<strong id="integrate-retrieval-with-generation">将检索与生成集成</strong>以生成接地气的、上下文感知的答案。</p>
+<p>这是<strong>检索增强生成（RAG）</strong>背后的核心思想。检索管道成为将搜索与生成相结合的更广泛系统的基础。</p>
+<h3 id="retrieval-pipeline">检索管道</h3>
+<p>典型的检索工作流程如下所示：</p>
+<pre><code class="language-mermaid">%%{init: {'flowchart': {'nodeSpacing': 12, 'rankSpacing': 18, 'padding': 4}, 'themeVariables': {'fontSize': '12px'}}}%%
+flowchart TB
+  subgraph ingest[" "]
+    direction LR
+    S(["Sources&lt;br&gt;(Google Drive, Slack, Notion, etc.)"]) --&gt; L[Document Loaders]
+    L --&gt; A([Documents])
+  end
+  A --&gt; B[Split into chunks]
+  B --&gt; C[Turn into embeddings]
+  C --&gt; D[(Vector Store)]
+  Q([User Query]) --&gt; E[Query embedding]
+  E --&gt; D
+  D --&gt; F[Retriever]
+  F --&gt; G[LLM uses retrieved info]
+  G --&gt; H([Answer])
+
+  classDef trigger fill:#F6FFDB,stroke:#6E8900,stroke-width:2px,color:#2E3900
+  classDef process fill:#E5F4FF,stroke:#006DDD,stroke-width:2px,color:#030710
+  classDef output fill:#EBD0F0,stroke:#885270,stroke-width:2px,color:#441E33
+  classDef neutral fill:#F2FAFF,stroke:#40668D,stroke-width:2px,color:#2F4B68
+
+  class S,Q trigger
+  class L,B,C,E,F,G process
+  class D output
+  class A,H neutral
+</code></pre>
+<p>每个组件都是模块化的：您可以交换加载器、拆分器、嵌入或向量存储，而无需重写应用程序的逻辑。</p>
+<h3 id="building-blocks">积木</h3>
+<p><strong id="document-loaders">文档加载器</strong></p>
+<p><a href="https://docs.langchain.com/oss/python/integrations/document_loaders">查看相关页面</a></p>
+<p>从外部源（Google Drive、Slack、Notion 等）获取数据，返回标准化的 <a href="https://reference.langchain.com/python/langchain-core/documents/base/Document"><code>Document</code></a> 对象。</p>
+<p><strong id="text-splitters">文本分割器</strong></p>
+<p><a href="https://docs.langchain.com/oss/python/integrations/splitters">查看相关页面</a></p>
+<p>将大文档分成更小的块，这些块可以单独检索并适合模型的上下文窗口。</p>
+<p><strong id="embedding-models">嵌入模型</strong></p>
+<p><a href="https://docs.langchain.com/oss/python/integrations/embeddings">查看相关页面</a></p>
+<p>嵌入模型将文本转换为数字向量，以便具有相似含义的文本在该向量空间中紧密结合在一起。</p>
+<p><strong id="vector-stores">矢量商店</strong></p>
+<p><a href="https://docs.langchain.com/oss/python/integrations/vectorstores/">查看相关页面</a></p>
+<p>用于存储和搜索嵌入的专用数据库。</p>
+<p><strong id="retrievers">猎犬</strong></p>
+<p><a href="https://docs.langchain.com/oss/python/integrations/retrievers/">查看相关页面</a></p>
+<p>检索器是一个接口，它根据非结构化查询返回文档。</p>
+<h2 id="rag-architectures">RAG架构</h2>
+<p>RAG 可以通过多种方式实施，具体取决于系统的需求。我们在下面的部分中概述了每种类型。</p>
+<table>
+<thead>
+<tr>
+<th>建筑学</th>
+<th>描述</th>
+<th>控制</th>
+<th>灵活性</th>
+<th>延迟</th>
+<th>示例用例</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>2步RAG</strong></td>
+<td>检索总是发生在生成之前。简单且可预测</td>
+<td>✅ 高</td>
+<td>❌低</td>
+<td>⚡ 快</td>
+<td>常见问题解答、文档机器人</td>
+</tr>
+<tr>
+<td><strong>代理RAG</strong></td>
+<td>由 LLM 支持的代理决定在推理期间“何时”和“如何”检索</td>
+<td>❌低</td>
+<td>✅ 高</td>
+<td>⏳ 变量</td>
+<td>研究助理可以使用多种工具</td>
+</tr>
+<tr>
+<td><strong id="hybrid">杂交种</strong></td>
+<td>将两种方法的特征与验证步骤相结合</td>
+<td>⚖️ 中等</td>
+<td>⚖️ 中等</td>
+<td>⏳ 变量</td>
+<td>具有质量验证的特定领域问答</td>
+</tr>
+</tbody>
+</table>
+<p><strong id="latency">延迟</strong>：在 <strong id="predictable">2 步 RAG</strong> 中，延迟通常更容易<strong>预测</strong>，因为 LLM 调用的最大数量是已知的且有上限。这种可预测性假设 LLM 推理时间是主导因素。然而，现实世界的延迟也可能受到检索步骤性能的影响，例如 API 响应时间、网络延迟或数据库查询，这些性能可能会根据所使用的工具和基础设施而有所不同。</p>
+<h3 id="2-step-rag">2步RAG</h3>
+<p>在 <strong>2-Step RAG</strong> 中，检索步骤始终在生成步骤之前执行。这种架构简单且可预测，使其适用于许多应用程序，在这些应用程序中，检索相关文档是生成答案的明确先决条件。</p>
+<pre><code class="language-mermaid">%%{init: {'flowchart': {'nodeSpacing': 12, 'rankSpacing': 18, 'padding': 4}, 'themeVariables': {'fontSize': '12px'}}}%%
+graph TB
+    A[User Question] --&gt; B["Retrieve Relevant Documents"]
+    B --&gt; C["Generate Answer"]
+    C --&gt; D[Return Answer to User]
+
+    %% Styling
+    classDef startend fill:#F6FFDB,stroke:#6E8900,stroke-width:2px,color:#2E3900
+    classDef process fill:#E5F4FF,stroke:#006DDD,stroke-width:1.5px,color:#030710
+
+    class A,D startend
+    class B,C process
+</code></pre>
+<p><br/></p>
+<p><strong>教程：语义搜索</strong></p>
+<p><a href="https://docs.langchain.com/oss/python/langchain/knowledge-base">查看相关页面</a></p>
+<p>使用文档加载器、嵌入和向量存储构建可搜索的知识库，然后在其上运行最小的检索然后生成 RAG 工作流程。</p>
+<p><strong id="tutorial-evaluate-a-rag-application">教程：评估 RAG 应用程序</strong></p>
+<p><a href="https://docs.langchain.com/langsmith/evaluate-rag-tutorial">查看相关页面</a></p>
+<p>构建一个简单的检索然后生成 RAG 应用程序，并使用 LangSmith 衡量答案的正确性、相关性、基础性和检索质量。</p>
+<h3 id="agentic-rag">代理RAG</h3>
+<p><strong id="agentic-retrieval-augmented-generation-rag">代理检索增强生成 (RAG)</strong> 结合了检索增强生成与基于代理的推理的优势。代理（由法学硕士提供支持）不是在回答之前检索文档，而是逐步推理并决定在交互过程中<strong id="when">何时</strong>和<strong id="how">如何</strong>检索信息。</p>
+<p>代理启用 RAG 行为所需的唯一一件事就是访问一个或多个可以获取外部知识的<strong id="tools">工具</strong>，例如文档加载器、Web API 或数据库查询。</p>
+<pre><code class="language-mermaid">%%{init: {'flowchart': {'nodeSpacing': 12, 'rankSpacing': 18, 'padding': 4}, 'themeVariables': {'fontSize': '12px'}}}%%
+graph TB
+    A[User Input / Question] --&gt; B["Agent (LLM)"]
+    B --&gt; C{Need external info?}
+    C -- Yes --&gt; D["Search using tool(s)"]
+    D --&gt; H{Enough to answer?}
+    H -- No --&gt; B
+    H -- Yes --&gt; I[Generate final answer]
+    C -- No --&gt; I
+    I --&gt; J[Return to user]
+
+    %% Dark-mode friendly styling
+    classDef startend fill:#F6FFDB,stroke:#6E8900,stroke-width:2px,color:#2E3900
+    classDef decision fill:#FDF3FF,stroke:#7E65AE,stroke-width:2px,color:#504B5F
+    classDef process fill:#E5F4FF,stroke:#006DDD,stroke-width:1.5px,color:#030710
+
+    class A,J startend
+    class B,D,I process
+    class C,H decision
+</code></pre>
+<pre><code class="language-python">import requests
+from langchain.tools import tool
+from langchain.chat_models import init_chat_model
+from langchain.agents import create_agent
+
+
+@tool
+def fetch_url(url: str) -&gt; str:
+    """Fetch text content from a URL"""
+    response = requests.get(url, timeout=10.0)
+    response.raise_for_status()
+    return response.text
+
+system_prompt = """\
+Use fetch_url when you need to fetch information from a web-page; quote relevant snippets.
+"""
+
+agent = create_agent(
+    model="claude-sonnet-4-6",
+    tools=[fetch_url], # A tool for retrieval [!code highlight]
+    system_prompt=system_prompt,
+)
+</code></pre>
+<p><strong id="extended-example-agentic-rag-for-langgraphs-llmstxt">扩展示例：LangGraph 的 llms.txt 的 Agentic RAG</strong></p>
+<p>本示例实现了<strong id="agentic-rag-system">Agentic RAG系统</strong>来帮助用户查询LangGraph文档。代理首先加载 <a href="https://llmstxt.org/">llms.txt</a>，其中列出了可用的文档 URL，然后可以动态使用 <code>fetch_documentation</code> 工具根据用户的问题检索和处理相关内容。</p>
+<pre><code class="language-python">import requests
+from langchain.agents import create_agent
+from langchain.messages import HumanMessage
+from langchain.tools import tool
+from markdownify import markdownify
+
+
+ALLOWED_DOMAINS = ["https://langchain-ai.github.io/"]
+LLMS_TXT = 'https://langchain-ai.github.io/langgraph/llms.txt'
+
+
+@tool
+def fetch_documentation(url: str) -&gt; str:  # [!code highlight]
+    """Fetch and convert documentation from a URL"""
+    if not any(url.startswith(domain) for domain in ALLOWED_DOMAINS):
+        return (
+            "Error: URL not allowed. "
+            f"Must start with one of: {', '.join(ALLOWED_DOMAINS)}"
+        )
+    response = requests.get(url, timeout=10.0)
+    response.raise_for_status()
+    return markdownify(response.text)
+
+
+# We will fetch the content of llms.txt, so this can
+# be done ahead of time without requiring an LLM request.
+llms_txt_content = requests.get(LLMS_TXT).text
+
+# System prompt for the agent
+system_prompt = f"""
+You are an expert Python developer and technical assistant.
+Your primary role is to help users with questions about LangGraph and related tools.
+
+Instructions:
+
+1. If a user asks a question you're unsure about—or one that likely involves API usage,
+   behavior, or configuration—you MUST use the `fetch_documentation` tool to consult the relevant docs.
+2. When citing documentation, summarize clearly and include relevant context from the content.
+3. Do not use any URLs outside of the allowed domain.
+4. If a documentation fetch fails, tell the user and proceed with your best expert understanding.
+
+You can access official documentation from the following approved sources:
+
+{llms_txt_content}
+
+You MUST consult the documentation to get up to date documentation
+before answering a user's question about LangGraph.
+
+Your answers should be clear, concise, and technically accurate.
+"""
+
+tools = [fetch_documentation]
+
+model = init_chat_model("claude-sonnet-4-6", max_tokens=32_000)
+
+agent = create_agent(
+    model=model,
+    tools=tools,  # [!code highlight]
+    system_prompt=system_prompt,  # [!code highlight]
+    name="Agentic RAG",
+)
+
+response = agent.invoke({
+    'messages': [
+        HumanMessage(content=(
+            "Write a short example of a langgraph agent using the "
+            "prebuilt create react agent. the agent should be able "
+            "to look up stock pricing information."
+        ))
+    ]
+})
+
+print(response['messages'][-1].content)
+</code></pre>
+<p><strong id="tutorial-rag-with-deep-agents">教程：RAG 与深度智能体</strong></p>
+<p><a href="rag.html">查看相关页面</a></p>
+<p>构建一个文档问答代理，该代理在查询时检索相关块，将它们卸载到文件系统，并将分析委托给子智能体。</p>
+<h3 id="hybrid-rag">混合RAG</h3>
+<p>混合 RAG 结合了 2-Step 和 Agentic RAG 的特性。它引入了查询预处理、检索验证和生成后检查等中间步骤。这些系统比固定管道提供更大的灵活性，同时保持对执行的一定控制。</p>
+<p>典型组件包括：</p>
+<ul>
+<li><strong id="query-enhancement">查询增强</strong>：修改输入问题，提高检索质量。这可能涉及重写不明确的查询、生成多个变体或使用附加上下文扩展查询。</li>
+<li><strong id="retrieval-validation">检索验证</strong>：评估检索到的文档是否相关且充分。如果没有，系统可以细化查询并再次检索。</li>
+<li><strong id="answer-validation">答案验证</strong>：检查生成的答案的准确性、完整性以及与源内容的一致性。如果需要，系统可以重新生成或修改答案。</li>
+</ul>
+<p>该架构通常支持这些步骤之间的多次迭代：</p>
+<pre><code class="language-mermaid">%%{init: {'flowchart': {'nodeSpacing': 12, 'rankSpacing': 18, 'padding': 4}, 'themeVariables': {'fontSize': '12px'}}}%%
+graph TB
+    A[User Question] --&gt; B[Query Enhancement]
+    B --&gt; C[Retrieve Documents]
+    C --&gt; D{Sufficient Info?}
+    D -- No --&gt; E[Refine Query]
+    E --&gt; C
+    D -- Yes --&gt; F[Generate Answer]
+    F --&gt; G{Answer Quality OK?}
+    G -- No --&gt; H{Try Different Approach?}
+    H -- Yes --&gt; E
+    H -- No --&gt; I[Return Best Answer]
+    G -- Yes --&gt; I
+    I --&gt; J[Return to User]
+
+    classDef startend fill:#F6FFDB,stroke:#6E8900,stroke-width:2px,color:#2E3900
+    classDef decision fill:#FDF3FF,stroke:#7E65AE,stroke-width:2px,color:#504B5F
+    classDef process fill:#E5F4FF,stroke:#006DDD,stroke-width:1.5px,color:#030710
+
+    class A,J startend
+    class B,C,E,F,I process
+    class D,G,H decision
+</code></pre>
+<p>该架构适用于：</p>
+<ul>
+<li>具有不明确或未指定查询的应用程序</li>
+<li>需要验证或质量控制步骤的系统</li>
+<li>涉及多个来源或迭代细化的工作流程</li>
+</ul>
+<p><strong id="tutorial-agentic-rag-with-self-correction">教程：具有自我校正功能的 Agentic RAG</strong></p>
+<p><a href="https://docs.langchain.com/oss/python/langgraph/agentic-rag">查看相关页面</a></p>
+<p><strong>混合 RAG</strong> 的示例，将代理推理与检索和自我纠正相结合。</p>
+<hr/>
+<div classname="source-links">
+
+
+
+
+[将这些文档](https://docs.langchain.com/use-these-docs) 通过 MCP 连接到 Claude、VSCode 等以获得实时答案。
+
+
+
+
+
+
+[在 GitHub 上编辑此页面](https://github.com/langchain-ai/docs/edit/main/src/oss/deepagents/retrieval.mdx) 或 [提交问题](https://github.com/langchain-ai/docs/issues/new/choose)。
+
+
+
+</div><footer>非官方中文离线整理版。代码与原图保留；在线演示需要联网。© LangChain · <a href="../LICENSE">MIT 许可</a></footer></main><nav class="page-toc" aria-label="本页目录"><h2>本页目录</h2><ul><li><a href="#building-a-knowledge-base">建立知识库</a></li><li><a href="#rag-architectures">RAG架构</a></li></ul></nav></div></html>

@@ -1,0 +1,255 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>智能体客户端协议（ACP） · Deep Agents</title><link rel="stylesheet" href="../style.css"><aside><a class="brand" href="../index.html">Deep Agents<span>中文离线文档</span></a><h3>入门与选型</h3><a href="overview.html">Deep Agents 概览</a><a href="quickstart.html">快速入门</a><a href="models.html">模型选择</a><a href="comparison.html">与 Claude Agent SDK 的对比</a><a href="code-link.html">Deep Agents Code 简介</a><h3>配置与核心能力</h3><a href="customization.html">自定义 Deep Agents</a><a href="tools.html">工具</a><a href="profiles.html">配置档案</a><a href="backends.html">文件系统后端</a><a href="interpreters.html">代码解释器</a><a href="sandboxes.html">沙箱</a><a href="memory.html">记忆</a><a href="skills.html">技能</a><a href="permissions.html">权限</a><a href="human-in-the-loop.html">人工介入</a><a href="multimodal.html">多模态输入与输出</a><h3>任务与上下文管理</h3><a href="context-engineering.html">上下文工程</a><a href="subagents.html">子智能体</a><a href="dynamic-subagents.html">动态子智能体</a><a href="async-subagents.html">异步子智能体</a><a href="streaming.html">流式输出</a><a href="event-streaming.html">事件流</a><a href="fault-tolerance.html">容错</a><a href="retrieval.html">检索</a><a href="rubric.html">评分标准</a><h3>应用教程</h3><a href="data-analysis.html">构建数据分析智能体</a><a href="content-builder.html">构建内容创作智能体</a><a href="deep-research.html">构建深度研究智能体</a><a href="rag.html">构建检索增强生成（RAG）智能体</a><h3>协议与集成</h3><a href="mcp.html">模型上下文协议（MCP）</a><a href="acp.html">智能体客户端协议（ACP）</a><a href="a2a.html">A2A 服务器</a><h3>前端开发</h3><a href="frontend--overview.html">前端集成概览</a><a href="frontend--sandbox.html">前端沙箱</a><a href="frontend--subagent-streaming.html">前端子智能体流式输出</a><a href="frontend--todo-list.html">前端待办事项列表</a><h3>生产环境与知识库</h3><a href="going-to-production.html">部署到生产环境</a><a href="openwiki.html">OpenWiki</a><h3>Coding Agent 源码解析</h3><a href="codex-source-analysis.html">Codex 源码解析</a><a href="claude-code-source-analysis.html">Claude Code 源码解析：公开 SDK 与运行时边界</a><h3>版本更新</h3><a href="changelog-py.html">Python 更新日志</a><a href="changelog-js.html">JavaScript / TypeScript 更新日志</a></aside><script src="../sidebar.js"></script><div class="reading-layout"><main><div class="meta">中文机器翻译 · 文档快照 2026-09-07 · <a href="https://docs.langchain.com/oss/python/deepagents/acp">在线原文</a> · <a href="../markdown/acp.md">编辑中文 Markdown</a> · <a href="../original-markdown/acp.md">英文原稿</a></div><h1 id="agent-client-protocol-acp">智能体客户端协议（ACP）</h1>
+<blockquote>
+<p>通过代理客户端协议 (ACP) 公开深度智能体，以与代码编辑器和 IDE 集成。</p>
+</blockquote>
+<p><a href="https://agentclientprotocol.com/get-started/introduction">代理客户端协议 (ACP)</a> 标准化编程智能体与代码编辑器或 IDE 之间的通信。通过 ACP 协议，您可以将自定义深度智能体与任何 ACP 兼容的客户端结合使用，从而允许您的代码编辑器提供项目上下文并接收丰富的更新。</p>
+<p>ACP 专为代理编辑器集成而设计。如果您希望代理调用外部服务器托管的工具，请参阅<a href="https://docs.langchain.com/oss/python/langchain/mcp/">模型上下文协议 (MCP)</a>。</p>
+<h2 id="quickstart">快速入门</h2>
+<p>安装ACP集成包：</p>
+<pre><code class="language-bash">pip install deepagents-acp
+</code></pre>
+<pre><code class="language-bash">uv add deepagents-acp
+</code></pre>
+<p>然后通过 ACP 暴露深度智能体。</p>
+<p>这会在 stdio 模式下启动 ACP 服务器（它从 stdin 读取请求并将响应写入 stdout）。在实践中，您通常将其作为 ACP 客户端（例如您的编辑器）启动的命令运行，然后通过 stdio 与服务器进行通信。</p>
+<pre><code class="language-python">import asyncio
+
+from acp import run_agent
+from deepagents import create_deep_agent
+from langgraph.checkpoint.memory import MemorySaver
+
+from deepagents_acp.server import AgentServerACP
+
+
+async def main() -&gt; None:
+    agent = create_deep_agent(
+        model="google_genai:gemini-3.6-flash",
+        # You can customize your deep agent here: set a custom prompt,
+        # add your own tools, attach middleware, or compose subagents.
+        system_prompt="You are a helpful coding assistant",
+        checkpointer=MemorySaver(),
+    )
+
+    server = AgentServerACP(agent)
+    await run_agent(server)
+
+if __name__ == "__main__":
+    asyncio.run(main())
+</code></pre>
+<pre><code class="language-python">import asyncio
+
+from acp import run_agent
+from deepagents import create_deep_agent
+from langgraph.checkpoint.memory import MemorySaver
+
+from deepagents_acp.server import AgentServerACP
+
+
+async def main() -&gt; None:
+    agent = create_deep_agent(
+        model="openai:gpt-5.5",
+        # You can customize your deep agent here: set a custom prompt,
+        # add your own tools, attach middleware, or compose subagents.
+        system_prompt="You are a helpful coding assistant",
+        checkpointer=MemorySaver(),
+    )
+
+    server = AgentServerACP(agent)
+    await run_agent(server)
+
+if __name__ == "__main__":
+    asyncio.run(main())
+</code></pre>
+<pre><code class="language-python">import asyncio
+
+from acp import run_agent
+from deepagents import create_deep_agent
+from langgraph.checkpoint.memory import MemorySaver
+
+from deepagents_acp.server import AgentServerACP
+
+
+async def main() -&gt; None:
+    agent = create_deep_agent(
+        model="anthropic:claude-sonnet-4-6",
+        # You can customize your deep agent here: set a custom prompt,
+        # add your own tools, attach middleware, or compose subagents.
+        system_prompt="You are a helpful coding assistant",
+        checkpointer=MemorySaver(),
+    )
+
+    server = AgentServerACP(agent)
+    await run_agent(server)
+
+if __name__ == "__main__":
+    asyncio.run(main())
+</code></pre>
+<pre><code class="language-python">import asyncio
+
+from acp import run_agent
+from deepagents import create_deep_agent
+from langgraph.checkpoint.memory import MemorySaver
+
+from deepagents_acp.server import AgentServerACP
+
+
+async def main() -&gt; None:
+    agent = create_deep_agent(
+        model="openrouter:z-ai/glm-5.2",
+        # You can customize your deep agent here: set a custom prompt,
+        # add your own tools, attach middleware, or compose subagents.
+        system_prompt="You are a helpful coding assistant",
+        checkpointer=MemorySaver(),
+    )
+
+    server = AgentServerACP(agent)
+    await run_agent(server)
+
+if __name__ == "__main__":
+    asyncio.run(main())
+</code></pre>
+<pre><code class="language-python">import asyncio
+
+from acp import run_agent
+from deepagents import create_deep_agent
+from langgraph.checkpoint.memory import MemorySaver
+
+from deepagents_acp.server import AgentServerACP
+
+
+async def main() -&gt; None:
+    agent = create_deep_agent(
+        model="fireworks:accounts/fireworks/models/glm-5p2",
+        # You can customize your deep agent here: set a custom prompt,
+        # add your own tools, attach middleware, or compose subagents.
+        system_prompt="You are a helpful coding assistant",
+        checkpointer=MemorySaver(),
+    )
+
+    server = AgentServerACP(agent)
+    await run_agent(server)
+
+if __name__ == "__main__":
+    asyncio.run(main())
+</code></pre>
+<pre><code class="language-python">import asyncio
+
+from acp import run_agent
+from deepagents import create_deep_agent
+from langgraph.checkpoint.memory import MemorySaver
+
+from deepagents_acp.server import AgentServerACP
+
+
+async def main() -&gt; None:
+    agent = create_deep_agent(
+        model="baseten:zai-org/GLM-5.2",
+        # You can customize your deep agent here: set a custom prompt,
+        # add your own tools, attach middleware, or compose subagents.
+        system_prompt="You are a helpful coding assistant",
+        checkpointer=MemorySaver(),
+    )
+
+    server = AgentServerACP(agent)
+    await run_agent(server)
+
+if __name__ == "__main__":
+    asyncio.run(main())
+</code></pre>
+<pre><code class="language-python">import asyncio
+
+from acp import run_agent
+from deepagents import create_deep_agent
+from langgraph.checkpoint.memory import MemorySaver
+
+from deepagents_acp.server import AgentServerACP
+
+
+async def main() -&gt; None:
+    agent = create_deep_agent(
+        model="ollama:north-mini-code-1.0",
+        # You can customize your deep agent here: set a custom prompt,
+        # add your own tools, attach middleware, or compose subagents.
+        system_prompt="You are a helpful coding assistant",
+        checkpointer=MemorySaver(),
+    )
+
+    server = AgentServerACP(agent)
+    await run_agent(server)
+
+if __name__ == "__main__":
+    asyncio.run(main())
+</code></pre>
+<p><strong id="example-coding-agent">编程智能体示例</strong></p>
+<p><a href="https://github.com/langchain-ai/deepagents/blob/main/libs/acp/examples/demo_agent.py">查看相关页面</a></p>
+<p><code>deepagents-acp</code> 软件包包含一个带有文件系统和 shell 的示例编程智能体，您可以开箱即用。</p>
+<h2 id="clients">客户</h2>
+<p>深度智能体可以在任何可以运行 ACP 代理服务器的地方工作。一些著名的 ACP 客户包括：</p>
+<ul>
+<li><a href="https://zed.dev/docs/ai/external-agents">Zed</a></li>
+<li><a href="https://www.jetbrains.com/help/ai-assistant/acp.html">JetBrains IDE</a></li>
+<li>Visual Studio Code（通过 <a href="https://github.com/formulahendry/vscode-acp">vscode-acp</a>）</li>
+<li>Neovim（通过 ACP 兼容插件）</li>
+</ul>
+<h3 id="zed">泽德</h3>
+<p><code>deepagents</code> 存储库包含 <a href="https://github.com/langchain-ai/deepagents/blob/main/libs/acp/run_demo_agent.sh">演示 ACP 入口点</a>，您可以通过 <a href="https://zed.dev/docs/ai/external-agents">Zed</a> 注册：</p>
+<ol>
+<li>克隆 <code>deepagents</code> 存储库并安装依赖项：</li>
+</ol>
+<pre><code class="language-bash">git clone https://github.com/langchain-ai/deepagents.git
+cd deepagents/libs/acp
+uv sync --all-groups
+chmod +x run_demo_agent.sh
+</code></pre>
+<ol start="2">
+<li>配置演示代理的凭据：</li>
+</ol>
+<pre><code class="language-bash">cp .env.example .env
+</code></pre>
+<p>然后将<code>ANTHROPIC_API_KEY</code>设置为<code>.env</code>。</p>
+<ol start="3">
+<li>在 Zed 的 <code>settings.json</code> 中配置 ACP 代理服务器命令：</li>
+</ol>
+<pre><code class="language-json">{
+  "agent_servers": {
+    "DeepAgents": {
+      "type": "custom",
+      "command": "/your/absolute/path/to/deepagents/libs/acp/run_demo_agent.sh"
+    }
+  }
+}
+</code></pre>
+<ol start="4">
+<li>打开 Zed 的 Agents 面板并启动 Deep Agents 线程。</li>
+</ol>
+<h3 id="toad">蟾蜍</h3>
+<p>如果您想将 ACP 代理服务器作为本地开发工具运行，可以使用 <a href="https://github.com/batrachianai/toad">Toad</a> 来管理该进程。</p>
+<pre><code class="language-bash">uv tool install -U batrachian-toad
+
+toad acp "python path/to/your_server.py" .
+# or
+toad acp "uv run python path/to/your_server.py" .
+</code></pre>
+<p>有关协议详细信息和编辑器支持，请参阅上游 ACP 文档：</p>
+<ul>
+<li>简介：【https://agentclientprotocol.com/get-started/introduction](https://agentclientprotocol.com/get-started/introduction）</li>
+<li>客户/编辑：<a href="https://agentclientprotocol.com/get-started/clients">https://agentclientprotocol.com/get-started/clients</a></li>
+</ul>
+<hr/>
+<div classname="source-links">
+
+
+
+
+[将这些文档](https://docs.langchain.com/use-these-docs) 通过 MCP 连接到 Claude、VSCode 等以获得实时答案。
+
+
+
+
+
+
+[在 GitHub 上编辑此页面](https://github.com/langchain-ai/docs/edit/main/src/oss/deepagents/acp.mdx) 或 [提交问题](https://github.com/langchain-ai/docs/issues/new/choose)。
+
+
+
+</div><footer>非官方中文离线整理版。代码与原图保留；在线演示需要联网。© LangChain · <a href="../LICENSE">MIT 许可</a></footer></main><nav class="page-toc" aria-label="本页目录"><h2>本页目录</h2><ul><li><a href="#quickstart">快速入门</a></li><li><a href="#clients">客户</a></li></ul></nav></div></html>

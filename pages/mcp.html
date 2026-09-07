@@ -1,0 +1,79 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>模型上下文协议（MCP） · Deep Agents</title><link rel="stylesheet" href="../style.css"><aside><a class="brand" href="../index.html">Deep Agents<span>中文离线文档</span></a><h3>入门与选型</h3><a href="overview.html">Deep Agents 概览</a><a href="quickstart.html">快速入门</a><a href="models.html">模型选择</a><a href="comparison.html">与 Claude Agent SDK 的对比</a><a href="code-link.html">Deep Agents Code 简介</a><h3>配置与核心能力</h3><a href="customization.html">自定义 Deep Agents</a><a href="tools.html">工具</a><a href="profiles.html">配置档案</a><a href="backends.html">文件系统后端</a><a href="interpreters.html">代码解释器</a><a href="sandboxes.html">沙箱</a><a href="memory.html">记忆</a><a href="skills.html">技能</a><a href="permissions.html">权限</a><a href="human-in-the-loop.html">人工介入</a><a href="multimodal.html">多模态输入与输出</a><h3>任务与上下文管理</h3><a href="context-engineering.html">上下文工程</a><a href="subagents.html">子智能体</a><a href="dynamic-subagents.html">动态子智能体</a><a href="async-subagents.html">异步子智能体</a><a href="streaming.html">流式输出</a><a href="event-streaming.html">事件流</a><a href="fault-tolerance.html">容错</a><a href="retrieval.html">检索</a><a href="rubric.html">评分标准</a><h3>应用教程</h3><a href="data-analysis.html">构建数据分析智能体</a><a href="content-builder.html">构建内容创作智能体</a><a href="deep-research.html">构建深度研究智能体</a><a href="rag.html">构建检索增强生成（RAG）智能体</a><h3>协议与集成</h3><a href="mcp.html">模型上下文协议（MCP）</a><a href="acp.html">智能体客户端协议（ACP）</a><a href="a2a.html">A2A 服务器</a><h3>前端开发</h3><a href="frontend--overview.html">前端集成概览</a><a href="frontend--sandbox.html">前端沙箱</a><a href="frontend--subagent-streaming.html">前端子智能体流式输出</a><a href="frontend--todo-list.html">前端待办事项列表</a><h3>生产环境与知识库</h3><a href="going-to-production.html">部署到生产环境</a><a href="openwiki.html">OpenWiki</a><h3>Coding Agent 源码解析</h3><a href="codex-source-analysis.html">Codex 源码解析</a><a href="claude-code-source-analysis.html">Claude Code 源码解析：公开 SDK 与运行时边界</a><h3>版本更新</h3><a href="changelog-py.html">Python 更新日志</a><a href="changelog-js.html">JavaScript / TypeScript 更新日志</a></aside><script src="../sidebar.js"></script><div class="reading-layout"><main><div class="meta">中文机器翻译 · 文档快照 2026-09-07 · <a href="https://docs.langchain.com/oss/python/deepagents/mcp">在线原文</a> · <a href="../markdown/mcp.md">编辑中文 Markdown</a> · <a href="../original-markdown/mcp.md">英文原稿</a></div><h1 id="model-context-protocol-mcp">模型上下文协议（MCP）</h1>
+<blockquote>
+<p>使用基于 FastMCP 构建的 MCPAdapter 将 LangChain 代理连接到 MCP 服务器。</p>
+</blockquote>
+<p><a href="https://modelcontextprotocol.io">模型上下文协议 (MCP)</a> 是一种开放协议，它标准化了应用程序如何向语言模型提供工具和上下文。 LangChain代理通过<a href="https://reference.langchain.com/python/langchain/mcp/adapter/MCPAdapter"><code>MCPAdapter</code></a>调用MCP服务器上定义的工具，它会发现服务器的工具并将它们改编成可以直接传递给<a href="https://reference.langchain.com/python/langchain/agents/factory/create_agent"><code>create_agent</code></a>的LangChain工具。</p>
+<p><a href="https://reference.langchain.com/python/langchain/mcp/adapter/MCPAdapter"><code>MCPAdapter</code></a> 构建于 <a href="https://gofastmcp.com">FastMCP</a> 之上，处理传输推断、协议协商、连接管理和身份验证。本节介绍 LangChain 特定层并链接到 FastMCP 客户端文档以了解下面的连接详细信息。</p>
+<p><code>langchain.mcp</code> 命名空间需要 <code>langchain[mcp]&gt;=1.4.0</code> 并且处于测试阶段。从它导入每个进程都会引发一次 <code>LangChainBetaWarning</code> 。 API 可能会更改。</p>
+<p>如果您在v1.4.0之前使用过MCP，请参阅<a href="https://docs.langchain.com/oss/python/migrate/langchain-mcp-adapters">从<code>langchain-mcp-adapters</code>迁移</a>。</p>
+<h2 id="install">安装</h2>
+<p>安装带有 <code>mcp</code> extra 的 LangChain，它会引入 FastMCP：</p>
+<pre><code class="language-bash">pip install "langchain[mcp]"
+</code></pre>
+<pre><code class="language-bash">uv add "langchain[mcp]"
+</code></pre>
+<h2 id="quickstart">快速入门</h2>
+<p>打开 <a href="https://reference.langchain.com/python/langchain/mcp/adapter/MCPAdapter"><code>MCPAdapter</code></a>，使用 <code>list_tools()</code> 发现服务器的工具，并在上下文中构建代理。这些工具保留客户端，因此代理在上下文退出后仍然可用：</p>
+<pre><code class="language-python">from langchain.agents import create_agent
+from langchain.mcp import MCPAdapter
+
+
+async def main():
+    async with MCPAdapter("https://example.com/mcp") as adapter:
+        tools = await adapter.list_tools()
+        agent = create_agent("claude-sonnet-5", tools)
+        return await agent.ainvoke({"messages": [{"role": "user", "content": "..."}]})
+</code></pre>
+<h2 id="transports">交通</h2>
+<p><a href="https://reference.langchain.com/python/langchain/mcp/adapter/MCPAdapter"><code>MCPAdapter</code></a> 从您提供的目标推断传输，因此进程内服务器、stdio 上的本地脚本和远程 URL 之间唯一发生变化的是目标本身：</p>
+<pre><code class="language-python">from pathlib import Path
+
+from langchain.mcp import MCPAdapter
+
+# An in-process FastMCP server: no subprocess, no socket. Ideal for tests.
+in_memory = MCPAdapter(server)  # a FastMCP instance
+
+# A script path is launched over stdio, one subprocess per adapter.
+stdio = MCPAdapter(Path("weather_server.py"))
+
+# A string must be an http(s) URL, reached over streamable HTTP.
+http = MCPAdapter("https://example.com/mcp")
+</code></pre>
+<p>目标可以是以下任意一个：</p>
+<ul>
+<li><strong id="an-httphttps-url"><code>http</code>/<code>https</code> URL</strong> (<code>str</code>)：通过可流传输的 HTTP 到达。</li>
+<li><strong id="a-script-path">脚本路径</strong> (<code>Path</code>)：作为 stdio 上的子进程启动。</li>
+<li><strong id="a-transport-object">传输对象</strong> (<code>StreamableTransport</code>)：预配置的传输对象。请参阅<a href="https://gofastmcp.com/clients/transports">客户端传输</a>。</li>
+<li><strong id="an-in-process-fastmcp-server">进程内 <code>FastMCP</code> 服务器</strong>：连接在内存中，没有子进程或套接字。</li>
+<li><strong id="an-mcpconfig-dict"><code>MCPConfig</code> 字典</strong> (<code>{"mcpServers": {...}}</code>)：一个适配器后面有多个服务器。请参见<a href="https://docs.langchain.com/oss/python/langchain/mcp/connections#multiple-servers">连接</a>。</li>
+<li><strong id="a-prebuilt-fastmcpclient">预构建的 <code>fastmcp.Client</code></strong>：用于完全控制传输、<a href="https://gofastmcp.com/clients/client#response-caching">缓存</a> 和<a href="https://gofastmcp.com/clients/client#protocol-negotiation">协议协商</a>。</li>
+</ul>
+<p><code>str</code> 目标必须是 <code>http</code> 或 <code>https</code> URL。 FastMCP 通过在将字符串测试为 URL 之前将其测试为文件系统路径来解析字符串，因此命名现有 <code>.py</code> 或 <code>.js</code> 文件的字符串会将该文件作为子进程启动。由于字符串是目标最常从配置或模型到达的形式，因此 <a href="https://reference.langchain.com/python/langchain/mcp/adapter/MCPAdapter"><code>MCPAdapter</code></a> 会拒绝与 URL 形状不匹配的字符串。</p>
+<h2 id="next-steps">后续步骤</h2>
+<p><strong id="connections">连接</strong></p>
+<p><a href="https://docs.langchain.com/oss/python/langchain/mcp/connections">查看相关页面</a></p>
+<p>连接生命周期、多个服务器、协议时代和缓存。</p>
+<p><strong id="authentication">验证</strong></p>
+<p><a href="https://docs.langchain.com/oss/python/langchain/mcp/auth">查看相关页面</a></p>
+<p>不记名令牌、OAuth 2.1 和每用户服务器身份验证。</p>
+<p><strong id="tools">工具</strong></p>
+<p><a href="https://docs.langchain.com/oss/python/langchain/mcp/tools">查看相关页面</a></p>
+<p>将 MCP 工具加载到代理中，控制其执行并处理其输出。</p>
+<hr/>
+<div classname="source-links">
+
+
+
+
+[将这些文档](https://docs.langchain.com/use-these-docs) 通过 MCP 连接到 Claude、VSCode 等以获得实时答案。
+
+
+
+
+
+
+[在 GitHub 上编辑此页面](https://github.com/langchain-ai/docs/edit/main/src/oss/langchain/mcp/index.mdx) 或 [提交问题](https://github.com/langchain-ai/docs/issues/new/choose)。
+
+
+
+</div><footer>非官方中文离线整理版。代码与原图保留；在线演示需要联网。© LangChain · <a href="../LICENSE">MIT 许可</a></footer></main><nav class="page-toc" aria-label="本页目录"><h2>本页目录</h2><ul><li><a href="#install">安装</a></li><li><a href="#quickstart">快速入门</a></li><li><a href="#transports">交通</a></li><li><a href="#next-steps">后续步骤</a></li></ul></nav></div></html>

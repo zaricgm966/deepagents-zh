@@ -1,0 +1,266 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>快速入门 · Deep Agents</title><link rel="stylesheet" href="../style.css"><aside><a class="brand" href="../index.html">Deep Agents<span>中文离线文档</span></a><h3>入门与选型</h3><a href="overview.html">Deep Agents 概览</a><a href="quickstart.html">快速入门</a><a href="models.html">模型选择</a><a href="comparison.html">与 Claude Agent SDK 的对比</a><a href="code-link.html">Deep Agents Code 简介</a><h3>配置与核心能力</h3><a href="customization.html">自定义 Deep Agents</a><a href="tools.html">工具</a><a href="profiles.html">配置档案</a><a href="backends.html">文件系统后端</a><a href="interpreters.html">代码解释器</a><a href="sandboxes.html">沙箱</a><a href="memory.html">记忆</a><a href="skills.html">技能</a><a href="permissions.html">权限</a><a href="human-in-the-loop.html">人工介入</a><a href="multimodal.html">多模态输入与输出</a><h3>任务与上下文管理</h3><a href="context-engineering.html">上下文工程</a><a href="subagents.html">子智能体</a><a href="dynamic-subagents.html">动态子智能体</a><a href="async-subagents.html">异步子智能体</a><a href="streaming.html">流式输出</a><a href="event-streaming.html">事件流</a><a href="fault-tolerance.html">容错</a><a href="retrieval.html">检索</a><a href="rubric.html">评分标准</a><h3>应用教程</h3><a href="data-analysis.html">构建数据分析智能体</a><a href="content-builder.html">构建内容创作智能体</a><a href="deep-research.html">构建深度研究智能体</a><a href="rag.html">构建检索增强生成（RAG）智能体</a><h3>协议与集成</h3><a href="mcp.html">模型上下文协议（MCP）</a><a href="acp.html">智能体客户端协议（ACP）</a><a href="a2a.html">A2A 服务器</a><h3>前端开发</h3><a href="frontend--overview.html">前端集成概览</a><a href="frontend--sandbox.html">前端沙箱</a><a href="frontend--subagent-streaming.html">前端子智能体流式输出</a><a href="frontend--todo-list.html">前端待办事项列表</a><h3>生产环境与知识库</h3><a href="going-to-production.html">部署到生产环境</a><a href="openwiki.html">OpenWiki</a><h3>Coding Agent 源码解析</h3><a href="codex-source-analysis.html">Codex 源码解析</a><a href="claude-code-source-analysis.html">Claude Code 源码解析：公开 SDK 与运行时边界</a><h3>版本更新</h3><a href="changelog-py.html">Python 更新日志</a><a href="changelog-js.html">JavaScript / TypeScript 更新日志</a></aside><script src="../sidebar.js"></script><div class="reading-layout"><main><div class="meta">中文机器翻译 · 文档快照 2026-09-07 · <a href="https://docs.langchain.com/oss/python/deepagents/quickstart">在线原文</a> · <a href="../markdown/quickstart.md">编辑中文 Markdown</a> · <a href="../original-markdown/quickstart.md">英文原稿</a></div><h1 id="quickstart">快速入门</h1>
+<blockquote>
+<p>在几分钟内构建您的第一个深度智能体</p>
+</blockquote>
+<p>本指南将引导您使用文件系统工具和子智能体功能创建第一个深度智能体。您将建立一个可以进行研究和撰写报告的研究代理。</p>
+<p><strong>使用人工智能编码助手？</strong></p>
+<ul>
+<li>安装<a href="https://docs.langchain.com/use-these-docs">LangChain Docs MCP 服务器</a>，让您的代理能够访问最新的 LangChain 文档和示例。</li>
+<li>安装<a href="https://github.com/langchain-ai/langchain-skills">LangChain技能</a>以提高代理在LangChain生态系统任务上的性能。</li>
+</ul>
+<h2 id="prerequisites">先决条件</h2>
+<p>在开始之前，请确保您拥有模型提供商（例如 Gemini、Anthropic、OpenAI）提供的 API 密钥。</p>
+<p>深度智能体需要支持<a href="https://docs.langchain.com/oss/python/langchain/models#tool-calling">工具调用</a>的模型。请参阅<a href="customization.html#model">自定义</a>了解如何配置您的模型。</p>
+<h2 id="step-1-install-dependencies">第1步：安装依赖项</h2>
+<pre><code class="language-bash">pip install deepagents
+</code></pre>
+<pre><code class="language-bash">uv init
+uv add deepagents
+uv sync
+</code></pre>
+<p>Google、OpenAI 和 Anthropic 都提供内置网络搜索工具：无需额外的软件包或 API 密钥。如果您使用不同的提供商或更喜欢 <a href="https://tavily.com/">Tavily</a> 进行搜索，请同时安装 Tavily 软件包：</p>
+<pre><code class="language-bash">pip install tavily-python
+</code></pre>
+<h2 id="step-2-set-up-your-api-keys">第 2 步：设置您的 API 密钥</h2>
+<p><strong>谷歌</strong></p>
+<pre><code class="language-bash">export GOOGLE_API_KEY="your-api-key"
+</code></pre>
+<p><strong>开放人工智能</strong></p>
+<pre><code class="language-bash">export OPENAI_API_KEY="your-api-key"
+</code></pre>
+<p><strong>人择</strong></p>
+<pre><code class="language-bash">export ANTHROPIC_API_KEY="your-api-key"
+</code></pre>
+<p><strong>开放路由器</strong></p>
+<pre><code class="language-bash">export OPENROUTER_API_KEY="your-api-key"
+export TAVILY_API_KEY="your-tavily-api-key"
+</code></pre>
+<p><strong>烟花</strong></p>
+<pre><code class="language-bash">export FIREWORKS_API_KEY="your-api-key"
+export TAVILY_API_KEY="your-tavily-api-key"
+</code></pre>
+<p><strong>巴斯坦</strong></p>
+<pre><code class="language-bash">export BASETEN_API_KEY="your-api-key"
+export TAVILY_API_KEY="your-tavily-api-key"
+</code></pre>
+<p><strong>奥拉马</strong></p>
+<pre><code class="language-bash"># Local: Ollama must be running on your machine
+# Cloud: Set your Ollama API key for hosted inference
+export OLLAMA_API_KEY="your-api-key"
+export TAVILY_API_KEY="your-tavily-api-key"
+</code></pre>
+<p><strong>其他</strong></p>
+<pre><code class="language-bash"># Set the API key for your provider
+export &lt;PROVIDER&gt;_API_KEY="your-api-key"
+export TAVILY_API_KEY="your-tavily-api-key"
+</code></pre>
+<p>深度智能体可与任何 <a href="models.html#supported-models">LangChain 聊天模型</a> 配合使用。为您的提供商设置 API 密钥。</p>
+<p><strong>使用 LangSmith 网关</strong></p>
+<p><a href="https://docs.langchain.com/langsmith/llm-gateway">LangSmith 网关</a> 通过 LangSmith 路由大多数主要提供商。您可以<a href="https://docs.langchain.com/langsmith/llm-gateway-quickstart#2-make-a-call">自带提供商密钥</a>，或使用<a href="https://docs.langchain.com/langsmith/llm-gateway-credits">网关积分</a>在没有提供商密钥的情况下访问模型。</p>
+<h2 id="step-3-create-a-search-tool">第三步：创建搜索工具</h2>
+<p>Google、OpenAI 和 Anthropic 提供在服务器端运行的内置网络搜索工具：无需额外的软件包或 API 密钥。将提供程序工具字典直接传递给 <code>create_deep_agent</code>。</p>
+<p><strong>提供商搜索（推荐）</strong></p>
+<pre><code class="language-python">from deepagents import create_deep_agent
+
+# Google's built-in search — no extra install or API key needed
+internet_search = {"google_search": {}}
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+
+# OpenAI's built-in web search — no extra install or API key needed
+internet_search = {"type": "web_search"}
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+
+# Anthropic's built-in web search — no extra install or API key needed
+internet_search = {"type": "web_search_20260209", "name": "web_search"}
+</code></pre>
+<p><strong>Tavily（任何提供商）</strong></p>
+<pre><code class="language-python">import os
+from typing import Literal
+
+from tavily import TavilyClient
+from deepagents import create_deep_agent
+
+tavily_client = TavilyClient(api_key=os.environ["TAVILY_API_KEY"])
+
+
+def internet_search(
+    query: str,
+    max_results: int = 5,
+    topic: Literal["general", "news", "finance"] = "general",
+    include_raw_content: bool = False,
+):
+    """Run a web search"""
+    return tavily_client.search(
+        query,
+        max_results=max_results,
+        include_raw_content=include_raw_content,
+        topic=topic,
+    )
+</code></pre>
+<h2 id="step-4-create-a-deep-agent">第 4 步：创建深度智能体</h2>
+<p>将您的搜索工具和型号传递给 <code>create_deep_agent</code>。传递 <code>provider:model</code> 格式的 <code>model</code> 字符串，或 <a href="models.html#configure-model-parameters">初始化的模型实例</a>。请参阅<a href="models.html#supported-models">支持的型号</a> 了解所有提供商，并参阅<a href="models.html#suggested-models">建议的型号</a> 了解经过测试的建议。</p>
+<pre><code class="language-python"># System prompt to steer the agent to be an expert researcher
+research_instructions = """You are an expert researcher. Your job is to conduct thorough research and then write a polished report.
+
+You have access to an internet search tool as your primary means of gathering information.
+
+## `internet_search`
+
+Use this to run an internet search for a given query. You can specify the max number of results to return, the topic, and whether raw content should be included.
+"""
+
+agent = create_deep_agent(
+    model="google_genai:gemini-3.6-flash",
+    tools=[internet_search],
+    system_prompt=research_instructions,
+)
+</code></pre>
+<pre><code class="language-python"># System prompt to steer the agent to be an expert researcher
+research_instructions = """You are an expert researcher. Your job is to conduct thorough research and then write a polished report.
+
+You have access to an internet search tool as your primary means of gathering information.
+
+## `internet_search`
+
+Use this to run an internet search for a given query. You can specify the max number of results to return, the topic, and whether raw content should be included.
+"""
+
+agent = create_deep_agent(
+    model="openai:gpt-5.5",
+    tools=[internet_search],
+    system_prompt=research_instructions,
+)
+</code></pre>
+<pre><code class="language-python"># System prompt to steer the agent to be an expert researcher
+research_instructions = """You are an expert researcher. Your job is to conduct thorough research and then write a polished report.
+
+You have access to an internet search tool as your primary means of gathering information.
+
+## `internet_search`
+
+Use this to run an internet search for a given query. You can specify the max number of results to return, the topic, and whether raw content should be included.
+"""
+
+agent = create_deep_agent(
+    model="anthropic:claude-sonnet-4-6",
+    tools=[internet_search],
+    system_prompt=research_instructions,
+)
+</code></pre>
+<pre><code class="language-python"># System prompt to steer the agent to be an expert researcher
+research_instructions = """You are an expert researcher. Your job is to conduct thorough research and then write a polished report.
+
+You have access to an internet search tool as your primary means of gathering information.
+
+## `internet_search`
+
+Use this to run an internet search for a given query. You can specify the max number of results to return, the topic, and whether raw content should be included.
+"""
+
+agent = create_deep_agent(
+    model="openrouter:z-ai/glm-5.2",
+    tools=[internet_search],
+    system_prompt=research_instructions,
+)
+</code></pre>
+<pre><code class="language-python"># System prompt to steer the agent to be an expert researcher
+research_instructions = """You are an expert researcher. Your job is to conduct thorough research and then write a polished report.
+
+You have access to an internet search tool as your primary means of gathering information.
+
+## `internet_search`
+
+Use this to run an internet search for a given query. You can specify the max number of results to return, the topic, and whether raw content should be included.
+"""
+
+agent = create_deep_agent(
+    model="fireworks:accounts/fireworks/models/glm-5p2",
+    tools=[internet_search],
+    system_prompt=research_instructions,
+)
+</code></pre>
+<pre><code class="language-python"># System prompt to steer the agent to be an expert researcher
+research_instructions = """You are an expert researcher. Your job is to conduct thorough research and then write a polished report.
+
+You have access to an internet search tool as your primary means of gathering information.
+
+## `internet_search`
+
+Use this to run an internet search for a given query. You can specify the max number of results to return, the topic, and whether raw content should be included.
+"""
+
+agent = create_deep_agent(
+    model="baseten:zai-org/GLM-5.2",
+    tools=[internet_search],
+    system_prompt=research_instructions,
+)
+</code></pre>
+<pre><code class="language-python"># System prompt to steer the agent to be an expert researcher
+research_instructions = """You are an expert researcher. Your job is to conduct thorough research and then write a polished report.
+
+You have access to an internet search tool as your primary means of gathering information.
+
+## `internet_search`
+
+Use this to run an internet search for a given query. You can specify the max number of results to return, the topic, and whether raw content should be included.
+"""
+
+agent = create_deep_agent(
+    model="ollama:north-mini-code-1.0",
+    tools=[internet_search],
+    system_prompt=research_instructions,
+)
+</code></pre>
+<h2 id="step-5-set-up-langsmith-tracing">第 5 步：设置 LangSmith 跟踪</h2>
+<p><a href="https://smith.langchain.com?utm_source=docs\&amp;utm_medium=cta\&amp;utm_campaign=langsmith-signup\&amp;utm_content=oss-deepagents-quickstart">LangSmith</a> 为您提供代理执行的可见性，允许您查看工具调用、子智能体委托和 LLM 响应。</p>
+<p>在 <a href="https://smith.langchain.com?utm_source=docs\&amp;utm_medium=cta\&amp;utm_campaign=langsmith-signup\&amp;utm_content=oss-deepagents-quickstart">smith.langchain.com</a> 注册，创建 API 密钥，并设置以下环境变量：</p>
+<pre><code class="language-bash">export LANGSMITH_TRACING=true
+export LANGSMITH_API_KEY="your-langsmith-api-key"
+</code></pre>
+<h2 id="step-6-run-the-agent">第 6 步：运行代理</h2>
+<pre><code class="language-python">result = agent.invoke({"messages": [{"role": "user", "content": "What is langgraph?"}]})
+
+# Print the agent's response
+print(result["messages"][-1].content)
+</code></pre>
+<h2 id="how-does-it-work">它是如何运作的？</h2>
+<p>您的深度智能体会自动：</p>
+<ol>
+<li><strong>通过调用 <code>internet_search</code> 工具收集信息来进行研究</strong>。</li>
+<li>**通过使用文件系统工具（<a href="overview.html#virtual-filesystem-access"><code>write_file</code></a>、<a href="overview.html#virtual-filesystem-access"><code>read_file</code></a>）来卸载大型搜索结果来管理上下文。</li>
+<li><strong>根据需要生成子智能体</strong>，将复杂的子任务委托给专门的子智能体。</li>
+<li><strong>综合报告</strong>将调查结果汇编成连贯的回应。</li>
+</ol>
+<p>要使用 <code>write_todos</code> 添加结构化任务计划，请选择使用 <a href="https://reference.langchain.com/python/langchain/agents/middleware/todo/TodoListMiddleware"><code>TodoListMiddleware</code></a>。参见<a href="overview.html#task-planning">任务规划</a>。</p>
+<h2 id="examples">示例</h2>
+<p>有关可以使用深度智能体构建的代理、模式和应用程序，请参阅<a href="https://github.com/langchain-ai/deepagents/tree/main/examples">示例</a>。</p>
+<h2 id="streaming">流媒体</h2>
+<p>深度智能体具有内置的<a href="https://docs.langchain.com/oss/python/langchain/event-streaming">流</a>，用于使用 LangGraph 从代理执行中进行实时更新。这使您可以逐步观察输出并检查和调试代理和子智能体的工作，例如工具调用、工具结果和 LLM 响应。</p>
+<h2 id="next-steps">后续步骤</h2>
+<p>现在您已经构建了第一个深度智能体：</p>
+<ul>
+<li><strong>自定义您的代理</strong>：了解<a href="customization.html">自定义选项</a>，包括自定义系统提示、工具和子智能体。</li>
+<li><strong>添加长期记忆</strong>：跨对话启用<a href="memory.html">持久记忆</a>。</li>
+<li><strong>部署到生产</strong>：使用<a href="https://docs.langchain.com/langsmith/python/managed-deep-agents-overview">托管深度智能体</a> 在 LangSmith 中创建、运行和操作深度智能体。</li>
+<li><strong>测试和评估</strong>：使用 <a href="https://docs.langchain.com/langsmith/evaluation-quickstart">LangSmith 评估</a> 运行自动化测试并根据数据集衡量代理的性能。</li>
+</ul>
+<hr/>
+<div classname="source-links">
+
+
+
+
+[将这些文档](https://docs.langchain.com/use-these-docs) 通过 MCP 连接到 Claude、VSCode 等以获得实时答案。
+
+
+
+
+
+
+[在 GitHub 上编辑此页面](https://github.com/langchain-ai/docs/edit/main/src/oss/deepagents/quickstart.mdx) 或 [提交问题](https://github.com/langchain-ai/docs/issues/new/choose)。
+
+
+
+</div><footer>非官方中文离线整理版。代码与原图保留；在线演示需要联网。© LangChain · <a href="../LICENSE">MIT 许可</a></footer></main><nav class="page-toc" aria-label="本页目录"><h2>本页目录</h2><ul><li><a href="#prerequisites">先决条件</a></li><li><a href="#step-1-install-dependencies">第1步：安装依赖项</a></li><li><a href="#step-2-set-up-your-api-keys">第 2 步：设置您的 API 密钥</a></li><li><a href="#step-3-create-a-search-tool">第三步：创建搜索工具</a></li><li><a href="#step-4-create-a-deep-agent">第 4 步：创建深度智能体</a></li><li><a href="#step-5-set-up-langsmith-tracing">第 5 步：设置 LangSmith 跟踪</a></li><li><a href="#step-6-run-the-agent">第 6 步：运行代理</a></li><li><a href="#how-does-it-work">它是如何运作的？</a></li><li><a href="#examples">示例</a></li><li><a href="#streaming">流媒体</a></li><li><a href="#next-steps">后续步骤</a></li></ul></nav></div></html>

@@ -1,0 +1,428 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>构建深度研究智能体 · Deep Agents</title><link rel="stylesheet" href="../style.css"><aside><a class="brand" href="../index.html">Deep Agents<span>中文离线文档</span></a><h3>入门与选型</h3><a href="overview.html">Deep Agents 概览</a><a href="quickstart.html">快速入门</a><a href="models.html">模型选择</a><a href="comparison.html">与 Claude Agent SDK 的对比</a><a href="code-link.html">Deep Agents Code 简介</a><h3>配置与核心能力</h3><a href="customization.html">自定义 Deep Agents</a><a href="tools.html">工具</a><a href="profiles.html">配置档案</a><a href="backends.html">文件系统后端</a><a href="interpreters.html">代码解释器</a><a href="sandboxes.html">沙箱</a><a href="memory.html">记忆</a><a href="skills.html">技能</a><a href="permissions.html">权限</a><a href="human-in-the-loop.html">人工介入</a><a href="multimodal.html">多模态输入与输出</a><h3>任务与上下文管理</h3><a href="context-engineering.html">上下文工程</a><a href="subagents.html">子智能体</a><a href="dynamic-subagents.html">动态子智能体</a><a href="async-subagents.html">异步子智能体</a><a href="streaming.html">流式输出</a><a href="event-streaming.html">事件流</a><a href="fault-tolerance.html">容错</a><a href="retrieval.html">检索</a><a href="rubric.html">评分标准</a><h3>应用教程</h3><a href="data-analysis.html">构建数据分析智能体</a><a href="content-builder.html">构建内容创作智能体</a><a href="deep-research.html">构建深度研究智能体</a><a href="rag.html">构建检索增强生成（RAG）智能体</a><h3>协议与集成</h3><a href="mcp.html">模型上下文协议（MCP）</a><a href="acp.html">智能体客户端协议（ACP）</a><a href="a2a.html">A2A 服务器</a><h3>前端开发</h3><a href="frontend--overview.html">前端集成概览</a><a href="frontend--sandbox.html">前端沙箱</a><a href="frontend--subagent-streaming.html">前端子智能体流式输出</a><a href="frontend--todo-list.html">前端待办事项列表</a><h3>生产环境与知识库</h3><a href="going-to-production.html">部署到生产环境</a><a href="openwiki.html">OpenWiki</a><h3>Coding Agent 源码解析</h3><a href="codex-source-analysis.html">Codex 源码解析</a><a href="claude-code-source-analysis.html">Claude Code 源码解析：公开 SDK 与运行时边界</a><h3>版本更新</h3><a href="changelog-py.html">Python 更新日志</a><a href="changelog-js.html">JavaScript / TypeScript 更新日志</a></aside><script src="../sidebar.js"></script><div class="reading-layout"><main><div class="meta">中文机器翻译 · 文档快照 2026-09-07 · <a href="https://docs.langchain.com/oss/python/deepagents/deep-research">在线原文</a> · <a href="../markdown/deep-research.md">编辑中文 Markdown</a> · <a href="../original-markdown/deep-research.md">英文原稿</a></div><h1 id="build-a-deep-research-agent">构建深度研究智能体</h1>
+<blockquote>
+<p>使用子智能体委托构建多步骤网络研究代理</p>
+</blockquote>
+<h2 id="overview">概述</h2>
+<p>本指南演示如何使用 <a href="overview.html">Deep Agents</a> 从头开始​​构建多步骤网络研究代理。该代理将研究问题分解为重点任务，将其委托给专门的子智能体，并将研究结果综合成一份综合报告。</p>
+<p>您构建的代理将：</p>
+<ol>
+<li>使用选择加入待办事项列表中间件计划研究</li>
+<li>将重点研究任务委托给具有孤立上下文的子智能体</li>
+<li>收集信息时评估搜索结果并计划后续步骤</li>
+<li>将研究结果与适当的引用综合成最终报告</li>
+</ol>
+<p>生成的子智能体将使用 Tavily 进行网络搜索，获取完整的网页内容进行分析。</p>
+<h3 id="key-concepts">关键概念</h3>
+<p>本教程涵盖：</p>
+<ul>
+<li><a href="subagents.html">子智能体</a> 用于并行、上下文隔离的研究</li>
+<li>用于网络搜索的自定义<a href="https://docs.langchain.com/oss/python/langchain/tools">工具</a></li>
+<li>使用选择加入的多步骤规划<a href="overview.html#task-planning">规划工具</a></li>
+</ul>
+<h2 id="prerequisites">先决条件</h2>
+<p>API 密钥用于：</p>
+<ul>
+<li>人择（克劳德）或谷歌（双子座）</li>
+<li><a href="https://www.tavily.com/">Tavily</a> 用于网络搜索（可选 - 免费套餐足够）</li>
+<li><a href="https://smith.langchain.com?utm_source=docs\&amp;utm_medium=cta\&amp;utm_campaign=langsmith-signup\&amp;utm_content=oss-deepagents-deep-research">LangSmith</a> 用于跟踪（可选）</li>
+</ul>
+<h2 id="setup">设置</h2>
+<p><strong id="create-project-directory">创建项目目录</strong></p>
+<pre><code class="language-bash">mkdir deep-research-agent
+cd deep-research-agent
+</code></pre>
+<p><strong id="install-dependencies">安装依赖项</strong></p>
+<p><strong id="claude">克劳德</strong></p>
+<pre><code class="language-bash">pip install deepagents tavily-python httpx markdownify langchain-anthropic langchain-core
+</code></pre>
+<pre><code class="language-bash">uv init
+uv add deepagents tavily-python httpx markdownify langchain-anthropic langchain-core
+uv sync
+</code></pre>
+<p><strong id="gemini">双子座</strong></p>
+<pre><code class="language-bash">pip install deepagents tavily-python httpx markdownify langchain-google-genai langchain-core
+</code></pre>
+<pre><code class="language-bash">uv init
+uv add deepagents tavily-python httpx markdownify langchain-google-genai langchain-core
+uv sync
+</code></pre>
+<p><strong id="set-api-keys">设置 API 密钥</strong></p>
+<p><strong>克劳德</strong></p>
+<pre><code class="language-bash">export ANTHROPIC_API_KEY="your_anthropic_api_key"
+export TAVILY_API_KEY="your_tavily_api_key"
+export LANGSMITH_API_KEY="your_langsmith_api_key"   # Optional
+</code></pre>
+<p><strong>双子座</strong></p>
+<pre><code class="language-bash">export GOOGLE_API_KEY="your_google_api_key"
+export TAVILY_API_KEY="your_tavily_api_key"
+export LANGSMITH_API_KEY="your_langsmith_api_key"   # Optional
+</code></pre>
+<h2 id="build-the-agent">构建代理</h2>
+<p>在项目目录中创建 <code>agent.py</code>：</p>
+<p><strong id="add-tools">添加工具</strong></p>
+<p>添加自定义搜索工具。 <code>tavily_search</code> 工具使用 Tavily 进行 URL 发现，然后获取完整的网页内容，以便代理可以分析完整的源而不是摘要。</p>
+<pre><code class="language-python">import os
+from typing import Annotated, Literal
+
+import httpx
+from langchain.tools import InjectedToolArg, tool
+from markdownify import markdownify
+from tavily import TavilyClient
+
+tavily_client = TavilyClient(api_key=os.environ["TAVILY_API_KEY"])
+
+
+def fetch_webpage_content(url: str, timeout: float = 10.0) -&gt; str:
+    """Fetch webpage and convert HTML to markdown."""
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    }
+    try:
+        response = httpx.get(url, headers=headers, timeout=timeout)
+        response.raise_for_status()
+        return markdownify(response.text)
+    except Exception as e:
+        return f"Error fetching {url}: {e!s}"
+
+
+@tool(parse_docstring=True)
+def tavily_search(
+    query: str,
+    max_results: Annotated[int, InjectedToolArg] = 1,
+    topic: Annotated[
+        Literal["general", "news", "finance"], InjectedToolArg
+    ] = "general",
+) -&gt; str:
+    """Search the web for information on a given query.
+
+    Uses Tavily to discover relevant URLs, then fetches and returns full webpage content as markdown.
+
+    Args:
+        query: Search query to execute
+        max_results: Maximum number of results to return (default: 1)
+        topic: Topic filter - 'general', 'news', or 'finance' (default: 'general')
+
+    Returns:
+        Formatted search results with full webpage content
+    """
+    search_results = tavily_client.search(
+        query,
+        max_results=max_results,
+        topic=topic,
+    )
+    result_texts = []
+    for result in search_results.get("results", []):
+        url = result["url"]
+        title = result["title"]
+        content = fetch_webpage_content(url)
+        result_texts.append(f"## {title}\n**URL:** {url}\n\n{content}\n---")
+
+    return f"Found {len(result_texts)} result(s) for '{query}':\n\n" + "\n".join(
+        result_texts
+    )
+</code></pre>
+<p><strong id="add-prompts">添加提示</strong></p>
+<p>将 Orchestrator 工作流和子智能体提示模板添加到 <code>agent.py</code>：</p>
+<pre><code class="language-python">RESEARCH_WORKFLOW_INSTRUCTIONS = """# Research Workflow
+
+Follow this workflow for all research requests:
+
+1. **Plan**: Create a todo list with write_todos to break down the research into focused tasks
+2. **Save the request**: Use write_file() to save the user's research question to `/research_request.md`
+3. **Research**: Delegate research tasks to sub-agents using the task() tool - ALWAYS use sub-agents for research, never conduct research yourself
+4. **Synthesize**: Review all sub-agent findings and consolidate citations (each unique URL gets one number across all findings)
+5. **Write Report**: Write a comprehensive final report to `/final_report.md` (see Report Writing Guidelines below)
+6. **Verify**: Read `/research_request.md` and confirm you've addressed all aspects with proper citations and structure
+
+## Research Planning Guidelines
+- Batch similar research tasks into a single TODO to minimize overhead
+- For simple fact-finding questions, use 1 sub-agent
+- For comparisons or multi-faceted topics, delegate to multiple parallel sub-agents
+- Each sub-agent should research one specific aspect and return findings
+
+## Report Writing Guidelines
+
+When writing the final report to `/final_report.md`, follow these structure patterns:
+
+**For comparisons:**
+1. Introduction
+2. Overview of topic A
+3. Overview of topic B
+4. Detailed comparison
+5. Conclusion
+
+**For lists/rankings:**
+Simply list items with details - no introduction needed:
+1. Item 1 with explanation
+2. Item 2 with explanation
+3. Item 3 with explanation
+
+**For summaries/overviews:**
+1. Overview of topic
+2. Key concept 1
+3. Key concept 2
+4. Key concept 3
+5. Conclusion
+
+**General guidelines:**
+- Use clear section headings (## for sections, ### for subsections)
+- Write in paragraph form by default - be text-heavy, not just bullet points
+- Do NOT use self-referential language ("I found...", "I researched...")
+- Write as a professional report without meta-commentary
+- Each section should be comprehensive and detailed
+- Use bullet points only when listing is more appropriate than prose
+
+**Citation format:**
+- Cite sources inline using [1], [2], [3] format
+- Assign each unique URL a single citation number across ALL sub-agent findings
+- End report with ### Sources section listing each numbered source
+- Number sources sequentially without gaps (1,2,3,4...)
+- Format: [1] Source Title: URL (each on separate line for proper list rendering)
+- Example:
+
+ Some important finding [1]. Another key insight [2].
+
+ ### Sources
+ [1] AI Research Paper: https://example.com/paper
+ [2] Industry Analysis: https://example.com/analysis
+"""
+</code></pre>
+<pre><code class="language-python">RESEARCHER_INSTRUCTIONS = """You are a research assistant conducting research on the user's input topic. For context, today's date is {date}.
+
+Your job is to use tools to gather information about the user's input topic.
+You can use the tavily_search tool to find resources that can help answer the research question.
+You can call it in series or in parallel, your research is conducted in a tool-calling loop.
+
+You have access to the tavily_search tool for conducting web searches.
+
+Think like a human researcher with limited time. Follow these steps:
+
+1. **Read the question carefully** - What specific information does the user need?
+2. **Start with broader searches** - Use broad, comprehensive queries first
+3. **After each search, pause and assess** - Do I have enough to answer? What's still missing?
+4. **Execute narrower searches as you gather information** - Fill in the gaps
+5. **Stop when you can answer confidently** - Don't keep searching for perfection
+
+**Tool Call Budgets** (Prevent excessive searching):
+- **Simple queries**: Use 2-3 search tool calls maximum
+- **Complex queries**: Use up to 5 search tool calls maximum
+- **Always stop**: After 5 search tool calls if you cannot find the right sources
+
+**Stop Immediately When**:
+- You can answer the user's question comprehensively
+- You have 3+ relevant examples/sources for the question
+- Your last 2 searches returned similar information
+
+After each search, assess results before continuing: What key information did I find? What's missing? Do I have enough to answer? Should I search more or provide my answer?
+
+When providing your findings back to the orchestrator:
+
+1. **Structure your response**: Organize findings with clear headings and detailed explanations
+2. **Cite sources inline**: Use [1], [2], [3] format when referencing information from your searches
+3. **Include Sources section**: End with ### Sources listing each numbered source with title and URL
+
+Example:
+## Key Findings
+Context engineering is a critical technique for AI agents [1]. Studies show that proper context management can improve performance by 40% [2].
+
+### Sources
+[1] Context Engineering Guide: https://example.com/context-guide
+[2] AI Performance Study: https://example.com/study
+
+The orchestrator will consolidate citations from all sub-agents into the final report.
+"""
+</code></pre>
+<pre><code class="language-python">SUBAGENT_DELEGATION_INSTRUCTIONS = """# Sub-Agent Research Coordination
+
+Your role is to coordinate research by delegating tasks from your TODO list to specialized research sub-agents.
+
+## Delegation Strategy
+
+**DEFAULT: Start with 1 sub-agent** for most queries:
+- "What is quantum computing?" -&gt; 1 sub-agent (general overview)
+- "List the top 10 coffee shops in San Francisco" -&gt; 1 sub-agent
+- "Summarize the history of the internet" -&gt; 1 sub-agent
+- "Research context engineering for AI agents" -&gt; 1 sub-agent (covers all aspects)
+
+**ONLY parallelize when the query EXPLICITLY requires comparison or has clearly independent aspects:**
+
+**Explicit comparisons** -&gt; 1 sub-agent per element:
+- "Compare OpenAI vs Anthropic vs DeepMind AI safety approaches" -&gt; 3 parallel sub-agents
+- "Compare Python vs JavaScript for web development" -&gt; 2 parallel sub-agents
+
+**Clearly separated aspects** -&gt; 1 sub-agent per aspect (use sparingly):
+- "Research renewable energy adoption in Europe, Asia, and North America" -&gt; 3 parallel sub-agents (geographic separation)
+- Only use this pattern when aspects cannot be covered efficiently by a single comprehensive search
+
+## Key Principles
+- **Bias towards single sub-agent**: One comprehensive research task is more token-efficient than multiple narrow ones
+- **Avoid premature decomposition**: Don't break "research X" into "research X overview", "research X techniques", "research X applications" - just use 1 sub-agent for all of X
+- **Parallelize only for clear comparisons**: Use multiple sub-agents when comparing distinct entities or geographically separated data
+
+## Parallel Execution Limits
+- Use at most {max_concurrent_research_units} parallel sub-agents per iteration
+- Make multiple task() calls in a single response to enable parallel execution
+- Each sub-agent returns findings independently
+
+## Research Limits
+- Stop after {max_researcher_iterations} delegation rounds if you haven't found adequate sources
+- Stop when you have sufficient information to answer comprehensively
+- Bias towards focused research over exhaustive exploration"""
+</code></pre>
+<p><strong id="enable-task-planning">启用任务计划</strong></p>
+<p><a href="overview.html#task-planning">任务计划</a> 已选择加入。研究工作流程使用 <code>write_todos</code> 将问题分解为重点任务，因此在创建代理时传递 <a href="https://reference.langchain.com/python/langchain/agents/middleware/todo/TodoListMiddleware"><code>TodoListMiddleware</code></a>。</p>
+<pre><code class="language-python">from langchain.agents.middleware import TodoListMiddleware
+</code></pre>
+<p>创建代理时，您可以在下一步中包含此中间件。</p>
+<p><strong id="create-the-agent">创建代理</strong></p>
+<p>将模型初始化和代理创建添加到<code>agent.py</code>。选择您的提供商。包括 <a href="https://reference.langchain.com/python/langchain/agents/middleware/todo/TodoListMiddleware"><code>TodoListMiddleware</code></a>，以便规划工具可用：</p>
+<p><strong>克劳德</strong></p>
+<pre><code class="language-python">from datetime import datetime
+
+from deepagents import create_deep_agent
+from langchain.agents.middleware import TodoListMiddleware
+from langchain.chat_models import init_chat_model
+
+max_concurrent_research_units = 3
+max_researcher_iterations = 3
+
+current_date = datetime.now().strftime("%Y-%m-%d")
+
+INSTRUCTIONS = (
+    RESEARCH_WORKFLOW_INSTRUCTIONS
+    + "\n\n"
+    + "=" * 80
+    + "\n\n"
+    + SUBAGENT_DELEGATION_INSTRUCTIONS.format(
+        max_concurrent_research_units=max_concurrent_research_units,
+        max_researcher_iterations=max_researcher_iterations,
+    )
+)
+
+research_sub_agent = {
+    "name": "research-agent",
+    "description": "Delegate research to the sub-agent. Give one topic at a time.",
+    "system_prompt": RESEARCHER_INSTRUCTIONS.format(date=current_date),
+    "tools": [tavily_search],
+}
+
+model = init_chat_model(model="anthropic:claude-sonnet-4-5-20250929", temperature=0.0)
+
+agent = create_deep_agent(
+    model=model,
+    tools=[tavily_search],
+    system_prompt=INSTRUCTIONS,
+    subagents=[research_sub_agent],
+    middleware=[TodoListMiddleware()],
+)
+</code></pre>
+<p><strong>双子座</strong></p>
+<pre><code class="language-python">from datetime import datetime
+
+from deepagents import create_deep_agent
+from langchain.agents.middleware import TodoListMiddleware
+from langchain_google_genai import ChatGoogleGenerativeAI
+
+max_concurrent_research_units = 3
+max_researcher_iterations = 3
+
+current_date = datetime.now().strftime("%Y-%m-%d")
+
+INSTRUCTIONS = (
+    RESEARCH_WORKFLOW_INSTRUCTIONS
+    + "\n\n"
+    + "=" * 80
+    + "\n\n"
+    + SUBAGENT_DELEGATION_INSTRUCTIONS.format(
+        max_concurrent_research_units=max_concurrent_research_units,
+        max_researcher_iterations=max_researcher_iterations,
+    )
+)
+
+research_sub_agent = {
+    "name": "research-agent",
+    "description": "Delegate research to the sub-agent. Give one topic at a time.",
+    "system_prompt": RESEARCHER_INSTRUCTIONS.format(date=current_date),
+    "tools": [tavily_search],
+}
+
+model = ChatGoogleGenerativeAI(model="gemini-3-pro-preview", temperature=0.0)
+
+agent = create_deep_agent(
+    model=model,
+    tools=[tavily_search],
+    system_prompt=INSTRUCTIONS,
+    subagents=[research_sub_agent],
+    middleware=[TodoListMiddleware()],
+)
+</code></pre>
+<h2 id="run-the-agent">运行代理</h2>
+<p>您可以同步运行代理，这意味着它将等待完整结果然后打印它，或者您可以在更新到来时流式传输它们。</p>
+<p>从 <code>agent.py</code> 底部的相应选项卡添加代码：</p>
+<p><strong id="run-synchronously">同步运行</strong></p>
+<pre><code class="language-python">from langchain.messages import HumanMessage
+
+if __name__ == "__main__":
+    result = agent.invoke(
+        {
+            "messages": [
+                HumanMessage(
+                    content="What are the main differences between RAG and fine-tuning for LLM applications?"
+                )
+            ]
+        }
+    )
+
+    for msg in result.get("messages", []):
+        if hasattr(msg, "content") and msg.content:
+            print(msg.content)
+</code></pre>
+<p><strong id="stream-updates">流媒体更新</strong></p>
+<pre><code class="language-python">from langchain.messages import HumanMessage
+
+if __name__ == "__main__":
+    stream = agent.stream_events(
+        {
+            "messages": [
+                HumanMessage(content="Compare Python vs JavaScript for web development")
+            ]
+        },
+        version="v3",
+    )
+    for message in stream.messages:
+        for token in message.text:
+            print(token, end="", flush=True)
+</code></pre>
+<p>从项目根目录运行代理：</p>
+<pre><code class="language-sh">python agent.py
+</code></pre>
+<p>如果您在运行之前设置 <code>LANGSMITH_API_KEY</code> 环境变量，则可以在 <a href="https://docs.langchain.com/langsmith/observability">LangSmith</a> 中查看代理的跟踪，以调试和监视多步骤行为。</p>
+<h2 id="full-code">完整代码</h2>
+<p>在 GitHub 上查看完整的<a href="https://github.com/langchain-ai/deepagents/tree/main/examples/deep_research">深度研究示例</a>。</p>
+<h2 id="next-steps">后续步骤</h2>
+<p>现在您已经构建了代理，可以通过更改代理文件中的提示常量来自定义它，以调整工作流程、委派策略或研究人员行为。您还可以调整委派限制以允许更多并行子智能体或委派轮次。</p>
+<p>有关本教程中概念的更多信息，请查看以下资源：</p>
+<ul>
+<li><a href="subagents.html">子智能体</a>：了解如何使用不同的工具和提示配置子智能体</li>
+<li>【自定义】(/oss/python/deepagents/customization)：自定义模型、工具、系统提示以及可选的【任务规划】(/oss/python/deepagents/overview#task-planning)</li>
+<li><a href="https://docs.langchain.com/langsmith/observability">LangSmith</a>：跟踪研究运行并调试多步骤行为</li>
+<li><a href="https://academy.langchain.com/courses/deep-research-with-langgraph">深度研究课程</a>：LangGraph深度研究完整课程</li>
+</ul>
+<hr/>
+<div classname="source-links">
+
+
+
+
+[将这些文档](https://docs.langchain.com/use-these-docs) 通过 MCP 连接到 Claude、VSCode 等以获得实时答案。
+
+
+
+
+
+
+[在 GitHub 上编辑此页面](https://github.com/langchain-ai/docs/edit/main/src/oss/deepagents/deep-research.mdx) 或 [提交问题](https://github.com/langchain-ai/docs/issues/new/choose)。
+
+
+
+</div><footer>非官方中文离线整理版。代码与原图保留；在线演示需要联网。© LangChain · <a href="../LICENSE">MIT 许可</a></footer></main><nav class="page-toc" aria-label="本页目录"><h2>本页目录</h2><ul><li><a href="#overview">概述</a></li><li><a href="#prerequisites">先决条件</a></li><li><a href="#setup">设置</a></li><li><a href="#build-the-agent">构建代理</a></li><li><a href="#run-the-agent">运行代理</a></li><li><a href="#full-code">完整代码</a></li><li><a href="#next-steps">后续步骤</a></li></ul></nav></div></html>
