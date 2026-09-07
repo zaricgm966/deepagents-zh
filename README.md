@@ -54,3 +54,18 @@
 ## 源码章节扩写（2026-09-07）
 
 Codex 与 Claude Code 两章已统一按 19 个功能主题组织，覆盖命令、流式循环、重试、存档、权限、自动审批、编辑、文件引用、上下文、提问、任务、记忆、回退、压缩、MCP、后台命令、子 Agent、外部事件和图片。每节提供机制讲解、源码入口和动手观察建议；开头提供 GitHub 与固定提交链接。Claude Code 部分区分公开 SDK 实现和 CLI 内部边界。练习未执行，源码仅用于阅读。
+
+
+## 使用 Git 更新网站
+
+本地工作副本通过 SSH 连接此仓库。修改 `markdown/` 后运行：
+
+```sh
+python3 -m pip install -r requirements.txt
+python3 build.py
+git add markdown pages index.html style.css build-report.json
+git commit -m "更新文档"
+git push origin main
+```
+
+GitHub Pages 会自动部署 main 分支。Mermaid 11.12.2 的脚本及 MIT 许可证位于 `assets/mermaid/`，无需 CDN，离线也可绘图。更新渲染样式或脚本时请同时提交相关文件。

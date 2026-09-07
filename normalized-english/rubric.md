@@ -1,24 +1,31 @@
-<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>评分标准 · Deep Agents</title><link rel="stylesheet" href="../style.css"><script defer src="../assets/mermaid/mermaid.min.js"></script><script defer src="../assets/mermaid/render-diagrams.js"></script><aside><a class="brand" href="../index.html">Deep Agents<span>中文离线文档</span></a><h3>入门与选型</h3><a href="overview.html">Deep Agents 概览</a><a href="quickstart.html">快速入门</a><a href="models.html">模型选择</a><a href="comparison.html">与 Claude Agent SDK 的对比</a><a href="code-link.html">Deep Agents Code 简介</a><h3>配置与核心能力</h3><a href="customization.html">自定义 Deep Agents</a><a href="tools.html">工具</a><a href="profiles.html">配置档案</a><a href="backends.html">文件系统后端</a><a href="interpreters.html">代码解释器</a><a href="sandboxes.html">沙箱</a><a href="memory.html">记忆</a><a href="skills.html">技能</a><a href="permissions.html">权限</a><a href="human-in-the-loop.html">人工介入</a><a href="multimodal.html">多模态输入与输出</a><h3>任务与上下文管理</h3><a href="context-engineering.html">上下文工程</a><a href="subagents.html">子智能体</a><a href="dynamic-subagents.html">动态子智能体</a><a href="async-subagents.html">异步子智能体</a><a href="streaming.html">流式输出</a><a href="event-streaming.html">事件流</a><a href="fault-tolerance.html">容错</a><a href="retrieval.html">检索</a><a href="rubric.html">评分标准</a><h3>应用教程</h3><a href="data-analysis.html">构建数据分析智能体</a><a href="content-builder.html">构建内容创作智能体</a><a href="deep-research.html">构建深度研究智能体</a><a href="rag.html">构建检索增强生成（RAG）智能体</a><h3>协议与集成</h3><a href="mcp.html">模型上下文协议（MCP）</a><a href="acp.html">智能体客户端协议（ACP）</a><a href="a2a.html">A2A 服务器</a><h3>前端开发</h3><a href="frontend--overview.html">前端集成概览</a><a href="frontend--sandbox.html">前端沙箱</a><a href="frontend--subagent-streaming.html">前端子智能体流式输出</a><a href="frontend--todo-list.html">前端待办事项列表</a><h3>生产环境与知识库</h3><a href="going-to-production.html">部署到生产环境</a><a href="openwiki.html">OpenWiki</a><h3>Coding Agent 源码解析</h3><a href="codex-source-analysis.html">Codex 源码解析</a><a href="claude-code-source-analysis.html">Claude Code 源码解析：公开 SDK 与运行时边界</a><h3>版本更新</h3><a href="changelog-py.html">Python 更新日志</a><a href="changelog-js.html">JavaScript / TypeScript 更新日志</a></aside><script src="../sidebar.js"></script><div class="reading-layout"><main><div class="meta">中文机器翻译 · 文档快照 2026-09-07 · <a href="https://docs.langchain.com/oss/python/deepagents/rubric">在线原文</a> · <a href="../markdown/rubric.md">编辑中文 Markdown</a> · <a href="../original-markdown/rubric.md">英文原稿</a></div><h1 id="grading-rubrics">评分标准</h1>
-<blockquote>
-<p>法学硕士作为法官对代理人进行评分，迭代一个标题直到完成</p>
-</blockquote>
-<p><code>RubricMiddleware</code> 需要 <code>deepagents&gt;=0.6.5</code>。它处于<a href="https://docs.langchain.com/oss/python/versioning"><strong>测试版</strong></a> 中； API 将来可能会发生变化。</p>
-<p>一些代理任务有一个明确的“完成”定义，仅靠工作模型无法在第一次尝试中可靠地实现：正确音节模式的俳句、所有测试都通过的重构，或者满足每个所需部分的报告。 <code>RubricMiddleware</code> 允许您将“完成的内容”声明为评分标准，并让代理进行“自我评估和迭代”，直到满足评分标准，或者达到配置的最大迭代上限。</p>
-<p><strong>LLM-as-a-judge</strong> 是一种模式，其中一个语言模型根据定义的标准评估另一个模型的输出。在 <a href="https://docs.langchain.com/langsmith/evaluation-concepts#llm-as-judge">LangSmith 评估</a> 中，LLM 作为评委的评估人员离线批量对申请输出进行评分。 <code>RubricMiddleware</code> 在运行时应用相同的模式：深度智能体生成输出后，专用的评分器模型会根据您的评分标准审查成绩单并驱动修订，直到每个标准通过（或达到配置的迭代上限）。</p>
-<p>当深度智能体完成推理时，LLM 作为法官评分者子智能体会审查输出并返回裁决。如果它返回 <code>needs_revision</code>，则每个标准的反馈将被注入回对话中，并且代理会再次运行。循环在 <code>satisfied</code>、<code>max_iterations_reached</code>、<code>failed</code> 或 <code>grader_error</code> 处终止。</p>
-<pre><code class="language-mermaid">graph LR
-    Start[User invokes&lt;br/&gt;with rubric] --&gt; Agent[Deep agent]
-    Agent --&gt; Grader{Grader&lt;br/&gt;verdict}
 
-    Grader --&gt; |satisfied| Done[Finish execution]
-    Grader --&gt; |failed| Done
-    Grader --&gt; |grader_error| Done
-    Grader --&gt; |needs_revision| Cap{Iterations &lt; &lt;br/&gt; max_iterations?}
+# Grading rubrics
 
-    Cap --&gt; |yes| Inject[Re-prompt deep agent with per-criterion feedback]
-    Cap --&gt; |no| Done
+> LLM-as-a-judge grading for agents that iterate against a rubric until done
 
-    Inject --&gt; Agent
+  `RubricMiddleware` requires `deepagents>=0.6.5`. It is in [**beta**](/oss/python/versioning); the API may change in the future.
+
+Some agent tasks have a clear definition of "done" that the working model alone cannot reliably hit on the first try: a haiku in the right syllable pattern, a refactor with all tests passing, or a report that hits every required section. `RubricMiddleware` lets you declare *what done looks like* as a rubric and have the agent **self-evaluate and iterate** until the rubric is satisfied, or until a configured maximum iteration cap is hit.
+
+**LLM-as-a-judge** is a pattern where one language model evaluates another model's output against defined criteria. In [LangSmith evaluations](/langsmith/evaluation-concepts#llm-as-judge), LLM-as-a-judge evaluators score application outputs offline in batch. `RubricMiddleware` applies the same pattern at runtime: after the deep agent produces output, a dedicated grader model reviews the transcript against your rubric and drives revision until every criterion passes (or a configured iteration cap is hit).
+
+When the deep agent finishes reasoning, the LLM-as-a-judge grader sub-agent reviews the output and returns a verdict. If it returns `needs_revision`, per-criterion feedback is injected back into the conversation and the agent runs again. The loop terminates on `satisfied`, `max_iterations_reached`, `failed`, or `grader_error`.
+
+
+```mermaid
+graph LR
+    Start[User invokes<br/>with rubric] --> Agent[Deep agent]
+    Agent --> Grader{Grader<br/>verdict}
+
+    Grader --> |satisfied| Done[Finish execution]
+    Grader --> |failed| Done
+    Grader --> |grader_error| Done
+    Grader --> |needs_revision| Cap{Iterations < <br/> max_iterations?}
+
+    Cap --> |yes| Inject[Re-prompt deep agent with per-criterion feedback]
+    Cap --> |no| Done
+
+    Inject --> Agent
 
     classDef trigger fill:#F6FFDB,stroke:#6E8900,stroke-width:2px,color:#2E3900
     classDef process fill:#E5F4FF,stroke:#006DDD,stroke-width:2px,color:#030710
@@ -29,10 +36,15 @@
     class Agent,Inject process
     class Grader,Cap decision
     class Done,MaxOut alert
-</code></pre>
-<h2 id="configure-the-middleware">配置中间件</h2>
-<p>调用 <code>create_deep_agent</code> 时，将 <code>RubricMiddleware</code> 添加到 <code>middleware</code> 列表中：</p>
-<pre><code class="language-python">from deepagents import RubricMiddleware, create_deep_agent
+```
+
+
+## Configure the middleware
+
+Add `RubricMiddleware` to the `middleware` list when you call `create_deep_agent`:
+
+```python
+from deepagents import RubricMiddleware, create_deep_agent
 from langgraph.checkpoint.memory import InMemorySaver
 
 agent = create_deep_agent(
@@ -45,8 +57,10 @@ agent = create_deep_agent(
     ],
     checkpointer=InMemorySaver(),
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import RubricMiddleware, create_deep_agent
+```
+
+```python
+from deepagents import RubricMiddleware, create_deep_agent
 from langgraph.checkpoint.memory import InMemorySaver
 
 agent = create_deep_agent(
@@ -59,8 +73,10 @@ agent = create_deep_agent(
     ],
     checkpointer=InMemorySaver(),
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import RubricMiddleware, create_deep_agent
+```
+
+```python
+from deepagents import RubricMiddleware, create_deep_agent
 from langgraph.checkpoint.memory import InMemorySaver
 
 agent = create_deep_agent(
@@ -73,8 +89,10 @@ agent = create_deep_agent(
     ],
     checkpointer=InMemorySaver(),
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import RubricMiddleware, create_deep_agent
+```
+
+```python
+from deepagents import RubricMiddleware, create_deep_agent
 from langgraph.checkpoint.memory import InMemorySaver
 
 agent = create_deep_agent(
@@ -87,8 +105,10 @@ agent = create_deep_agent(
     ],
     checkpointer=InMemorySaver(),
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import RubricMiddleware, create_deep_agent
+```
+
+```python
+from deepagents import RubricMiddleware, create_deep_agent
 from langgraph.checkpoint.memory import InMemorySaver
 
 agent = create_deep_agent(
@@ -101,8 +121,10 @@ agent = create_deep_agent(
     ],
     checkpointer=InMemorySaver(),
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import RubricMiddleware, create_deep_agent
+```
+
+```python
+from deepagents import RubricMiddleware, create_deep_agent
 from langgraph.checkpoint.memory import InMemorySaver
 
 agent = create_deep_agent(
@@ -115,8 +137,10 @@ agent = create_deep_agent(
     ],
     checkpointer=InMemorySaver(),
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import RubricMiddleware, create_deep_agent
+```
+
+```python
+from deepagents import RubricMiddleware, create_deep_agent
 from langgraph.checkpoint.memory import InMemorySaver
 
 agent = create_deep_agent(
@@ -129,53 +153,25 @@ agent = create_deep_agent(
     ],
     checkpointer=InMemorySaver(),
 )
-</code></pre>
-<table>
-<thead>
-<tr>
-<th>争论</th>
-<th>必需的</th>
-<th>默认</th>
-<th>描述</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>model</code></td>
-<td>是的</td>
-<td><code>None</code></td>
-<td>LLM 作为评委评分员子智能体使用的聊天模型。接受 <code>"provider:model-id"</code> 字符串或 <code>BaseChatModel</code> 实例。通常是比深度智能体的工作模型更小或更便宜的模型。</td>
-</tr>
-<tr>
-<td><code>system_prompt</code></td>
-<td>不</td>
-<td>内置分级机提示</td>
-<td>自定义分级说明。退回到默认系统提示，向评分者传授判决格式以及可以使用的工具。</td>
-</tr>
-<tr>
-<td><code>tools</code></td>
-<td>不</td>
-<td><code>None</code></td>
-<td>评分者在做出结论之前可以调用工具来收集证据（运行测试、计数标记、读取文件）。如果没有，评分者仅根据成绩单进行推理。</td>
-</tr>
-<tr>
-<td><code>max_iterations</code></td>
-<td>不</td>
-<td><code>3</code></td>
-<td>每个评分标准尝试的最大评分者迭代次数；必须是正整数。当达到上限但没有 <code>satisfied</code> 判决时，代理将以状态 <code>max_iterations_reached</code> 终止。</td>
-</tr>
-<tr>
-<td><code>on_evaluation</code></td>
-<td>不</td>
-<td><code>None</code></td>
-<td>每次评分迭代后，每个 <code>RubricEvaluation</code> 都会调用可选回调，无论您使用 <code>invoke()</code>、<code>stream()</code> 还是 <code>stream_events()</code>。对于日志记录、自定义指标、评估数据集或 UI 更新很有用。</td>
-</tr>
-</tbody>
-</table>
-<h2 id="pass-rubric-on-invocation">在调用时传递标题</h2>
-<p>在调用状态上传递 <code>rubric</code> 字符串以启动自评估循环。使用 <code>invoke()</code> 进行单个阻塞调用，或 <a href="https://docs.langchain.com/oss/python/langchain/event-streaming"><code>stream_events(..., version="v3")</code></a> 与 <a href="https://docs.langchain.com/oss/python/langchain/event-streaming#custom-updates"><code>CustomTransformer</code></a> 一起接收 <code>stream.custom</code> 上发生的评分事件：</p>
-<p><strong>调用()</strong></p>
-<pre><code class="language-python">from langchain.messages import HumanMessage
+```
+
+| Argument         | Required | Default                | Description                                                                                                                                                                                                          |
+| ---------------- | -------- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `model`          | Yes      | `None`                 | Chat model used by the LLM-as-a-judge grader sub-agent. Accepts a `"provider:model-id"` string or a `BaseChatModel` instance. Often a smaller or cheaper model than the deep agent's working model.                  |
+| `system_prompt`  | No       | Built-in grader prompt | Custom grading instructions. Falls back to a default system prompt that teaches the grader the verdict format and what tools it has at its disposal.                                                                 |
+| `tools`          | No       | `None`                 | Tools the grader may call to gather evidence (run tests, count tokens, read files) before producing a verdict. With none, the grader reasons from the transcript alone.                                              |
+| `max_iterations` | No       | `3`                    | Maximum grader iterations per rubric attempt; must be a positive integer. When the cap is reached without a `satisfied` verdict, the agent terminates with status `max_iterations_reached`.                          |
+| `on_evaluation`  | No       | `None`                 | Optional callback invoked with each `RubricEvaluation` after every grading iteration, whether you use `invoke()`, `stream()` or `stream_events()`. Useful for logging, custom metrics, eval datasets, or UI updates. |
+
+## Pass rubric on invocation
+
+Pass a `rubric` string on invocation state to start the self-evaluation loop. Use `invoke()` for a single blocking call, or [`stream_events(..., version="v3")`](/oss/python/langchain/event-streaming) with [`CustomTransformer`](/oss/python/langchain/event-streaming#custom-updates) to receive grading events on `stream.custom` as they occur:
+
+  
+**invoke()**
+
+```python
+from langchain.messages import HumanMessage
 
 config = {"configurable": {"thread_id": "my-rubric-thread"}}
 result = agent.invoke(
@@ -189,9 +185,17 @@ result = agent.invoke(
     },
     config=config,
 )
-</code></pre>
-<p><strong>stream_events()</strong></p>
-<pre><code class="language-python">from langchain.messages import HumanMessage
+```
+
+
+  
+
+
+  
+**stream_events()**
+
+```python
+from langchain.messages import HumanMessage
 from langgraph.stream import CustomTransformer
 
 config = {"configurable": {"thread_id": "my-rubric-thread"}}
@@ -218,76 +222,41 @@ for event in stream.custom:
         )
     elif event_type == "rubric_evaluation_end":
         print(f"Verdict: {event['result']} — {event.get('explanation', '')}")
-</code></pre>
-<p>Rubric 评分在 <code>stream.custom</code> 上发出以下自定义事件：</p>
-<table>
-<thead>
-<tr>
-<th>事件</th>
-<th>被解雇时</th>
-<th>有效负载字段</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>rubric_evaluation_start</code></td>
-<td>在评分机运行之前。</td>
-<td><ul><li><code>type</code>：事件名称</li><li><code>grading_run_id</code>：在一次标题尝试中的所有事件之间共享</li><li><code>iteration</code>：从零开始的索引当前分级运行的</li></ul></td>
-</tr>
-<tr>
-<td><code>rubric_evaluation_end</code></td>
-<td>评分员返回后或评分员异常后。</td>
-<td><ul><li><code>type</code>：事件名称</li><li><code>grading_run_id</code>：在一次标题尝试中的所有事件之间共享</li><li><code>iteration</code>：从零开始的索引当前评分者通行证的</li><li><code>result</code>：此通行证的最终判决</li><li><code>explanation</code>：来自Grader</li><li><code>criteria</code>：每个标准的判决</li></ul></td>
-</tr>
-</tbody>
-</table>
-<h3 id="rubric-verdicts">评分标准判决</h3>
-<p>当深度智能体完成推理并产生输出时，LLM 作为法官评分者子智能体会根据评分标准审查输出并产生以下判决之一：</p>
-<table>
-<thead>
-<tr>
-<th>地位</th>
-<th>意义</th>
-<th>循环回来？</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>satisfied</code></td>
-<td>标题中的每一个标准都通过了。</td>
-<td>不</td>
-</tr>
-<tr>
-<td><code>needs_revision</code></td>
-<td>至少有一项标准不合格；评分者反馈被注入，代理再次运行。</td>
-<td>是的</td>
-</tr>
-<tr>
-<td><code>max_iterations_reached</code></td>
-<td>Grader 仍希望修改，但 <code>max_iterations</code> 已受到打击。</td>
-<td>不</td>
-</tr>
-<tr>
-<td><code>failed</code></td>
-<td>评分者判断标题格式错误或无法根据成绩单进行评估。</td>
-<td>不</td>
-</tr>
-<tr>
-<td><code>grader_error</code></td>
-<td>法学硕士作为法官评分者子智能体本身提出了一个例外（提供者超时、缺少凭据、格式错误的结构化响应等）。</td>
-<td>不</td>
-</tr>
-</tbody>
-</table>
-<h2 id="observe-iteration-progress">观察迭代进度</h2>
-<p><code>on_evaluation</code> 是在每次评分迭代后根据评分者的结论触发的回调，无论您调用 <code>invoke()</code> 还是 <code>stream_events()</code>。如果您没有从 <code>stream.custom</code>（使用 <code>CustomTransformer</code>）或[使用 LangSmith 跟踪运行]（/langsmith/trace-with-langgraph）读取评分细则事件，那么这是检查评分期间发生的情况的主要方法。</p>
-<pre><code class="language-python">from deepagents import RubricMiddleware, create_deep_agent
+```
+
+
+    Rubric grading emits the following custom events on `stream.custom`:
+
+    | Event                     | When fired                                            | Payload fields                                                                                                                                                                                                                                                                                                                |
+    | ------------------------- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+    | `rubric_evaluation_start` | Before the grader runs.                               | <ul><li>`type`: event name</li><li>`grading_run_id`: shared across all events within one rubric attempt</li><li>`iteration`: zero-based index of the current grading run</li></ul>                                                                                                                                            |
+    | `rubric_evaluation_end`   | After the grader returns or after a grader exception. | <ul><li>`type`: event name</li><li>`grading_run_id`: shared across all events within one rubric attempt</li><li>`iteration`: zero-based index of the current grader pass</li><li>`result`: terminal verdict for this pass</li><li>`explanation`: summary from the grader</li><li>`criteria`: per-criterion verdicts</li></ul> |
+  
+
+### Rubric verdicts
+
+When the deep agent finishes reasoning and has an output, the LLM-as-a-judge grader sub-agent reviews the output against the rubric and produces one of the following verdicts:
+
+| Status                   | Meaning                                                                                                                                      | Loops back? |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| `satisfied`              | Every criterion in the rubric passes.                                                                                                        | No          |
+| `needs_revision`         | At least one criterion fails; grader feedback is injected and the agent runs again.                                                          | Yes         |
+| `max_iterations_reached` | Grader still wants revisions, but `max_iterations` has been hit.                                                                             | No          |
+| `failed`                 | The grader judged the rubric malformed or impossible to evaluate against the transcript.                                                     | No          |
+| `grader_error`           | The LLM-as-a-judge grader sub-agent itself raised an exception (provider timeout, missing credentials, malformed structured response, etc.). | No          |
+
+## Observe iteration progress
+
+`on_evaluation` is a callback that fires after each grading iteration with the grader's verdict, whether you call `invoke()` or `stream_events()`. If you are not reading rubric events from `stream.custom` (with `CustomTransformer`) or [tracing the run with LangSmith](/langsmith/trace-with-langgraph), it is the main way to inspect what happened during grading.
+
+```python
+from deepagents import RubricMiddleware, create_deep_agent
 from deepagents.middleware.rubric import RubricEvaluation
 from langchain.messages import HumanMessage
 from langgraph.checkpoint.memory import InMemorySaver
 
 
-def log_evaluation(ev: RubricEvaluation) -&gt; None:
+def log_evaluation(ev: RubricEvaluation) -> None:
     print(f"iteration {ev['iteration']}: {ev['result']} — {ev['explanation']}")
 
 
@@ -313,14 +282,16 @@ agent.invoke(
     },
     config=config,
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import RubricMiddleware, create_deep_agent
+```
+
+```python
+from deepagents import RubricMiddleware, create_deep_agent
 from deepagents.middleware.rubric import RubricEvaluation
 from langchain.messages import HumanMessage
 from langgraph.checkpoint.memory import InMemorySaver
 
 
-def log_evaluation(ev: RubricEvaluation) -&gt; None:
+def log_evaluation(ev: RubricEvaluation) -> None:
     print(f"iteration {ev['iteration']}: {ev['result']} — {ev['explanation']}")
 
 
@@ -346,14 +317,16 @@ agent.invoke(
     },
     config=config,
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import RubricMiddleware, create_deep_agent
+```
+
+```python
+from deepagents import RubricMiddleware, create_deep_agent
 from deepagents.middleware.rubric import RubricEvaluation
 from langchain.messages import HumanMessage
 from langgraph.checkpoint.memory import InMemorySaver
 
 
-def log_evaluation(ev: RubricEvaluation) -&gt; None:
+def log_evaluation(ev: RubricEvaluation) -> None:
     print(f"iteration {ev['iteration']}: {ev['result']} — {ev['explanation']}")
 
 
@@ -379,14 +352,16 @@ agent.invoke(
     },
     config=config,
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import RubricMiddleware, create_deep_agent
+```
+
+```python
+from deepagents import RubricMiddleware, create_deep_agent
 from deepagents.middleware.rubric import RubricEvaluation
 from langchain.messages import HumanMessage
 from langgraph.checkpoint.memory import InMemorySaver
 
 
-def log_evaluation(ev: RubricEvaluation) -&gt; None:
+def log_evaluation(ev: RubricEvaluation) -> None:
     print(f"iteration {ev['iteration']}: {ev['result']} — {ev['explanation']}")
 
 
@@ -412,14 +387,16 @@ agent.invoke(
     },
     config=config,
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import RubricMiddleware, create_deep_agent
+```
+
+```python
+from deepagents import RubricMiddleware, create_deep_agent
 from deepagents.middleware.rubric import RubricEvaluation
 from langchain.messages import HumanMessage
 from langgraph.checkpoint.memory import InMemorySaver
 
 
-def log_evaluation(ev: RubricEvaluation) -&gt; None:
+def log_evaluation(ev: RubricEvaluation) -> None:
     print(f"iteration {ev['iteration']}: {ev['result']} — {ev['explanation']}")
 
 
@@ -445,14 +422,16 @@ agent.invoke(
     },
     config=config,
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import RubricMiddleware, create_deep_agent
+```
+
+```python
+from deepagents import RubricMiddleware, create_deep_agent
 from deepagents.middleware.rubric import RubricEvaluation
 from langchain.messages import HumanMessage
 from langgraph.checkpoint.memory import InMemorySaver
 
 
-def log_evaluation(ev: RubricEvaluation) -&gt; None:
+def log_evaluation(ev: RubricEvaluation) -> None:
     print(f"iteration {ev['iteration']}: {ev['result']} — {ev['explanation']}")
 
 
@@ -478,14 +457,16 @@ agent.invoke(
     },
     config=config,
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import RubricMiddleware, create_deep_agent
+```
+
+```python
+from deepagents import RubricMiddleware, create_deep_agent
 from deepagents.middleware.rubric import RubricEvaluation
 from langchain.messages import HumanMessage
 from langgraph.checkpoint.memory import InMemorySaver
 
 
-def log_evaluation(ev: RubricEvaluation) -&gt; None:
+def log_evaluation(ev: RubricEvaluation) -> None:
     print(f"iteration {ev['iteration']}: {ev['result']} — {ev['explanation']}")
 
 
@@ -511,82 +492,54 @@ agent.invoke(
     },
     config=config,
 )
-</code></pre>
-<p>中间件在每次 <a href="#grader-pass-events">grader pass</a> 后使用 <code>RubricEvaluation</code> 字典调用您的函数。 <code>RubricEvaluation</code> 字典包含：</p>
-<table>
-<thead>
-<tr>
-<th>场地</th>
-<th>类型</th>
-<th>描述</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>grading_run_id</code></td>
-<td><code>str</code></td>
-<td>一次评估尝试中的每个评估共享的标识符。当调用者提供不同的 <code>rubric</code> 时，或者在最终判决后再次调用相同的 <code>rubric</code> 时，新的运行将开始。</td>
-</tr>
-<tr>
-<td><code>iteration</code></td>
-<td><code>int</code></td>
-<td>当前评分者在该运行中通过的从零开始的索引。</td>
-</tr>
-<tr>
-<td><code>result</code></td>
-<td><code>str</code></td>
-<td>此遍的评分者判定：<code>satisfied</code>、<code>needs_revision</code>、<code>failed</code> 或 <code>grader_error</code>。</td>
-</tr>
-<tr>
-<td><code>explanation</code></td>
-<td><code>str</code></td>
-<td>评分者的自由形式摘要。对于基础设施故障，这包括异常类型和消息。</td>
-</tr>
-<tr>
-<td><code>criteria</code></td>
-<td><code>list</code></td>
-<td>按标准做出的判决。每个条目都是 <code>{name, passed: true}</code> 或 <code>{name, passed: false, gap}</code>，其中 <code>gap</code> 是失败标准的可操作反馈。</td>
-</tr>
-</tbody>
-</table>
-<h3 id="grader-pass-events">平地机通行证活动</h3>
-<table>
-<thead>
-<tr>
-<th>事件</th>
-<th>描述</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>成功评分</strong></td>
-<td>每次传递触发一次，包括中间 <code>needs_revision</code> 判决和最终 <code>satisfied</code> 或 <code>failed</code> 判决。 <br/><br/> 当评分者返回 <code>needs_revision</code> 但已达到 <code>max_iterations</code> 时，回调仍然收到 <code>result: "needs_revision"</code> （评分者的结论）。运行的终端状态在私有状态 <code>_rubric_status</code> 上为 <code>max_iterations_reached</code>，而不是在评估记录上。在 <code>invoke</code> 完成后检查 <code>_rubric_status</code>，或与 <code>_rubric_iterations</code> 一起读取 <code>_rubric_evaluations</code> 中的最后一个条目，以在上限耗尽时进行分支。</td>
-</tr>
-<tr>
-<td><strong>评分者例外</strong></td>
-<td>触发 <code>result: "grader_error"</code>、从异常派生的解释以及空的 <code>criteria</code> 列表。</td>
-</tr>
-<tr>
-<td><strong>回调中的错误</strong></td>
-<td>异常情况会被记录并抑制。评分循环继续进行。请勿使用 <code>on_evaluation</code> 强制控制流（例如，引发以停止代理）。</td>
-</tr>
-</tbody>
-</table>
-<h2 id="persist-rubrics-across-invocations">在调用中保留规则</h2>
-<p>单个 <code>agent.invoke()</code> 或 <code>agent.stream_events()</code> 调用将运行标题循环直至完成，并以最终结论结束：<code>satisfied</code>、<code>failed</code> 或 <code>max_iterations_reached</code>。</p>
-<p>要携带标题以进行后续调用，请附加一个 <a href="https://docs.langchain.com/oss/python/langgraph/checkpointers#checkpoints">检查指针</a> 并在调用旁边传递相同的 <code>thread_id</code>。在这些情况下，相同的 <code>rubric</code> 会在未来的 <code>invoke()</code> 或 <code>stream_events()</code> 调用中持续存在，直到您传入新的调用。</p>
-<p>中断（<code>KeyboardInterrupt</code>、<code>asyncio.CancelledError</code>）从 <code>agent.invoke()</code> 和 <code>agent.stream_events()</code> 传播出去，但未被捕获。在检查点线程上，具有相同评分标准的下一个调用将恢复正在进行的评分运行。</p>
-<h2 id="example-generate-vetted-python-code">示例：生成经过审查的 Python 代码</h2>
-<p>以下示例构建了一个编写 <code>find_duplicates</code> 函数的深度智能体。它定义 <code>RubricMiddleware</code> 一次，将其附加到代理，然后在调用时传递 <code>rubric</code> 字符串。</p>
-<p>该示例没有要求评分者抽象地推理正确性，而是为其提供了一个 <code>run_test_suite</code> 工具来直接验证行为。评分者在做出结论之前调用此工具获取更多信息，并在没有提供工具时从成绩单中进行推理。</p>
-<p><strong>定义Rubric中间件</strong></p>
-<p>该中间件在基本代理之上添加了一个 LLM 作为法官评分器循环。配置评分器模型、可选的自定义提示、证据收集工具和最大迭代上限。</p>
-<pre><code class="language-python">from deepagents import RubricMiddleware
+```
+
+The middleware calls your function with a `RubricEvaluation` dictionary after each [grader pass](#grader-pass-events). The `RubricEvaluation` dictionary contains:
+
+| Field            | Type   | Description                                                                                                                                                                                       |
+| ---------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `grading_run_id` | `str`  | Identifier shared by every evaluation in one rubric attempt. A new run starts when the caller supplies a different `rubric`, or when the same `rubric` is invoked again after a terminal verdict. |
+| `iteration`      | `int`  | Zero-based index of the current grader pass within that run.                                                                                                                                      |
+| `result`         | `str`  | The grader verdict for this pass: `satisfied`, `needs_revision`, `failed`, or `grader_error`.                                                                                                     |
+| `explanation`    | `str`  | Free-form summary from the grader. On infrastructure failures, this includes the exception type and message.                                                                                      |
+| `criteria`       | `list` | Per-criterion verdicts. Each entry is either `{name, passed: true}` or `{name, passed: false, gap}` where `gap` is actionable feedback for a failing criterion.                                   |
+
+### Grader pass events
+
+| Event                       | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Successful grading**      | Fires once per pass, including intermediate `needs_revision` verdicts and the final `satisfied` or `failed` verdict. <br /><br /> When the grader returns `needs_revision` but `max_iterations` has been reached, the callback still receives `result: "needs_revision"` (the grader's verdict). The run's terminal status is `max_iterations_reached` on private state `_rubric_status`, not on the evaluation record. Inspect `_rubric_status` after `invoke` completes, or read the last entry in `_rubric_evaluations` together with `_rubric_iterations`, to branch on cap exhaustion. |
+| **Grader exceptions**       | Fires with `result: "grader_error"`, an explanation derived from the exception, and an empty `criteria` list.                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| **Errors in your callback** | Exceptions are logged and suppressed. The grading loop continues. Do not use `on_evaluation` to enforce control flow (for example, raising to stop the agent).                                                                                                                                                                                                                                                                                                                                                                                                                              |
+
+## Persist rubrics across invocations
+
+A single `agent.invoke()` or `agent.stream_events()` call runs the rubric loop to completion and finishes with a terminal verdict: `satisfied`, `failed`, or `max_iterations_reached`.
+
+To carry rubrics over to follow up invocations, attach a [checkpointer](/oss/python/langgraph/checkpointers#checkpoints) and pass the same `thread_id` alongside the invocation. In these cases, the same `rubric` persists across future `invoke()` or `stream_events()` calls until you pass a new one in.
+
+Interrupts (`KeyboardInterrupt`, `asyncio.CancelledError`) propagate out of `agent.invoke()` and `agent.stream_events()` uncaught. On a checkpointed thread, the next call with the same rubric resumes the in-flight grading run.
+
+## Example: generate vetted Python code
+
+The following example builds a deep agent that writes a `find_duplicates` function. It defines `RubricMiddleware` once, attaches it to the agent, then passes a `rubric` string at invoke time.
+
+Rather than asking the grader to reason abstractly about correctness, the example gives it a `run_test_suite` tool to verify behavior directly. The grader calls this tool for additional information before producing a verdict, and falls back to reasoning from the transcript when no tools are provided.
+
+  
+**Define RubricMiddleware**
+
+    This middleware adds an LLM-as-a-judge grader loop on top of the base agent. Configure the grader model, optional custom prompt, tools for evidence gathering, and a maximum iteration cap.
+
+    
+
+```python
+from deepagents import RubricMiddleware
 from langchain.tools import tool
 
 
 @tool
-def run_test_suite(code: str) -&gt; dict:
+def run_test_suite(code: str) -> dict:
     """Run the find_duplicates test suite against Python source code."""
     namespace: dict = {"__builtins__": __builtins__}
     try:
@@ -622,13 +575,15 @@ rubric_middleware = RubricMiddleware(
     tools=[run_test_suite],
     max_iterations=5,
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import RubricMiddleware
+```
+
+```python
+from deepagents import RubricMiddleware
 from langchain.tools import tool
 
 
 @tool
-def run_test_suite(code: str) -&gt; dict:
+def run_test_suite(code: str) -> dict:
     """Run the find_duplicates test suite against Python source code."""
     namespace: dict = {"__builtins__": __builtins__}
     try:
@@ -664,13 +619,15 @@ rubric_middleware = RubricMiddleware(
     tools=[run_test_suite],
     max_iterations=5,
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import RubricMiddleware
+```
+
+```python
+from deepagents import RubricMiddleware
 from langchain.tools import tool
 
 
 @tool
-def run_test_suite(code: str) -&gt; dict:
+def run_test_suite(code: str) -> dict:
     """Run the find_duplicates test suite against Python source code."""
     namespace: dict = {"__builtins__": __builtins__}
     try:
@@ -706,13 +663,15 @@ rubric_middleware = RubricMiddleware(
     tools=[run_test_suite],
     max_iterations=5,
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import RubricMiddleware
+```
+
+```python
+from deepagents import RubricMiddleware
 from langchain.tools import tool
 
 
 @tool
-def run_test_suite(code: str) -&gt; dict:
+def run_test_suite(code: str) -> dict:
     """Run the find_duplicates test suite against Python source code."""
     namespace: dict = {"__builtins__": __builtins__}
     try:
@@ -748,13 +707,15 @@ rubric_middleware = RubricMiddleware(
     tools=[run_test_suite],
     max_iterations=5,
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import RubricMiddleware
+```
+
+```python
+from deepagents import RubricMiddleware
 from langchain.tools import tool
 
 
 @tool
-def run_test_suite(code: str) -&gt; dict:
+def run_test_suite(code: str) -> dict:
     """Run the find_duplicates test suite against Python source code."""
     namespace: dict = {"__builtins__": __builtins__}
     try:
@@ -790,13 +751,15 @@ rubric_middleware = RubricMiddleware(
     tools=[run_test_suite],
     max_iterations=5,
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import RubricMiddleware
+```
+
+```python
+from deepagents import RubricMiddleware
 from langchain.tools import tool
 
 
 @tool
-def run_test_suite(code: str) -&gt; dict:
+def run_test_suite(code: str) -> dict:
     """Run the find_duplicates test suite against Python source code."""
     namespace: dict = {"__builtins__": __builtins__}
     try:
@@ -832,13 +795,15 @@ rubric_middleware = RubricMiddleware(
     tools=[run_test_suite],
     max_iterations=5,
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import RubricMiddleware
+```
+
+```python
+from deepagents import RubricMiddleware
 from langchain.tools import tool
 
 
 @tool
-def run_test_suite(code: str) -&gt; dict:
+def run_test_suite(code: str) -> dict:
     """Run the find_duplicates test suite against Python source code."""
     namespace: dict = {"__builtins__": __builtins__}
     try:
@@ -874,10 +839,23 @@ rubric_middleware = RubricMiddleware(
     tools=[run_test_suite],
     max_iterations=5,
 )
-</code></pre>
-<p><strong>将其传递给深度智能体</strong></p>
-<p>代理的 <code>system_prompt</code> 告诉它如何完成工作，而标题则告诉评分者如何判断工作。</p>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+
+    
+
+  
+
+
+  
+**Pass it to a deep agent**
+
+    The agent's `system_prompt` tells it how to do the work, while the rubric tells the grader how to judge the work.
+
+    
+
+```python
+from deepagents import create_deep_agent
 from langgraph.checkpoint.memory import InMemorySaver
 
 agent = create_deep_agent(
@@ -889,8 +867,10 @@ agent = create_deep_agent(
     middleware=[rubric_middleware],
     checkpointer=InMemorySaver(),
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langgraph.checkpoint.memory import InMemorySaver
 
 agent = create_deep_agent(
@@ -902,8 +882,10 @@ agent = create_deep_agent(
     middleware=[rubric_middleware],
     checkpointer=InMemorySaver(),
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langgraph.checkpoint.memory import InMemorySaver
 
 agent = create_deep_agent(
@@ -915,8 +897,10 @@ agent = create_deep_agent(
     middleware=[rubric_middleware],
     checkpointer=InMemorySaver(),
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langgraph.checkpoint.memory import InMemorySaver
 
 agent = create_deep_agent(
@@ -928,8 +912,10 @@ agent = create_deep_agent(
     middleware=[rubric_middleware],
     checkpointer=InMemorySaver(),
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langgraph.checkpoint.memory import InMemorySaver
 
 agent = create_deep_agent(
@@ -941,8 +927,10 @@ agent = create_deep_agent(
     middleware=[rubric_middleware],
     checkpointer=InMemorySaver(),
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langgraph.checkpoint.memory import InMemorySaver
 
 agent = create_deep_agent(
@@ -954,8 +942,10 @@ agent = create_deep_agent(
     middleware=[rubric_middleware],
     checkpointer=InMemorySaver(),
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langgraph.checkpoint.memory import InMemorySaver
 
 agent = create_deep_agent(
@@ -967,10 +957,22 @@ agent = create_deep_agent(
     middleware=[rubric_middleware],
     checkpointer=InMemorySaver(),
 )
-</code></pre>
-<p><strong>使用人工消息和标题进行调用</strong></p>
-<p>在调用时，在 <code>messages</code> 中提供用户请求，并在 <code>rubric</code> 中提供换行符分隔的检查表，评分者必须将其标记为满足。当输入状态上未提供 <code>rubric</code> 时，中间件不会运行。</p>
-<pre><code class="language-python">from langchain.messages import HumanMessage
+```
+
+
+    
+
+  
+
+
+  
+**Invoke with a human message and rubric**
+
+    At invocation time, provide the user request in `messages` and a newline-delimited checklist in `rubric` that the grader must mark satisfied. When no `rubric` is supplied on input state, the middleware does not run.
+
+
+```python
+from langchain.messages import HumanMessage
 
 result = agent.invoke(
     {
@@ -991,23 +993,25 @@ result = agent.invoke(
     config={"configurable": {"thread_id": "code-generation-session"}},
 )
 print(result["messages"][-1].text)
-</code></pre>
-<p>代理生成输出后，分级器接管并检查每个标准的输出：例如，当输入包含不可散列的类型时，<code>test_unhashable</code> 会失败并显示 <code>TypeError</code>。如果存在任何问题，评分者会提供此反馈，然后代理会修改其实施并将其返回给评分者。</p>
-<hr/>
-<div classname="source-links">
+```
 
 
+  
+
+After the agent produces output, the grader takes over and checks the output for each criterion: for example, that `test_unhashable` fails with a `TypeError` when the input contains unhashable types. If there are any issues the grader provides this feedback and the agent then revises its implementation and returns it to the grader.
+
+***
+
+<div className="source-links">
+  
+
+    [Connect these docs](/use-these-docs) to Claude, VSCode, and more via MCP for real-time answers.
+  
 
 
-[将这些文档](https://docs.langchain.com/use-these-docs) 通过 MCP 连接到 Claude、VSCode 等以获得实时答案。
+  
 
+    [Edit this page on GitHub](https://github.com/langchain-ai/docs/edit/main/src/oss/deepagents/rubric.mdx) or [file an issue](https://github.com/langchain-ai/docs/issues/new/choose).
+  
 
-
-
-
-
-[在 GitHub 上编辑此页面](https://github.com/langchain-ai/docs/edit/main/src/oss/deepagents/rubric.mdx) 或 [提交问题](https://github.com/langchain-ai/docs/issues/new/choose)。
-
-
-
-</div><footer>非官方中文离线整理版。代码与原图保留；在线演示需要联网。© LangChain · <a href="../LICENSE">MIT 许可</a></footer></main><nav class="page-toc" aria-label="本页目录"><h2>本页目录</h2><ul><li><a href="#configure-the-middleware">配置中间件</a></li><li><a href="#pass-rubric-on-invocation">在调用时传递标题</a></li><li><a href="#observe-iteration-progress">观察迭代进度</a></li><li><a href="#persist-rubrics-across-invocations">在调用中保留规则</a></li><li><a href="#example-generate-vetted-python-code">示例：生成经过审查的 Python 代码</a></li></ul></nav></div></html>
+</div>

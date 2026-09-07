@@ -1,0 +1,302 @@
+[
+  {
+    "title": "A2A服务器",
+    "url": "https://docs.langchain.com/oss/python/deepagents/a2a",
+    "file": "a2a.md",
+    "bytes": 29758,
+    "original_title": "A2A server"
+  },
+  {
+    "title": "代理客户端协议 (ACP)",
+    "url": "https://docs.langchain.com/oss/python/deepagents/acp",
+    "file": "acp.md",
+    "bytes": 9755,
+    "original_title": "Agent Client Protocol (ACP)"
+  },
+  {
+    "title": "异步子智能体",
+    "url": "https://docs.langchain.com/oss/python/deepagents/async-subagents",
+    "file": "async-subagents.md",
+    "bytes": 15878,
+    "original_title": "Async subagents"
+  },
+  {
+    "title": "后端",
+    "url": "https://docs.langchain.com/oss/python/deepagents/backends",
+    "file": "backends.md",
+    "bytes": 58277,
+    "original_title": "Backends"
+  },
+  {
+    "title": "变更日志",
+    "url": "https://docs.langchain.com/oss/javascript/releases/changelog",
+    "file": "changelog-js.md",
+    "bytes": 11497,
+    "original_title": "Changelog"
+  },
+  {
+    "title": "变更日志",
+    "url": "https://docs.langchain.com/oss/python/releases/changelog",
+    "file": "changelog-py.md",
+    "bytes": 24181,
+    "original_title": "Changelog"
+  },
+  {
+    "title": "深度智能体代码",
+    "url": "https://docs.langchain.com/oss/deepagents/code/overview",
+    "file": "code-link.md",
+    "bytes": 3909,
+    "original_title": "Deep Agents Code"
+  },
+  {
+    "title": "与 Claude Agent SDK 的比较",
+    "url": "https://docs.langchain.com/oss/python/deepagents/comparison",
+    "file": "comparison.md",
+    "bytes": 10012,
+    "original_title": "Comparison with Claude Agent SDK"
+  },
+  {
+    "title": "构建内容生成器代理",
+    "url": "https://docs.langchain.com/oss/python/deepagents/content-builder",
+    "file": "content-builder.md",
+    "bytes": 32257,
+    "original_title": "Build a content builder agent"
+  },
+  {
+    "title": "Deep Agent 中的上下文工程",
+    "url": "https://docs.langchain.com/oss/python/deepagents/context-engineering",
+    "file": "context-engineering.md",
+    "bytes": 52532,
+    "original_title": "Context engineering in Deep Agents"
+  },
+  {
+    "title": "定制深度智能体",
+    "url": "https://docs.langchain.com/oss/python/deepagents/customization",
+    "file": "customization.md",
+    "bytes": 153118,
+    "original_title": "Customize Deep Agents"
+  },
+  {
+    "title": "构建数据分析代理",
+    "url": "https://docs.langchain.com/oss/python/deepagents/data-analysis",
+    "file": "data-analysis.md",
+    "bytes": 36889,
+    "original_title": "Build a data analysis agent"
+  },
+  {
+    "title": "打造深度研究代理",
+    "url": "https://docs.langchain.com/oss/python/deepagents/deep-research",
+    "file": "deep-research.md",
+    "bytes": 21202,
+    "original_title": "Build a deep research agent"
+  },
+  {
+    "title": "动态子智能体",
+    "url": "https://docs.langchain.com/oss/python/deepagents/dynamic-subagents",
+    "file": "dynamic-subagents.md",
+    "bytes": 61257,
+    "original_title": "Dynamic subagents"
+  },
+  {
+    "title": "事件流",
+    "url": "https://docs.langchain.com/oss/python/deepagents/event-streaming",
+    "file": "event-streaming.md",
+    "bytes": 9225,
+    "original_title": "Event streaming"
+  },
+  {
+    "title": "容错能力",
+    "url": "https://docs.langchain.com/oss/python/deepagents/fault-tolerance",
+    "file": "fault-tolerance.md",
+    "bytes": 15452,
+    "original_title": "Fault tolerance"
+  },
+  {
+    "title": "概述",
+    "url": "https://docs.langchain.com/oss/python/deepagents/frontend/overview",
+    "file": "frontend--overview.md",
+    "bytes": 6669,
+    "original_title": "Overview"
+  },
+  {
+    "title": "沙盒",
+    "url": "https://docs.langchain.com/oss/python/deepagents/frontend/sandbox",
+    "file": "frontend--sandbox.md",
+    "bytes": 83036,
+    "original_title": "Sandbox"
+  },
+  {
+    "title": "子智能体流式传输",
+    "url": "https://docs.langchain.com/oss/python/deepagents/frontend/subagent-streaming",
+    "file": "frontend--subagent-streaming.md",
+    "bytes": 63638,
+    "original_title": "Subagent streaming"
+  },
+  {
+    "title": "待办事项列表",
+    "url": "https://docs.langchain.com/oss/python/deepagents/frontend/todo-list",
+    "file": "frontend--todo-list.md",
+    "bytes": 64753,
+    "original_title": "Todo list"
+  },
+  {
+    "title": "即将投入生产",
+    "url": "https://docs.langchain.com/oss/python/deepagents/going-to-production",
+    "file": "going-to-production.md",
+    "bytes": 49058,
+    "original_title": "Going to production"
+  },
+  {
+    "title": "人在回路",
+    "url": "https://docs.langchain.com/oss/python/deepagents/human-in-the-loop",
+    "file": "human-in-the-loop.md",
+    "bytes": 33723,
+    "original_title": "Human-in-the-loop"
+  },
+  {
+    "title": "口译员",
+    "url": "https://docs.langchain.com/oss/python/deepagents/interpreters",
+    "file": "interpreters.md",
+    "bytes": 29163,
+    "original_title": "Interpreters"
+  },
+  {
+    "title": "模型上下文协议",
+    "url": "https://docs.langchain.com/oss/python/deepagents/mcp",
+    "file": "mcp.md",
+    "bytes": 5560,
+    "original_title": "Model Context Protocol"
+  },
+  {
+    "title": "记忆",
+    "url": "https://docs.langchain.com/oss/python/deepagents/memory",
+    "file": "memory.md",
+    "bytes": 27395,
+    "original_title": "Memory"
+  },
+  {
+    "title": "型号",
+    "url": "https://docs.langchain.com/oss/python/deepagents/models",
+    "file": "models.md",
+    "bytes": 17712,
+    "original_title": "Models"
+  },
+  {
+    "title": "多模式输入和输出",
+    "url": "https://docs.langchain.com/oss/python/deepagents/multimodal",
+    "file": "multimodal.md",
+    "bytes": 7106,
+    "original_title": "Multimodal inputs and outputs"
+  },
+  {
+    "title": "开放维基",
+    "url": "https://docs.langchain.com/oss/python/deepagents/openwiki",
+    "file": "openwiki.md",
+    "bytes": 4762,
+    "original_title": "OpenWiki"
+  },
+  {
+    "title": "深度智能体概述",
+    "url": "https://docs.langchain.com/oss/python/deepagents/overview",
+    "file": "overview.md",
+    "bytes": 79164,
+    "original_title": "Deep Agents overview"
+  },
+  {
+    "title": "权限",
+    "url": "https://docs.langchain.com/oss/python/deepagents/permissions",
+    "file": "permissions.md",
+    "bytes": 13360,
+    "original_title": "Permissions"
+  },
+  {
+    "title": "型材",
+    "url": "https://docs.langchain.com/oss/python/deepagents/profiles",
+    "file": "profiles.md",
+    "bytes": 13673,
+    "original_title": "Profiles"
+  },
+  {
+    "title": "快速入门",
+    "url": "https://docs.langchain.com/oss/python/deepagents/quickstart",
+    "file": "quickstart.md",
+    "bytes": 14817,
+    "original_title": "Quickstart"
+  },
+  {
+    "title": "使用深度智能体的检索增强生成 (RAG)",
+    "url": "https://docs.langchain.com/oss/python/deepagents/rag",
+    "file": "rag.md",
+    "bytes": 58159,
+    "original_title": "Retrieval Augmented Generation (RAG) with Deep Agents"
+  },
+  {
+    "title": "检索",
+    "url": "https://docs.langchain.com/oss/python/deepagents/retrieval",
+    "file": "retrieval.md",
+    "bytes": 15937,
+    "original_title": "Retrieval"
+  },
+  {
+    "title": "评分细则",
+    "url": "https://docs.langchain.com/oss/python/deepagents/rubric",
+    "file": "rubric.md",
+    "bytes": 45483,
+    "original_title": "Grading rubrics"
+  },
+  {
+    "title": "沙箱",
+    "url": "https://docs.langchain.com/oss/python/deepagents/sandboxes",
+    "file": "sandboxes.md",
+    "bytes": 72349,
+    "original_title": "Sandboxes"
+  },
+  {
+    "title": "技能",
+    "url": "https://docs.langchain.com/oss/python/deepagents/skills",
+    "file": "skills.md",
+    "bytes": 82727,
+    "original_title": "Skills"
+  },
+  {
+    "title": "流媒体",
+    "url": "https://docs.langchain.com/oss/python/deepagents/streaming",
+    "file": "streaming.md",
+    "bytes": 51958,
+    "original_title": "Streaming"
+  },
+  {
+    "title": "子智能体",
+    "url": "https://docs.langchain.com/oss/python/deepagents/subagents",
+    "file": "subagents.md",
+    "bytes": 116822,
+    "original_title": "Subagents"
+  },
+  {
+    "title": "工具",
+    "url": "https://docs.langchain.com/oss/python/deepagents/tools",
+    "file": "tools.md",
+    "bytes": 18011,
+    "original_title": "Tools"
+  },
+  {
+    "title": "Codex 源码解析",
+    "url": "https://github.com/openai/codex/tree/121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex-source-analysis.md",
+    "bytes": 38417,
+    "kind": "source-analysis",
+    "original_title": null,
+    "topic_count": 19,
+    "revision": "2026-09-07-expanded"
+  },
+  {
+    "title": "Claude Code 源码解析：公开 SDK 与运行时边界",
+    "url": "https://github.com/anthropics/claude-agent-sdk-python/tree/efd4d865ef1795daffee3cd24cce45307aed8a51",
+    "file": "claude-code-source-analysis.md",
+    "bytes": 39602,
+    "kind": "source-analysis",
+    "original_title": null,
+    "topic_count": 19,
+    "revision": "2026-09-07-expanded"
+  }
+]

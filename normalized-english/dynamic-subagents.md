@@ -1,14 +1,22 @@
-<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>动态子智能体 · Deep Agents</title><link rel="stylesheet" href="../style.css"><script defer src="../assets/mermaid/mermaid.min.js"></script><script defer src="../assets/mermaid/render-diagrams.js"></script><aside><a class="brand" href="../index.html">Deep Agents<span>中文离线文档</span></a><h3>入门与选型</h3><a href="overview.html">Deep Agents 概览</a><a href="quickstart.html">快速入门</a><a href="models.html">模型选择</a><a href="comparison.html">与 Claude Agent SDK 的对比</a><a href="code-link.html">Deep Agents Code 简介</a><h3>配置与核心能力</h3><a href="customization.html">自定义 Deep Agents</a><a href="tools.html">工具</a><a href="profiles.html">配置档案</a><a href="backends.html">文件系统后端</a><a href="interpreters.html">代码解释器</a><a href="sandboxes.html">沙箱</a><a href="memory.html">记忆</a><a href="skills.html">技能</a><a href="permissions.html">权限</a><a href="human-in-the-loop.html">人工介入</a><a href="multimodal.html">多模态输入与输出</a><h3>任务与上下文管理</h3><a href="context-engineering.html">上下文工程</a><a href="subagents.html">子智能体</a><a href="dynamic-subagents.html">动态子智能体</a><a href="async-subagents.html">异步子智能体</a><a href="streaming.html">流式输出</a><a href="event-streaming.html">事件流</a><a href="fault-tolerance.html">容错</a><a href="retrieval.html">检索</a><a href="rubric.html">评分标准</a><h3>应用教程</h3><a href="data-analysis.html">构建数据分析智能体</a><a href="content-builder.html">构建内容创作智能体</a><a href="deep-research.html">构建深度研究智能体</a><a href="rag.html">构建检索增强生成（RAG）智能体</a><h3>协议与集成</h3><a href="mcp.html">模型上下文协议（MCP）</a><a href="acp.html">智能体客户端协议（ACP）</a><a href="a2a.html">A2A 服务器</a><h3>前端开发</h3><a href="frontend--overview.html">前端集成概览</a><a href="frontend--sandbox.html">前端沙箱</a><a href="frontend--subagent-streaming.html">前端子智能体流式输出</a><a href="frontend--todo-list.html">前端待办事项列表</a><h3>生产环境与知识库</h3><a href="going-to-production.html">部署到生产环境</a><a href="openwiki.html">OpenWiki</a><h3>Coding Agent 源码解析</h3><a href="codex-source-analysis.html">Codex 源码解析</a><a href="claude-code-source-analysis.html">Claude Code 源码解析：公开 SDK 与运行时边界</a><h3>版本更新</h3><a href="changelog-py.html">Python 更新日志</a><a href="changelog-js.html">JavaScript / TypeScript 更新日志</a></aside><script src="../sidebar.js"></script><div class="reading-layout"><main><div class="meta">中文机器翻译 · 文档快照 2026-09-07 · <a href="https://docs.langchain.com/oss/python/deepagents/dynamic-subagents">在线原文</a> · <a href="../markdown/dynamic-subagents.md">编辑中文 Markdown</a> · <a href="../original-markdown/dynamic-subagents.md">英文原稿</a></div><h1 id="dynamic-subagents">动态子智能体</h1>
-<blockquote>
-<p>使用解释器从代码中调度和编排 Deep Agents 子智能体</p>
-</blockquote>
-<p>动态子智能体允许代理从解释器代码中调度 <a href="subagents.html">子智能体</a>。代理可以使用 JavaScript 循环、分支和并行批处理来跨配置的子智能体路由工作并综合结果，而不是要求模型一次选择一个子智能体调用。</p>
-<p>当工作跨越许多独立单元、需要多个视角或受益于递归分析时，请使用此模式。有关一般解释器设置，请参阅<a href="interpreters.html">解释器</a>。</p>
-<p>动态子智能体使用解释器运行时，该运行时位于 <a href="https://docs.langchain.com/oss/python/versioning"><strong id="beta">beta</strong></a> 中。 API 和生命周期行为可能会在版本之间发生变化。</p>
-<p>解释器需要 <code>langchain-quickjs&gt;=0.2.0</code> 和 Python <code>&gt;=3.11</code>。</p>
-<h2 id="quickstart">快速入门</h2>
-<p>动态子智能体需要<a href="interpreters.html">解释器</a>中间件。首先安装并连接解释器。内置的<a href="subagents.html#default-subagent">通用子智能体</a> 无需额外配置即可处理基本扇出。</p>
-<pre><code class="language-python">from deepagents import create_deep_agent
+
+# Dynamic subagents
+
+> Use interpreters to dispatch and orchestrate Deep Agents subagents from code
+
+Dynamic subagents let an agent dispatch [subagents](/oss/python/deepagents/subagents) from interpreter code. Instead of asking the model to choose one subagent call at a time, the agent can use JavaScript loops, branches, and parallel batches to route work across configured subagents and synthesize the results.
+
+Use this pattern when work spans many independent units, needs multiple perspectives, or benefits from recursive analysis. For general interpreter setup, see [Interpreters](/oss/python/deepagents/interpreters).
+
+  Dynamic subagents use the interpreter runtime, which is in [**beta**](/oss/python/versioning). APIs and lifecycle behavior may change between releases.
+
+  Interpreters require `langchain-quickjs>=0.2.0` and Python `>=3.11`.
+
+## Quickstart
+
+Dynamic subagents require [interpreter](/oss/python/deepagents/interpreters) middleware. Install and wire up the interpreter first. The built-in [general-purpose subagent](/oss/python/deepagents/subagents#default-subagent) handles basic fan-out without extra configuration.
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -20,8 +28,10 @@ agent = create_deep_agent(
     }],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -33,8 +43,10 @@ agent = create_deep_agent(
     }],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -46,8 +58,10 @@ agent = create_deep_agent(
     }],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -59,8 +73,10 @@ agent = create_deep_agent(
     }],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -72,8 +88,10 @@ agent = create_deep_agent(
     }],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -85,8 +103,10 @@ agent = create_deep_agent(
     }],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -98,30 +118,48 @@ agent = create_deep_agent(
     }],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<p>有关安装步骤和解释器设置，请参阅<a href="interpreters.html#quickstart">解释器</a>。</p>
-<p>对于专门工作，请使用自己的名称、描述和系统提示配置自定义<a href="subagents.html">子智能体</a>。子智能体的名称和描述作为代理评估要达到哪个角色的信息。</p>
-<p>要触发动态子智能体，请使用单词“workflow”提示代理：</p>
-<pre><code class="language-python">result = agent.invoke({
+```
+
+For install steps and interpreter setup, see [Interpreters](/oss/python/deepagents/interpreters#quickstart).
+
+For specialized work, configure custom [subagents](/oss/python/deepagents/subagents) with their own names, descriptions, and system prompts. The subagents' names and descriptions serve as information for the agent to evaluate which role to reach for.
+
+To trigger dynamic subagents, prompt the agent with the word "workflow":
+
+
+```python
+result = agent.invoke({
     "messages": [{"role": "user", "content": "Run a workflow that reviews every file in src/routes/ and summarizes the top risks."}]
 })
-</code></pre>
-<p><strong id="the-word-workflow-is-a-useful-trigger">“工作流”一词是一个有用的触发器。</strong> 解释器系统提示将“工作流”视为通过解释器组织工作的信号，从代码中调度带有 <code>task()</code> 的子智能体，而不是一次通过一个模型选择的工具调用的项目。将请求表述为“工作流”是一个有意的杠杆，您可以选择动态编排。对于单一的直接授权，请清楚地表达请求。</p>
-<p>使用LangChain终端编程智能体<code>dcode</code>的动态子智能体？ <code>dcode</code> 附带启用的代码解释器，因此动态子智能体可以开箱即用。有关设置和使用详细信息，请参阅<a href="https://docs.langchain.com/oss/deepagents/code/subagents">dcode 子智能体页面</a>。</p>
-<h2 id="how-it-works">它是如何运作的</h2>
-<p>当代理具有 <a href="subagents.html">子智能体</a> 和解释器中间件时，解释器会公开从代码中调度子智能体的内置 <code>task()</code> 全局变量。跨越许多独立单元的任务（检查目录中的每个文件，对一批票进行分类）成为一个循环，使工作分散，因此它确定性地运行，而不是一次调用一个模型选择的工具。</p>
-<p>子智能体编排还支持递归语言模型 (RLM) 工作流程，即<a href="https://arxiv.org/abs/2512.24601">递归语言模型论文</a> 中描述的方法：将工作集保留在解释器变量中，选择切片，使用 <code>task()</code> 调用子智能体，然后综合结果。</p>
-<p>许多编排工作流程将动态子智能体与<a href="interpreters.html#programmatic-tool-calling-ptc">编程工具调用 (PTC)</a> 相结合：使用解释器代码中的 <code>tools.*</code> 来发现或过滤输入，然后使用 <code>task()</code> 调度子智能体。 PTC默认关闭；通过解释器中间件上的显式允许列表启用它。</p>
-<p><code>task()</code> 是进入子智能体执行的能力桥梁，类似于工具的 PTC。有关隔离默认值、审批边界和中间件选项，请参阅<a href="interpreters.html#security">安全</a> 和<a href="interpreters.html#configuration">配置</a>。</p>
-<p>使用 <code>mode="thread"</code>（默认值）时，多轮编排可以跨代理轮次保留解释器变量。请参阅解释器页面上的<a href="interpreters.html#persistence">持久性</a>。</p>
-<p><code>task()</code> 采用以下输入：</p>
-<ul>
-<li><code>description</code>：子智能体的提示符</li>
-<li><code>subagentType</code>：配置了哪个子智能体来运行</li>
-<li><code>responseSchema</code>（可选）：结构化输出</li>
-</ul>
-<p><code>task()</code> 运行完整的代理循环并解析为子智能体的结果：</p>
-<pre><code class="language-ts">const review = await task({
+```
+
+  **The word "workflow" is a useful trigger.** The interpreter system prompt treats "workflow" as a signal to organize work through the interpreter, dispatching subagents with `task()` from code rather than grinding through items one model-chosen tool call at a time. Phrasing a request as a "workflow" is a deliberate lever you can pull to opt into dynamic orchestration. For a single, direct delegation, phrase the request plainly instead.
+
+  Using dynamic subagents with `dcode`, the LangChain terminal coding agent? `dcode` ships with the code interpreter enabled, so dynamic subagents work out of the box. See the [dcode subagents page](/oss/deepagents/code/subagents) for setup and usage details.
+
+## How it works
+
+When an agent has [subagents](/oss/python/deepagents/subagents) and interpreter middleware, the interpreter exposes a built-in `task()` global that dispatches subagents from code. A task spanning many independent units (reviewing every file in a directory, triaging a batch of tickets) becomes a loop that fans the work out, so it runs deterministically instead of one model-chosen tool call at a time.
+
+Subagent orchestration also supports recursive language model (RLM) workflows, the approach described in the [Recursive Language Models paper](https://arxiv.org/abs/2512.24601): keep the working set in interpreter variables, select slices, call subagents with `task()`, and synthesize the results.
+
+Many orchestration workflows combine dynamic subagents with [programmatic tool calling (PTC)](/oss/python/deepagents/interpreters#programmatic-tool-calling-ptc): use `tools.*` from interpreter code to discover or filter inputs, then dispatch subagents with `task()`. PTC is off by default; enable it with an explicit allowlist on interpreter middleware.
+
+`task()` is a capability bridge into subagent execution, similar to PTC for tools. For isolation defaults, approval boundaries, and middleware options, see [Security](/oss/python/deepagents/interpreters#security) and [Configuration](/oss/python/deepagents/interpreters#configuration).
+
+  Multi-turn orchestration can persist interpreter variables across agent turns when using `mode="thread"` (the default). See [Persistence](/oss/python/deepagents/interpreters#persistence) on the interpreters page.
+
+`task()` takes the following inputs:
+
+* `description`: The prompt for the subagent
+* `subagentType`: Which configured subagent to run
+* `responseSchema` (optional): Structured output
+
+A `task()` runs a full agentic loop and resolves to the subagent's result:
+
+
+```ts
+const review = await task({
   description: "Review src/auth/login.ts for auth issues. Cite line numbers.",
   subagentType: "reviewer",
   responseSchema: {
@@ -136,23 +174,41 @@ agent = create_deep_agent(
 });
 
 // With responseSchema, the result is already a typed value, so no JSON.parse is needed.
-const critical = review.issues.filter((issue) =&gt; issue.severity === "high");
-</code></pre>
-<p>当你传递<code>responseSchema</code>时，解析的值已经是一个类型化的JavaScript对象；仅当子智能体故意返回 JSON 字符串时才调用 <code>JSON.parse</code>。</p>
-<h2 id="patterns">图案</h2>
-<p>代理根据任务的形状选择策略；这些来自它编写解释器代码的方式，而不是来自配置，并且您提供的子智能体决定了它可以做什么。每个模式都共享相同的编排方法：在 JS 变量中保存工作，使用 <code>task()</code> 分派子智能体，并在代码中组合结果。下图显示了常见的形状，每个形状都有一个可运行的示例。</p>
-<h3 id="classify-and-act">分类并采取行动</h3>
-<p>首先对项目进行分类，然后每个项目由专门的子智能体根据其分类进行处理。这使您可以处理不同项目需要不同专业知识的混合输入。</p>
-<pre><code class="language-mermaid">graph LR
-    Task[Task] --&gt; Classify{Classifier}
-    Classify --&gt; |bug| A[Agent A]
-    Classify --&gt; |feature| B[Agent B]
-    Classify --&gt; |question| C[Agent C]
-</code></pre>
-<p><strong id="use-cases">用例：</strong> 对支持票证、错误日志、用户反馈或需要根据其类型进行不同处理的任何批次的项目进行分类。</p>
-<p><strong id="example-classify-and-act">示例：分类和行动</strong></p>
-<p><strong id="what-you-configure">您配置的内容</strong></p>
-<pre><code class="language-python">from deepagents import create_deep_agent
+const critical = review.issues.filter((issue) => issue.severity === "high");
+```
+
+
+When you pass `responseSchema`, the resolved value is already a typed JavaScript object; only call `JSON.parse` if a subagent intentionally returned a JSON string.
+
+## Patterns
+
+The agent picks a strategy from the shape of the task; these emerge from how it writes interpreter code, not from configuration, and the subagents you make available determine what it can do. Every pattern shares the same orchestration approach: hold work in JS variables, dispatch subagents with `task()`, and combine results in code. The diagrams below show the common shapes, each with a runnable example.
+
+### Classify and act
+
+Items are classified first, then each item is handled by a specialized subagent based on its classification. This lets you process mixed inputs where different items need different expertise.
+
+
+```mermaid
+graph LR
+    Task[Task] --> Classify{Classifier}
+    Classify --> |bug| A[Agent A]
+    Classify --> |feature| B[Agent B]
+    Classify --> |question| C[Agent C]
+```
+
+
+**Use cases:** Triaging support tickets, error logs, user feedback, or any batch of items that need different handling depending on their type.
+
+
+**Example: classify and act**
+
+  **What you configure**
+
+  
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -176,8 +232,10 @@ agent = create_deep_agent(
     ],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -201,8 +259,10 @@ agent = create_deep_agent(
     ],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -226,8 +286,10 @@ agent = create_deep_agent(
     ],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -251,8 +313,10 @@ agent = create_deep_agent(
     ],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -276,8 +340,10 @@ agent = create_deep_agent(
     ],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -301,8 +367,10 @@ agent = create_deep_agent(
     ],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -326,14 +394,22 @@ agent = create_deep_agent(
     ],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<p><strong id="what-the-agent-writes">代理人写的内容</strong></p>
-<pre><code class="language-ts">// The agent has already classified each ticket; this routes every item to
+```
+
+
+  
+
+
+  **What the agent writes**
+
+
+```ts
+// The agent has already classified each ticket; this routes every item to
 // the right specialist and collects the handled results.
 const SPECIALIST = { bug: "bug-fixer", feature: "feature-analyst", question: "support-agent" };
 
 const handled = await Promise.all(
-  tickets.map((ticket) =&gt;
+  tickets.map((ticket) =>
     task({
       description: `Handle this ${ticket.category}:\n${ticket.text}`,
       subagentType: SPECIALIST[ticket.category],
@@ -342,23 +418,38 @@ const handled = await Promise.all(
 );
 // ... group handled results by category into a single triage report
 handled;
-</code></pre>
-<h3 id="fan-out-and-synthesize">扇出和合成</h3>
-<p>代理在许多项目上并行分派相同类型的工作，然后组合结果。</p>
-<pre><code class="language-mermaid">graph LR
-    Items[Items] --&gt; W1[Worker]
-    Items --&gt; W2[Worker]
-    Items --&gt; W3[Worker]
-    W1 --&gt; Collect[Collect]
-    W2 --&gt; Collect
-    W3 --&gt; Collect
-    Collect --&gt; Synth[Synthesize]
-</code></pre>
-<p><strong>用例：</strong> 跨目录进行代码审查、分析一批文档、处理日志文件、跨多个服务运行相同的检查。</p>
-<p>从解释器代码中发现文件需要<a href="interpreters.html#programmatic-tool-calling-ptc">编程工具调用(PTC)</a>。在解释器中间件上的 PTC 允许列表中启用 <code>glob</code>。</p>
-<p><strong id="example-fan-out-and-synthesize">示例：扇出和合成</strong></p>
-<p><strong>您配置的内容</strong></p>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+### Fan-out and synthesize
+
+The agent dispatches the same kind of work across many items in parallel, then combines the results.
+
+
+```mermaid
+graph LR
+    Items[Items] --> W1[Worker]
+    Items --> W2[Worker]
+    Items --> W3[Worker]
+    W1 --> Collect[Collect]
+    W2 --> Collect
+    W3 --> Collect
+    Collect --> Synth[Synthesize]
+```
+
+
+**Use cases:** Code review across a directory, analyzing a batch of documents, processing log files, running the same check across many services.
+
+Discovering files from interpreter code requires [programmatic tool calling (PTC)](/oss/python/deepagents/interpreters#programmatic-tool-calling-ptc). Enable `glob` in the PTC allowlist on interpreter middleware.
+
+
+**Example: fan-out and synthesize**
+
+  **What you configure**
+
+  
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -370,8 +461,10 @@ agent = create_deep_agent(
     }],
     middleware=[CodeInterpreterMiddleware(ptc=["glob"])],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -383,8 +476,10 @@ agent = create_deep_agent(
     }],
     middleware=[CodeInterpreterMiddleware(ptc=["glob"])],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -396,8 +491,10 @@ agent = create_deep_agent(
     }],
     middleware=[CodeInterpreterMiddleware(ptc=["glob"])],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -409,8 +506,10 @@ agent = create_deep_agent(
     }],
     middleware=[CodeInterpreterMiddleware(ptc=["glob"])],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -422,8 +521,10 @@ agent = create_deep_agent(
     }],
     middleware=[CodeInterpreterMiddleware(ptc=["glob"])],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -435,8 +536,10 @@ agent = create_deep_agent(
     }],
     middleware=[CodeInterpreterMiddleware(ptc=["glob"])],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -448,44 +551,66 @@ agent = create_deep_agent(
     }],
     middleware=[CodeInterpreterMiddleware(ptc=["glob"])],
 )
-</code></pre>
-<p><strong>代理人写的内容</strong></p>
-<pre><code class="language-ts">// One reviewer per file, dispatched in parallel, then findings merged.
+```
+
+
+  
+
+
+  **What the agent writes**
+
+
+```ts
+// One reviewer per file, dispatched in parallel, then findings merged.
 const files = (await tools.glob({ pattern: "src/routes/**/*.ts" }))
   .split("\n")
   .filter(Boolean);
 
 const reviews = await Promise.all(
-  files.map((file) =&gt;
+  files.map((file) =>
     task({
       description: `Review ${file} for authentication issues. Cite line numbers.`,
       subagentType: "reviewer",
-      responseSchema: issuesSchema, // -&gt; { issues: [{ file, line, severity }] }
+      responseSchema: issuesSchema, // -> { issues: [{ file, line, severity }] }
     }),
   ),
 );
 
-const issues = reviews.flatMap((r) =&gt; r.issues);
+const issues = reviews.flatMap((r) => r.issues);
 // ... sort by severity, drop duplicates, summarize the top risks
 issues;
-</code></pre>
-<h3 id="adversarial-verification">对抗性验证</h3>
-<p>两遍模式。第一步产生结果。第二遍将每个发现发送给独立验证者，并且仅保留符合协议的发现。当信心比速度更重要时，这可以减少误报。</p>
-<pre><code class="language-mermaid">graph LR
-    Items[Items] --&gt; Workers[Workers]
-    Workers --&gt; Findings[Findings]
-    Findings --&gt; V1[Verifier]
-    Findings --&gt; V2[Verifier]
-    Findings --&gt; V3[Verifier]
-    V1 --&gt; Vote[Majority vote]
-    V2 --&gt; Vote
-    V3 --&gt; Vote
-    Vote --&gt; Confirmed[Confirmed]
-</code></pre>
-<p><strong>使用案例：</strong>误报代价高昂的安全审计、合规性检查以及需要对结果具有高度信心的任何审查。</p>
-<p><strong id="example-adversarial-verification">示例：对抗性验证</strong></p>
-<p><strong>您配置的内容</strong></p>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+### Adversarial verification
+
+A two-pass pattern. The first pass produces findings. The second pass sends each finding to independent verifiers, and only findings that survive agreement are kept. This reduces false positives when confidence matters more than speed.
+
+
+```mermaid
+graph LR
+    Items[Items] --> Workers[Workers]
+    Workers --> Findings[Findings]
+    Findings --> V1[Verifier]
+    Findings --> V2[Verifier]
+    Findings --> V3[Verifier]
+    V1 --> Vote[Majority vote]
+    V2 --> Vote
+    V3 --> Vote
+    Vote --> Confirmed[Confirmed]
+```
+
+
+**Use cases:** Security audits where false positives are costly, compliance checks, any review where you need high confidence in findings.
+
+
+**Example: adversarial verification**
+
+  **What you configure**
+
+  
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -504,8 +629,10 @@ agent = create_deep_agent(
     ],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -524,8 +651,10 @@ agent = create_deep_agent(
     ],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -544,8 +673,10 @@ agent = create_deep_agent(
     ],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -564,8 +695,10 @@ agent = create_deep_agent(
     ],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -584,8 +717,10 @@ agent = create_deep_agent(
     ],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -604,8 +739,10 @@ agent = create_deep_agent(
     ],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -624,44 +761,66 @@ agent = create_deep_agent(
     ],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<p><strong>代理人写的内容</strong></p>
-<pre><code class="language-ts">// Pass 1: audit. Pass 2: verify each finding independently; keep only confirmed.
+```
+
+
+  
+
+
+  **What the agent writes**
+
+
+```ts
+// Pass 1: audit. Pass 2: verify each finding independently; keep only confirmed.
 const { findings } = await task({
   description: "Audit the payments module for vulnerabilities.",
   subagentType: "reviewer",
-  responseSchema: findingsSchema, // -&gt; { findings: [{ id, file, line, description }] }
+  responseSchema: findingsSchema, // -> { findings: [{ id, file, line, description }] }
 });
 
 const verdicts = await Promise.all(
-  findings.map((f) =&gt;
+  findings.map((f) =>
     task({
       description: `Verify ${f.file}:${f.line} (${f.description}). Confirm or refute.`,
       subagentType: "verifier",
-      responseSchema: verdictSchema, // -&gt; { confirmed: boolean }
+      responseSchema: verdictSchema, // -> { confirmed: boolean }
     }),
   ),
 );
 
-const confirmed = findings.filter((_, i) =&gt; verdicts[i]?.confirmed);
+const confirmed = findings.filter((_, i) => verdicts[i]?.confirmed);
 // ... report only the confirmed vulnerabilities
 confirmed;
-</code></pre>
-<h3 id="generate-and-filter">生成并过滤</h3>
-<p>多个子智能体针对同一问题生成独立的解决方案。代理在代码中对结果进行比较、评分和过滤，只保留最好的。</p>
-<pre><code class="language-mermaid">graph LR
-    Prompt[Prompt] --&gt; G1[Generator]
-    Prompt --&gt; G2[Generator]
-    Prompt --&gt; G3[Generator]
-    G1 --&gt; Filter[Filter + rank]
-    G2 --&gt; Filter
-    G3 --&gt; Filter
-    Filter --&gt; Best[Best result]
-</code></pre>
-<p><strong>用例：</strong> 架构提案、重构策略、内容变化以及在提交之前探索多个选项的任何任务会产生更好的结果。</p>
-<p><strong id="example-generate-and-filter">示例：生成和过滤</strong></p>
-<p><strong>您配置的内容</strong></p>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+### Generate and filter
+
+Multiple subagents generate independent solutions to the same problem. The agent compares, scores, and filters the results in code, keeping only the best.
+
+
+```mermaid
+graph LR
+    Prompt[Prompt] --> G1[Generator]
+    Prompt --> G2[Generator]
+    Prompt --> G3[Generator]
+    G1 --> Filter[Filter + rank]
+    G2 --> Filter
+    G3 --> Filter
+    Filter --> Best[Best result]
+```
+
+
+**Use cases:** Architecture proposals, refactoring strategies, content variations, any task where exploring multiple options before committing produces a better outcome.
+
+
+**Example: generate and filter**
+
+  **What you configure**
+
+  
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -673,8 +832,10 @@ agent = create_deep_agent(
     }],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -686,8 +847,10 @@ agent = create_deep_agent(
     }],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -699,8 +862,10 @@ agent = create_deep_agent(
     }],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -712,8 +877,10 @@ agent = create_deep_agent(
     }],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -725,8 +892,10 @@ agent = create_deep_agent(
     }],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -738,8 +907,10 @@ agent = create_deep_agent(
     }],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -751,38 +922,60 @@ agent = create_deep_agent(
     }],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<p><strong>代理人写的内容</strong></p>
-<pre><code class="language-ts">// Generate independent proposals in parallel, then score and keep the best.
+```
+
+
+  
+
+
+  **What the agent writes**
+
+
+```ts
+// Generate independent proposals in parallel, then score and keep the best.
 const proposals = await Promise.all(
-  [1, 2, 3].map((n) =&gt;
+  [1, 2, 3].map((n) =>
     task({
       description: `Approach ${n}: redesign the orders schema, with tradeoffs.`,
       subagentType: "architect",
-      responseSchema: designSchema, // -&gt; { design, tradeoffs }
+      responseSchema: designSchema, // -> { design, tradeoffs }
     }),
   ),
 );
 
 // ... score each proposal against the requirements
-const best = proposals.sort((a, b) =&gt; score(b) - score(a))[0];
+const best = proposals.sort((a, b) => score(b) - score(a))[0];
 best;
-</code></pre>
-<h3 id="tournament">比赛</h3>
-<p>裁判副代理人将对各种变化进行正面比较，获胜者将通过淘汰赛晋级。</p>
-<pre><code class="language-mermaid">graph LR
-    A1[Attempt] --&gt; J1{Judge}
-    A2[Attempt] --&gt; J1
-    A3[Attempt] --&gt; J2{Judge}
-    A4[Attempt] --&gt; J2
-    J1 --&gt; JF{Final}
-    J2 --&gt; JF
-    JF --&gt; Winner[Winner]
-</code></pre>
-<p><strong>用例：</strong> 根据主观标准、风格选择、竞争实现之间的选择进行优化。</p>
-<p><strong id="example-tournament">示例：锦标赛</strong></p>
-<p><strong>您配置的内容</strong></p>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+### Tournament
+
+Variations are compared head-to-head by a judge subagent, with winners advancing through elimination rounds.
+
+
+```mermaid
+graph LR
+    A1[Attempt] --> J1{Judge}
+    A2[Attempt] --> J1
+    A3[Attempt] --> J2{Judge}
+    A4[Attempt] --> J2
+    J1 --> JF{Final}
+    J2 --> JF
+    JF --> Winner[Winner]
+```
+
+
+**Use cases:** Optimization under subjective criteria, style selection, choosing between competing implementations.
+
+
+**Example: tournament**
+
+  **What you configure**
+
+  
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -801,8 +994,10 @@ agent = create_deep_agent(
     ],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -821,8 +1016,10 @@ agent = create_deep_agent(
     ],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -841,8 +1038,10 @@ agent = create_deep_agent(
     ],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -861,8 +1060,10 @@ agent = create_deep_agent(
     ],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -881,8 +1082,10 @@ agent = create_deep_agent(
     ],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -901,8 +1104,10 @@ agent = create_deep_agent(
     ],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -921,41 +1126,63 @@ agent = create_deep_agent(
     ],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<p><strong>代理人写的内容</strong></p>
-<pre><code class="language-ts">// Generate variants, then judge pairwise until a single winner remains.
+```
+
+
+  
+
+
+  **What the agent writes**
+
+
+```ts
+// Generate variants, then judge pairwise until a single winner remains.
 let bracket = await Promise.all(
-  [1, 2, 3, 4, 5].map((n) =&gt;
+  [1, 2, 3, 4, 5].map((n) =>
     task({ description: `Rewrite processOrder for readability (variant ${n}).`, subagentType: "writer" }),
   ),
 );
 
-while (bracket.length &gt; 1) {
+while (bracket.length > 1) {
   const winners = [];
-  for (let i = 0; i &lt; bracket.length; i += 2) {
+  for (let i = 0; i < bracket.length; i += 2) {
     if (bracket[i + 1] === undefined) { winners.push(bracket[i]); break; }
     const { winner } = await task({
       description: `Pick the more readable:\n\nA:\n${bracket[i]}\n\nB:\n${bracket[i + 1]}`,
       subagentType: "judge",
-      responseSchema: pickSchema, // -&gt; { winner: "A" | "B" }
+      responseSchema: pickSchema, // -> { winner: "A" | "B" }
     });
     winners.push(winner === "A" ? bracket[i] : bracket[i + 1]);
   }
   bracket = winners;
 }
 bracket[0]; // the winning rewrite
-</code></pre>
-<h3 id="loop-until-done">循环直到完成</h3>
-<p>该代理运行一个发现循环，对已发现的内容进行重复数据删除，直到没有新结果出现。当预先不知道工作范围时很有用。</p>
-<pre><code class="language-mermaid">graph LR
-    Agent[Agent] --&gt; Check{New findings?}
-    Check --&gt; |yes| Agent
-    Check --&gt; |no| Done[Done]
-</code></pre>
-<p><strong>用例：</strong> 详尽的搜索、死代码检测、依赖性审计、任何您想要完整性而不是固定数量结果的扫描。</p>
-<p><strong id="example-loop-until-done">示例：循环直到完成</strong></p>
-<p><strong>您配置的内容</strong></p>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+### Loop until done
+
+The agent runs a discovery loop, deduplicating against what it has already found, until no new results appear. Useful when the scope of the work is not known upfront.
+
+
+```mermaid
+graph LR
+    Agent[Agent] --> Check{New findings?}
+    Check --> |yes| Agent
+    Check --> |no| Done[Done]
+```
+
+
+**Use cases:** Exhaustive search, dead code detection, dependency audits, any sweep where you want completeness rather than a fixed number of results.
+
+
+**Example: loop until done**
+
+  **What you configure**
+
+  
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -967,8 +1194,10 @@ agent = create_deep_agent(
     }],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -980,8 +1209,10 @@ agent = create_deep_agent(
     }],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -993,8 +1224,10 @@ agent = create_deep_agent(
     }],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -1006,8 +1239,10 @@ agent = create_deep_agent(
     }],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -1019,8 +1254,10 @@ agent = create_deep_agent(
     }],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -1032,8 +1269,10 @@ agent = create_deep_agent(
     }],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -1045,9 +1284,17 @@ agent = create_deep_agent(
     }],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<p><strong>代理人写的内容</strong></p>
-<pre><code class="language-ts">// Keep dispatching rounds, deduping against what's found, until a round adds nothing.
+```
+
+
+  
+
+
+  **What the agent writes**
+
+
+```ts
+// Keep dispatching rounds, deduping against what's found, until a round adds nothing.
 const seen = new Set();
 const found = [];
 
@@ -1055,18 +1302,23 @@ while (true) {
   const { items } = await task({
     description: `Find dead code. Already found: ${[...seen].join(", ") || "(none)"}.`,
     subagentType: "analyzer",
-    responseSchema: itemsSchema, // -&gt; { items: [{ id, file }] }
+    responseSchema: itemsSchema, // -> { items: [{ id, file }] }
   });
-  const fresh = items.filter((i) =&gt; !seen.has(i.id));
+  const fresh = items.filter((i) => !seen.has(i.id));
   if (fresh.length === 0) break; // converged: nothing new
   for (const i of fresh) { seen.add(i.id); found.push(i); }
 }
 found;
-</code></pre>
-<p><code>task()</code> 从已运行的 <code>eval</code> 调用内部调度。它不经过正常的工具调用路径，因此每次调度时不会强制执行父代理上的 <code>interrupt_on</code> 审批工作流。如果您在子智能体编排运行之前需要批准，请控制 <code>eval</code> 工具本身。</p>
-<h2 id="disable-dynamic-subagents">禁用动态子智能体</h2>
-<p>只要代理有子智能体，子智能体调度就会默认打开。如果您希望子智能体仅通过正常的 <code>task</code> 工具路径可用，请禁用它。对于其他中间件选项，请参阅解释器页面上的<a href="interpreters.html#configuration">配置</a>。</p>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+  `task()` dispatches from inside an already-running `eval` call. It does not go through the normal tool calling path, so `interrupt_on` approval workflows on the parent agent are not enforced per dispatch. Gate the `eval` tool itself if you need approval before subagent orchestration runs.
+
+## Disable dynamic subagents
+
+Subagent dispatch is on by default whenever the agent has subagents. Disable it if you want subagents to be available only through the normal `task` tool path. For other middleware options, see [Configuration](/oss/python/deepagents/interpreters#configuration) on the interpreters page.
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -1074,8 +1326,10 @@ agent = create_deep_agent(
     subagents=[{"name": "reviewer", "description": "Reviews code", "system_prompt": "Review code."}],
     middleware=[CodeInterpreterMiddleware(subagents=False)],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -1083,8 +1337,10 @@ agent = create_deep_agent(
     subagents=[{"name": "reviewer", "description": "Reviews code", "system_prompt": "Review code."}],
     middleware=[CodeInterpreterMiddleware(subagents=False)],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -1092,8 +1348,10 @@ agent = create_deep_agent(
     subagents=[{"name": "reviewer", "description": "Reviews code", "system_prompt": "Review code."}],
     middleware=[CodeInterpreterMiddleware(subagents=False)],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -1101,8 +1359,10 @@ agent = create_deep_agent(
     subagents=[{"name": "reviewer", "description": "Reviews code", "system_prompt": "Review code."}],
     middleware=[CodeInterpreterMiddleware(subagents=False)],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -1110,8 +1370,10 @@ agent = create_deep_agent(
     subagents=[{"name": "reviewer", "description": "Reviews code", "system_prompt": "Review code."}],
     middleware=[CodeInterpreterMiddleware(subagents=False)],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -1119,8 +1381,10 @@ agent = create_deep_agent(
     subagents=[{"name": "reviewer", "description": "Reviews code", "system_prompt": "Review code."}],
     middleware=[CodeInterpreterMiddleware(subagents=False)],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -1128,28 +1392,26 @@ agent = create_deep_agent(
     subagents=[{"name": "reviewer", "description": "Reviews code", "system_prompt": "Review code."}],
     middleware=[CodeInterpreterMiddleware(subagents=False)],
 )
-</code></pre>
-<h2 id="see-also">参见</h2>
-<ul>
-<li><a href="interpreters.html">解释器</a>：QuickJS 设置、编程工具调用、持久性、安全性和中间件配置</li>
-<li><a href="subagents.html">子智能体</a>：配置子智能体名称、描述和系统提示</li>
-<li><a href="event-streaming.html">事件流</a>：从协调器和委托子智能体流式传输更新</li>
-</ul>
-<hr/>
-<div classname="source-links">
+```
+
+## See also
+
+* [Interpreters](/oss/python/deepagents/interpreters): QuickJS setup, programmatic tool calling, persistence, security, and middleware configuration
+* [Subagents](/oss/python/deepagents/subagents): Configure subagent names, descriptions, and system prompts
+* [Event streaming](/oss/python/deepagents/event-streaming): Stream updates from the coordinator and delegated subagents
+
+***
+
+<div className="source-links">
+  
+
+    [Connect these docs](/use-these-docs) to Claude, VSCode, and more via MCP for real-time answers.
+  
 
 
+  
 
+    [Edit this page on GitHub](https://github.com/langchain-ai/docs/edit/main/src/oss/deepagents/dynamic-subagents.mdx) or [file an issue](https://github.com/langchain-ai/docs/issues/new/choose).
+  
 
-[将这些文档](https://docs.langchain.com/use-these-docs) 通过 MCP 连接到 Claude、VSCode 等以获得实时答案。
-
-
-
-
-
-
-[在 GitHub 上编辑此页面](https://github.com/langchain-ai/docs/edit/main/src/oss/deepagents/dynamic-subagents.mdx) 或 [提交问题](https://github.com/langchain-ai/docs/issues/new/choose)。
-
-
-
-</div><footer>非官方中文离线整理版。代码与原图保留；在线演示需要联网。© LangChain · <a href="../LICENSE">MIT 许可</a></footer></main><nav class="page-toc" aria-label="本页目录"><h2>本页目录</h2><ul><li><a href="#quickstart">快速入门</a></li><li><a href="#how-it-works">它是如何运作的</a></li><li><a href="#patterns">图案</a></li><li><a href="#disable-dynamic-subagents">禁用动态子智能体</a></li><li><a href="#see-also">参见</a></li></ul></nav></div></html>
+</div>

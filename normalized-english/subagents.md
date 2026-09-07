@@ -1,162 +1,113 @@
-<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>子智能体 · Deep Agents</title><link rel="stylesheet" href="../style.css"><script defer src="../assets/mermaid/mermaid.min.js"></script><script defer src="../assets/mermaid/render-diagrams.js"></script><aside><a class="brand" href="../index.html">Deep Agents<span>中文离线文档</span></a><h3>入门与选型</h3><a href="overview.html">Deep Agents 概览</a><a href="quickstart.html">快速入门</a><a href="models.html">模型选择</a><a href="comparison.html">与 Claude Agent SDK 的对比</a><a href="code-link.html">Deep Agents Code 简介</a><h3>配置与核心能力</h3><a href="customization.html">自定义 Deep Agents</a><a href="tools.html">工具</a><a href="profiles.html">配置档案</a><a href="backends.html">文件系统后端</a><a href="interpreters.html">代码解释器</a><a href="sandboxes.html">沙箱</a><a href="memory.html">记忆</a><a href="skills.html">技能</a><a href="permissions.html">权限</a><a href="human-in-the-loop.html">人工介入</a><a href="multimodal.html">多模态输入与输出</a><h3>任务与上下文管理</h3><a href="context-engineering.html">上下文工程</a><a href="subagents.html">子智能体</a><a href="dynamic-subagents.html">动态子智能体</a><a href="async-subagents.html">异步子智能体</a><a href="streaming.html">流式输出</a><a href="event-streaming.html">事件流</a><a href="fault-tolerance.html">容错</a><a href="retrieval.html">检索</a><a href="rubric.html">评分标准</a><h3>应用教程</h3><a href="data-analysis.html">构建数据分析智能体</a><a href="content-builder.html">构建内容创作智能体</a><a href="deep-research.html">构建深度研究智能体</a><a href="rag.html">构建检索增强生成（RAG）智能体</a><h3>协议与集成</h3><a href="mcp.html">模型上下文协议（MCP）</a><a href="acp.html">智能体客户端协议（ACP）</a><a href="a2a.html">A2A 服务器</a><h3>前端开发</h3><a href="frontend--overview.html">前端集成概览</a><a href="frontend--sandbox.html">前端沙箱</a><a href="frontend--subagent-streaming.html">前端子智能体流式输出</a><a href="frontend--todo-list.html">前端待办事项列表</a><h3>生产环境与知识库</h3><a href="going-to-production.html">部署到生产环境</a><a href="openwiki.html">OpenWiki</a><h3>Coding Agent 源码解析</h3><a href="codex-source-analysis.html">Codex 源码解析</a><a href="claude-code-source-analysis.html">Claude Code 源码解析：公开 SDK 与运行时边界</a><h3>版本更新</h3><a href="changelog-py.html">Python 更新日志</a><a href="changelog-js.html">JavaScript / TypeScript 更新日志</a></aside><script src="../sidebar.js"></script><div class="reading-layout"><main><div class="meta">中文机器翻译 · 文档快照 2026-09-07 · <a href="https://docs.langchain.com/oss/python/deepagents/subagents">在线原文</a> · <a href="../markdown/subagents.md">编辑中文 Markdown</a> · <a href="../original-markdown/subagents.md">英文原稿</a></div><h1 id="subagents">子智能体</h1>
-<blockquote>
-<p>了解如何使用子智能体来委派工作并保持上下文干净</p>
-</blockquote>
-<p>深度智能体可以创建子智能体来委派工作。您可以在 <code>subagents</code> 参数中指定自定义子智能体。子智能体对于<a href="https://www.dbreunig.com/2025/06/26/how-to-fix-your-context.html#context-quarantine">上下文隔离</a>（保持主代理的上下文干净）和提供专门指令很有用。</p>
-<p>本页介绍<strong id="synchronous">同步</strong>子智能体，其中主管程序会阻塞，直到子智能体完成。对于长时间运行的任务、并行工作流或需要中途引导和取消的情况，请参阅<a href="async-subagents.html">异步子智能体</a>。</p>
-<pre><code class="language-mermaid">graph TB
-    Main[Main Agent] --&gt; |task tool| Sub[Subagent]
 
-    Sub --&gt; Research[Research]
-    Sub --&gt; Code[Code]
-    Sub --&gt; General[General]
+# Subagents
 
-    Research --&gt; |isolated work| Result[Final Result]
-    Code --&gt; |isolated work| Result
-    General --&gt; |isolated work| Result
+> Learn how to use subagents to delegate work and keep context clean
 
-    Result --&gt; Main
-</code></pre>
-<h2 id="why-use-subagents">为什么要使用子智能体？</h2>
-<p>子智能体解决了<strong id="context-bloat-problem">上下文膨胀问题</strong>。当代理使用具有大量输出的工具（网络搜索、文件读取、数据库查询）时，上下文窗口很快就会被中间结果填满。子智能体隔离了这些详细的工作——主代理仅接收最终结果，而不是产生该结果的数十个工具调用。</p>
-<p><strong id="when-to-use-subagents">何时使用子智能体：</strong></p>
-<ul>
-<li>✅ 多步骤任务会扰乱主要代理的上下文</li>
-<li>✅ 需要自定义说明或工具的专业领域</li>
-<li>✅ 需要不同模型能力的任务</li>
-<li>✅ 当你想让主要代理人专注于高层协调时</li>
-</ul>
-<p><strong id="when-not-to-use-subagents">何时不使用子智能体：</strong></p>
-<ul>
-<li>❌ 简单的单步任务</li>
-<li>❌ 当你需要维护中间上下文时</li>
-<li>❌ 当开销超过收益时</li>
-</ul>
-<h2 id="configuration">配置</h2>
-<p><code>subagents</code> 应该是字典或 <a href="https://reference.langchain.com/python/deepagents/middleware/subagents/CompiledSubAgent"><code>CompiledSubAgent</code></a> 对象的列表。有两种类型：</p>
-<h3 id="default-subagent">默认子智能体</h3>
-<p>Deep Agents 会自动添加同步 <code>general-purpose</code> 子智能体，除非您已提供具有该名称的同步子智能体。</p>
-<p><code>general-purpose</code> 子智能体默认具有文件系统工具，并且可以使用其他工具/中间件进行自定义。</p>
-<ul>
-<li>要替换它，请传递您自己的名为 <code>general-purpose</code> 的子智能体。</li>
-<li>要重命名或重新提示自动添加的版本，请在活动的 <a href="profiles.html#harness-profiles">线束配置文件</a> 上设置 <code>general_purpose_subagent=GeneralPurposeSubagentProfile(...)</code>。</li>
-<li>要禁用它，请参阅下面的<a href="#running-without-subagents">在没有子智能体的情况下运行</a>。</li>
-</ul>
-<h3 id="running-without-subagents">在没有子智能体的情况下运行</h3>
-<p>要在没有 <code>task</code> 工具的情况下运行代理，请执行以下两项操作：</p>
-<ol>
-<li>在活动的<a href="profiles.html#harness-profiles">线束配置文件</a> 上设置 <code>general_purpose_subagent=GeneralPurposeSubagentProfile(enabled=False)</code>。</li>
-<li>在 <code>create_deep_agent</code> 上不通过 <code>subagents=</code> 传递同步子智能体。</li>
-</ol>
-<p>当至少存在一个同步子智能体时，深度智能体仅附加 <a href="https://reference.langchain.com/python/deepagents/middleware/subagents/SubAgentMiddleware"><code>SubAgentMiddleware</code></a>（和 <code>task</code> 工具）。无论是默认代理还是调用者提供的代理，代理都可以在没有委派的情况下运行。</p>
-<p>异步子智能体不受影响 - 它们通过自己的中间件和工具流动，如<a href="async-subagents.html">异步子智能体</a>中所述。</p>
-<p>不要在这里获取 <code>excluded_middleware</code> - <code>SubAgentMiddleware</code> 是必需的脚手架，并且列出它会引发 <code>ValueError</code>。 <code>general_purpose_subagent.enabled = False</code> 旋钮是受支持的路径。</p>
-<h2 id="custom-subagents">自定义子智能体</h2>
-<p>您可以使用 <code>subagents</code> 参数使用特定工具定义专用子智能体。例如，担任代码审查员、网络研究员或测试运行员。</p>
-<p>对于大多数用例，使用 <a href="#subagent-dictionary-based">SubAgent dictionaries</a> 将子智能体定义为字典。对于复杂的工作流程，请使用 <a href="#compiledsubagent"><code>CompiledSubAgent</code></a>：</p>
-<h3 id="subagent-dictionary-based">子智能体（基于字典）</h3>
-<p>将子智能体定义为与 <a href="https://reference.langchain.com/python/deepagents/middleware/subagents/SubAgent"><code>SubAgent</code></a> 规范匹配的字典，其中包含以下字段：</p>
-<table>
-<thead>
-<tr>
-<th>场地</th>
-<th>类型</th>
-<th>描述</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>name</code></td>
-<td><code>str</code></td>
-<td>必需的。子智能体的唯一标识符。主代理在调用 <code>task()</code> 工具时使用此名称。子智能体名称成为 <code>AIMessage</code> 和流式传输的元数据，这有助于区分代理。</td>
-</tr>
-<tr>
-<td><code>description</code></td>
-<td><code>str</code></td>
-<td>必需的。描述该子智能体的作用。具体并以行动为导向。主代理使用它来决定何时进行委托。</td>
-</tr>
-<tr>
-<td><code>system_prompt</code></td>
-<td><code>str</code></td>
-<td><code>mode: "isolated"</code> 是必需的（默认值）。子智能体的说明。自定义隔离子智能体必须定义自己的。包括工具使用指导和输出格式要求。<br/>不继承自主代理。对于 <code>mode: "fork"</code>，请忽略此字段，除非您需要仅分叉附录。请参阅<a href="#forked-subagents">分叉子智能体</a>。</td>
-</tr>
-<tr>
-<td><code>mode</code></td>
-<td><code>"isolated"</code> |<code>"fork"</code></td>
-<td>选修的。上下文模式。默认为 <code>"isolated"</code>，其中子智能体仅看到委派的任务。设置为 <code>"fork"</code> 以继承父级的对话和系统提示。请参阅<a href="#forked-subagents">分叉子智能体</a>。</td>
-</tr>
-<tr>
-<td><code>tools</code></td>
-<td><code>list[Callable]</code></td>
-<td>选修的。子智能体可以使用的工具。保持最小化并仅包含需要的内容。<br/> 默认情况下继承自主代理。指定后，将完全覆盖继承的工具。</td>
-</tr>
-<tr>
-<td><code>model</code></td>
-<td><code>str</code> |<code>BaseChatModel</code></td>
-<td>选修的。覆盖主要代理的模型。省略使用主代理的模型。<br/> 默认继承主代理。您可以传递模型标识符字符串，如 <code>'openai:gpt-5.5'</code>（使用 <code>'provider:model'</code> 格式）或 LangChain 聊天模型对象（<code>init_chat_model("gpt-5.5")</code> 或 <code>ChatOpenAI(model="gpt-5.5")</code>）。</td>
-</tr>
-<tr>
-<td><code>middleware</code></td>
-<td><code>list[Middleware]</code></td>
-<td>选修的。用于自定义行为、日志记录或速率限制的附加中间件。<br/>不从主代理继承。合并到<a href="customization.html#synchronous-subagent-stack">同步子智能体堆栈</a>：<code>.name</code> 与默认值匹配的实例将其替换到位，其他任何内容都会在最后一个核心中间件条目之后、配置文件、提示缓存和内存之前落地。请参阅<a href="customization.html#override-a-default-middleware-instance">覆盖默认中间件实例</a>。例如，在此处包含带有 <code>tools</code> 白名单的 <a href="https://reference.langchain.com/python/deepagents/middleware/filesystem/FilesystemMiddleware"><code>FilesystemMiddleware</code></a> 实例，以独立于主代理限制子智能体的文件系统工具。有关详细信息，请参阅<a href="overview.html#virtual-filesystem-access">虚拟文件系统访问</a> 下的“限制文件系统工具”部分。</td>
-</tr>
-<tr>
-<td><code>interrupt_on</code></td>
-<td><code>dict[str, bool \| InterruptOnConfig]</code></td>
-<td>选修的。为特定工具配置<a href="human-in-the-loop.html">人机交互</a>。选项：<code>True</code>、<code>False</code> 或 <code>InterruptOnConfig</code> 与 <code>allowed_decisions</code>。需要checkpointer。<br/>默认继承自主代理。子智能体值覆盖默认值。</td>
-</tr>
-<tr>
-<td><code>skills</code></td>
-<td><code>list[str]</code></td>
-<td>选修的。 <a href="skills.html">技巧</a>源码路径。指定后，子智能体会从这些目录加载技能（例如，<code>["/skills/researcher/"]</code>，其子目录是技能的容器）。这允许子智能体具有与主代理不同的技能集。<br/>不从主代理继承。只有通用子智能体才能继承主代理的技能。当子智能体拥有技能时，它会运行自己独立的 <a href="https://reference.langchain.com/python/deepagents/middleware/skills/SkillsMiddleware"><code>SkillsMiddleware</code></a> 实例。技能状态是完全隔离的 - 子智能体加载的技能对父代理不可见，反之亦然。</td>
-</tr>
-<tr>
-<td><code>response_format</code></td>
-<td><code>ResponseFormat</code></td>
-<td>选修的。 <a href="https://docs.langchain.com/oss/python/langchain/structured-output">结构化输出</a> 子智能体的架构。设置后，父代理会收到 JSON 格式的子智能体结果，而不是自由格式的文本。接受 Pydantic 模型、<code>ToolStrategy(...)</code>、<code>ProviderStrategy(...)</code> 或原始架构类型。参见<a href="#structured-output">结构化输出</a>。</td>
-</tr>
-<tr>
-<td><code>permissions</code></td>
-<td><code>list[FilesystemPermission]</code></td>
-<td>选修的。子智能体的<a href="permissions.html">文件系统权限规则</a>。设置后，<strong id="replaces">完全替换</strong>父代理的权限。<br/> 默认继承自主代理。</td>
-</tr>
-</tbody>
-</table>
-<h3 id="compiledsubagent">编译子智能体</h3>
-<p>对于复杂的工作流程，请使用预构建的 LangGraph 图作为 <a href="https://reference.langchain.com/python/deepagents/middleware/subagents/CompiledSubAgent"><code>CompiledSubAgent</code></a>：</p>
-<table>
-<thead>
-<tr>
-<th>场地</th>
-<th>类型</th>
-<th>描述</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>name</code></td>
-<td><code>str</code></td>
-<td>必需的。子智能体的唯一标识符。子智能体名称成为 <code>AIMessage</code> 和流式传输的元数据，这有助于区分代理。</td>
-</tr>
-<tr>
-<td><code>description</code></td>
-<td><code>str</code></td>
-<td>必需的。该子智能体的作用。</td>
-</tr>
-<tr>
-<td><code>runnable</code></td>
-<td><code>Runnable</code></td>
-<td>必需的。编译好的 LangGraph 图（必须首先调用 <code>.compile()</code>）。</td>
-</tr>
-<tr>
-<td><code>mode</code></td>
-<td><code>"isolated"</code> |<code>"fork"</code></td>
-<td>选修的。默认为 <code>"isolated"</code>。设置为 <code>"fork"</code> 以继承父级的消息历史记录。无论哪种方式，编译的图形都会保持其自己的系统提示。请参阅<a href="#forked-subagents">分叉子智能体</a>。</td>
-</tr>
-</tbody>
-</table>
-<h2 id="using-subagent">使用子智能体</h2>
-<pre><code class="language-python">import os
+A deep agent can create subagents to delegate work. You can specify custom subagents in the `subagents` parameter. Subagents are useful for [context quarantine](https://www.dbreunig.com/2025/06/26/how-to-fix-your-context.html#context-quarantine) (keeping the main agent's context clean) and for providing specialized instructions.
+
+This page covers **synchronous** subagents, where the supervisor blocks until the subagent finishes. For long-running tasks, parallel workstreams, or cases where you need mid-flight steering and cancellation, see [Async subagents](/oss/python/deepagents/async-subagents).
+
+
+```mermaid
+graph TB
+    Main[Main Agent] --> |task tool| Sub[Subagent]
+
+    Sub --> Research[Research]
+    Sub --> Code[Code]
+    Sub --> General[General]
+
+    Research --> |isolated work| Result[Final Result]
+    Code --> |isolated work| Result
+    General --> |isolated work| Result
+
+    Result --> Main
+```
+
+
+## Why use subagents?
+
+Subagents solve the **context bloat problem**. When agents use tools with large outputs (web search, file reads, database queries), the context window fills up quickly with intermediate results. Subagents isolate this detailed work—the main agent receives only the final result, not the dozens of tool calls that produced it.
+
+**When to use subagents:**
+
+* ✅ Multi-step tasks that would clutter the main agent's context
+* ✅ Specialized domains that need custom instructions or tools
+* ✅ Tasks requiring different model capabilities
+* ✅ When you want to keep the main agent focused on high-level coordination
+
+**When NOT to use subagents:**
+
+* ❌ Simple, single-step tasks
+* ❌ When you need to maintain intermediate context
+* ❌ When the overhead outweighs benefits
+
+## Configuration
+
+`subagents` should be a list of dictionaries or [`CompiledSubAgent`](https://reference.langchain.com/python/deepagents/middleware/subagents/CompiledSubAgent) objects. There are two types:
+
+### Default subagent
+
+Deep Agents automatically adds a synchronous `general-purpose` subagent unless you already provide a synchronous subagent with that name.
+
+The `general-purpose` subagent has filesystem tools by default and can be customized with additional tools/middleware.
+
+* To replace it, pass your own subagent named `general-purpose`.
+* To rename or re-prompt the auto-added version, set `general_purpose_subagent=GeneralPurposeSubagentProfile(...)` on the active [harness profile](/oss/python/deepagents/profiles#harness-profiles).
+* To disable it, see [Running without subagents](#running-without-subagents) below.
+
+### Running without subagents
+
+To run an agent without the `task` tool, do two things:
+
+1. Set `general_purpose_subagent=GeneralPurposeSubagentProfile(enabled=False)` on the active [harness profile](/oss/python/deepagents/profiles#harness-profiles).
+2. Pass no synchronous subagents via `subagents=` on `create_deep_agent`.
+
+Deep Agents only attaches [`SubAgentMiddleware`](https://reference.langchain.com/python/deepagents/middleware/subagents/SubAgentMiddleware) (and the `task` tool) when at least one synchronous subagent exists. With neither the default nor a caller-provided one, the agent runs without delegation.
+
+Async subagents are unaffected—they flow through their own middleware and tools, described in [Async subagents](/oss/python/deepagents/async-subagents).
+
+  Don't reach for `excluded_middleware` here—`SubAgentMiddleware` is required scaffolding and listing it raises `ValueError`. The `general_purpose_subagent.enabled = False` knob is the supported path.
+
+## Custom subagents
+
+You can define specialized subagents with specific tool by using the `subagents` parameter. For example to serve as a code reviewer, web researcher, or test runner.
+
+For most use cases, define subagents as dictionaries with [SubAgent dictionaries](#subagent-dictionary-based). For complex workflows, use a [`CompiledSubAgent`](#compiledsubagent):
+
+### SubAgent (Dictionary-based)
+
+Define subagents as dictionaries matching the [`SubAgent`](https://reference.langchain.com/python/deepagents/middleware/subagents/SubAgent) spec with the following fields:
+
+| Field             | Type                                   | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ----------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `name`            | `str`                                  | Required. Unique identifier for the subagent. The main agent uses this name when calling the `task()` tool. The subagent name becomes metadata for `AIMessage`s and for streaming, which helps to differentiate between agents.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `description`     | `str`                                  | Required. Description of what this subagent does. Be specific and action-oriented. The main agent uses this to decide when to delegate.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `system_prompt`   | `str`                                  | Required for `mode: "isolated"` (the default). Instructions for the subagent. Custom isolated subagents must define their own. Include tool usage guidance and output format requirements.<br />Does not inherit from main agent. For `mode: "fork"`, omit this field unless you need a fork-only addendum. See [Forked subagents](#forked-subagents).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `mode`            | `"isolated"` \| `"fork"`               | Optional. Context mode. Defaults to `"isolated"`, where the subagent only sees the delegated task. Set to `"fork"` to inherit the parent's conversation and system prompt instead. See [Forked subagents](#forked-subagents).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `tools`           | `list[Callable]`                       | Optional. Tools the subagent can use. Keep this minimal and include only what's needed.<br />Inherits from main agent by default. When specified, overrides the inherited tools entirely.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `model`           | `str` \| `BaseChatModel`               | Optional. Overrides the main agent's model. Omit to use the main agent's model.<br />Inherits from main agent by default. You can pass either a model identifier string like `'openai:gpt-5.5'` (using the `'provider:model'` format) or a LangChain chat model object (`init_chat_model("gpt-5.5")` or `ChatOpenAI(model="gpt-5.5")`).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `middleware`      | `list[Middleware]`                     | Optional. Additional middleware for custom behavior, logging, or rate limiting.<br />Does not inherit from the main agent. Merged into the [synchronous subagent stack](/oss/python/deepagents/customization#synchronous-subagent-stack): an instance whose `.name` matches a default replaces it in place, anything else lands after the last core middleware entry and before profile, prompt-caching, and memory. See [Override a default middleware instance](/oss/python/deepagents/customization#override-a-default-middleware-instance). For example, include a [`FilesystemMiddleware`](https://reference.langchain.com/python/deepagents/middleware/filesystem/FilesystemMiddleware) instance with a `tools` allowlist here to restrict the subagent's filesystem tools independently of the main agent. For more information, see the "Restricting filesystem tools" section under [Virtual filesystem access](/oss/python/deepagents/overview#virtual-filesystem-access). |
+| `interrupt_on`    | `dict[str, bool \| InterruptOnConfig]` | Optional. Configure [human-in-the-loop](/oss/python/deepagents/human-in-the-loop) for specific tools. Options:`True`, `False`, or an `InterruptOnConfig` with `allowed_decisions`. Requires checkpointer.<br />Inherits from main agent by default. Subagent value overrides the default.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `skills`          | `list[str]`                            | Optional. [Skills](/oss/python/deepagents/skills) source paths. When specified, the subagent loads skills from these directories (for example, `["/skills/researcher/"]`, a container whose subdirectories are skills). This allows subagents to have different skill sets than the main agent.<br />Does not inherit from main agent. Only the general-purpose subagent inherits the main agent's skills. When a subagent has skills, it runs its own independent [`SkillsMiddleware`](https://reference.langchain.com/python/deepagents/middleware/skills/SkillsMiddleware) instance. Skill state is fully isolated—a subagent's loaded skills are not visible to the parent, and vice versa.                                                                                                                                                                                                                                                                                      |
+| `response_format` | `ResponseFormat`                       | Optional. [Structured output](/oss/python/langchain/structured-output) schema for the subagent. When set, the parent receives the subagent's result as JSON instead of free-form text. Accepts Pydantic models, `ToolStrategy(...)`, `ProviderStrategy(...)`, or a raw schema type. See [Structured output](#structured-output).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `permissions`     | `list[FilesystemPermission]`           | Optional. [Filesystem permission rules](/oss/python/deepagents/permissions) for the subagent. When set, **replaces** the parent agent's permissions entirely.<br />Inherits from main agent by default.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+
+### CompiledSubAgent
+
+For complex workflows, use a prebuilt LangGraph graph as a [`CompiledSubAgent`](https://reference.langchain.com/python/deepagents/middleware/subagents/CompiledSubAgent):
+
+| Field         | Type                     | Description                                                                                                                                                                                        |
+| ------------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`        | `str`                    | Required. Unique identifier for the subagent. The subagent name becomes metadata for `AIMessage`s and for streaming, which helps to differentiate between agents.                                  |
+| `description` | `str`                    | Required. What this subagent does.                                                                                                                                                                 |
+| `runnable`    | `Runnable`               | Required. A compiled LangGraph graph (must call `.compile()` first).                                                                                                                               |
+| `mode`        | `"isolated"` \| `"fork"` | Optional. Defaults to `"isolated"`. Set to `"fork"` to inherit the parent's message history. The compiled graph keeps its own system prompt either way. See [Forked subagents](#forked-subagents). |
+
+## Using SubAgent
+
+
+```python
+import os
 from typing import Literal
 
 from deepagents import create_deep_agent
@@ -193,15 +144,22 @@ agent = create_deep_agent(
     model="google_genai:gemini-3.6-flash",
     subagents=subagents,
 )
-</code></pre>
-<h2 id="using-compiledsubagent">使用 CompiledSubAgent</h2>
-<p>对于更复杂的用例，您可以为自定义子智能体提供 <a href="https://reference.langchain.com/python/deepagents/middleware/subagents/CompiledSubAgent"><code>CompiledSubAgent</code></a>。您可以使用 LangChain 的 <a href="https://reference.langchain.com/python/langchain/agents/factory/create_agent"><code>create_agent</code></a> 创建自定义子智能体，或者使用 <a href="https://docs.langchain.com/oss/python/langgraph/graph-api">graph API</a> 创建自定义 LangGraph 图形。</p>
-<p>如果您要创建自定义 LangGraph 图，请确保该图具有 <a href="https://docs.langchain.com/oss/python/langgraph/quickstart#2-define-state">名为 <code>"messages"</code> 的状态键</a>：</p>
-<pre><code class="language-python">from deepagents import CompiledSubAgent, create_deep_agent
+```
+
+
+## Using CompiledSubAgent
+
+For more complex use cases, you can provide your custom subagents with [`CompiledSubAgent`](https://reference.langchain.com/python/deepagents/middleware/subagents/CompiledSubAgent).
+You can create a custom subagent using LangChain's [`create_agent`](https://reference.langchain.com/python/langchain/agents/factory/create_agent) or by making a custom LangGraph graph using the [graph API](/oss/python/langgraph/graph-api).
+
+If you're creating a custom LangGraph graph, make sure that the graph has a [state key called `"messages"`](/oss/python/langgraph/quickstart#2-define-state):
+
+```python
+from deepagents import CompiledSubAgent, create_deep_agent
 from langchain.agents import create_agent
 
 
-def internet_search(query: str) -&gt; str:
+def internet_search(query: str) -> str:
     """Run a web search."""
     return f"search results for {query}"
 
@@ -232,12 +190,14 @@ agent = create_deep_agent(
     system_prompt=research_instructions,
     subagents=subagents,
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import CompiledSubAgent, create_deep_agent
+```
+
+```python
+from deepagents import CompiledSubAgent, create_deep_agent
 from langchain.agents import create_agent
 
 
-def internet_search(query: str) -&gt; str:
+def internet_search(query: str) -> str:
     """Run a web search."""
     return f"search results for {query}"
 
@@ -268,12 +228,14 @@ agent = create_deep_agent(
     system_prompt=research_instructions,
     subagents=subagents,
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import CompiledSubAgent, create_deep_agent
+```
+
+```python
+from deepagents import CompiledSubAgent, create_deep_agent
 from langchain.agents import create_agent
 
 
-def internet_search(query: str) -&gt; str:
+def internet_search(query: str) -> str:
     """Run a web search."""
     return f"search results for {query}"
 
@@ -304,12 +266,14 @@ agent = create_deep_agent(
     system_prompt=research_instructions,
     subagents=subagents,
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import CompiledSubAgent, create_deep_agent
+```
+
+```python
+from deepagents import CompiledSubAgent, create_deep_agent
 from langchain.agents import create_agent
 
 
-def internet_search(query: str) -&gt; str:
+def internet_search(query: str) -> str:
     """Run a web search."""
     return f"search results for {query}"
 
@@ -340,12 +304,14 @@ agent = create_deep_agent(
     system_prompt=research_instructions,
     subagents=subagents,
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import CompiledSubAgent, create_deep_agent
+```
+
+```python
+from deepagents import CompiledSubAgent, create_deep_agent
 from langchain.agents import create_agent
 
 
-def internet_search(query: str) -&gt; str:
+def internet_search(query: str) -> str:
     """Run a web search."""
     return f"search results for {query}"
 
@@ -376,12 +342,14 @@ agent = create_deep_agent(
     system_prompt=research_instructions,
     subagents=subagents,
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import CompiledSubAgent, create_deep_agent
+```
+
+```python
+from deepagents import CompiledSubAgent, create_deep_agent
 from langchain.agents import create_agent
 
 
-def internet_search(query: str) -&gt; str:
+def internet_search(query: str) -> str:
     """Run a web search."""
     return f"search results for {query}"
 
@@ -412,12 +380,14 @@ agent = create_deep_agent(
     system_prompt=research_instructions,
     subagents=subagents,
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import CompiledSubAgent, create_deep_agent
+```
+
+```python
+from deepagents import CompiledSubAgent, create_deep_agent
 from langchain.agents import create_agent
 
 
-def internet_search(query: str) -&gt; str:
+def internet_search(query: str) -> str:
     """Run a web search."""
     return f"search results for {query}"
 
@@ -448,41 +418,55 @@ agent = create_deep_agent(
     system_prompt=research_instructions,
     subagents=subagents,
 )
-</code></pre>
-<h2 id="forked-subagents">分叉子智能体</h2>
-<p>默认情况下，子智能体以 <code>mode: "isolated"</code> 运行：它只看到您提供的任务描述，并且不记得导致委派的对话。 <strong id="forked-subagent">分叉子智能体</strong> (<code>mode: "fork"</code>) 继承了父代理的完整对话历史记录和确切的系统提示。</p>
-<p>当子智能体的任务是继续父代理已开始的工作时，请使用分叉子智能体，例如工作代理拾取父代理已诊断的修复，或为事件调查起草事后分析的子智能体。由于分叉是您在子智能体本身上设置的模式，因此这是您在定义它时做出的决定。</p>
-<pre><code class="language-mermaid">%%{init: {"flowchart": {"subGraphTitleMargin": {"top": 12, "bottom": 4}}}}%%
+```
+
+## Forked subagents
+
+By default, a subagent runs with `mode: "isolated"`: it sees only the task description you give it and has no memory of the conversation that led up to the delegation. A **forked subagent** (`mode: "fork"`) inherits the parent's full conversation history and exact system prompt instead.
+
+Use forked subagents when the subagent's task is to continue the work the parent already started, like a worker agent that picks up a fix the parent has already diagnosed, or a subagent that drafts the postmortem for an incident investigation. Since forking is a mode you set on the subagent itself, that's a decision you make when you define it.
+
+
+```mermaid
+%%{init: {"flowchart": {"subGraphTitleMargin": {"top": 12, "bottom": 4}}}}%%
 graph TD
     Message["'Review PR #482'"]
-    Analysis["Parent already found:&lt;br/&gt;tokens logged in plaintext,&lt;br/&gt;no expiry check on refresh"]
-    Delegate["Delegate: draft comments&lt;br/&gt;for the issues found"]
-    Message --&gt; Analysis --&gt; Delegate
+    Analysis["Parent already found:<br/>tokens logged in plaintext,<br/>no expiry check on refresh"]
+    Delegate["Delegate: draft comments<br/>for the issues found"]
+    Message --> Analysis --> Delegate
 
     subgraph Isolated["`**Isolated subagent**`"]
-        IOut["Sees only the task description&lt;br/&gt;starts from nothing, re-reviews the diff"]
+        IOut["Sees only the task description<br/>starts from nothing, re-reviews the diff"]
     end
 
     subgraph Forked["`**Forked subagent**`"]
-        FOut["Sees parent history + continuation preamble&lt;br/&gt;already knows the issues, writes comments directly"]
+        FOut["Sees parent history + continuation preamble<br/>already knows the issues, writes comments directly"]
     end
 
-    Delegate --&gt;|task description only| Isolated
-    Delegate --&gt;|parent history + continuation preamble| Forked
+    Delegate -->|task description only| Isolated
+    Delegate -->|parent history + continuation preamble| Forked
 
     classDef process fill:#E5F4FF,stroke:#006DDD,stroke-width:2px,color:#030710
     classDef output fill:#F6FFDB,stroke:#6E8900,stroke-width:2px,color:#2E3900
     class Message,Analysis,Delegate process
     class IOut,FOut output
-</code></pre>
-<p>子智能体分叉需要 <code>deepagents&gt;=0.7.13</code>。它处于<a href="https://docs.langchain.com/oss/python/versioning"><strong id="beta">测试版</strong></a>； API 和行为可能会在版本之间发生变化。</p>
-<h3 id="configure-a-forked-subagent">配置分叉子智能体</h3>
-<p>在 <a href="https://reference.langchain.com/python/deepagents/middleware/subagents/SubAgent"><code>SubAgent</code></a> 上设置 <code>mode: "fork"</code>（默认为 <code>mode: "isolated"</code>）。所有 <a href="https://reference.langchain.com/python/deepagents/middleware/subagents/SubAgent"><code>SubAgent</code></a> 字段均可用：<code>name</code>、<code>description</code>、<code>tools</code>、<code>model</code>、<code>middleware</code>、<code>interrupt_on</code>、<code>permissions</code> 和<code>response_format</code>。</p>
-<p>如果提供 <code>skills</code>，则会被拒绝。 <code>system_prompt</code> 是允许的，并作为附录附加到父级继承的提示符中，但这样做通常会破坏提示符缓存，因此除非您对仅 fork 指令有特定需要，否则请将其保留为未设置。</p>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+  Subagent forking requires `deepagents>=0.7.13`. It is in [**beta**](/oss/python/versioning); APIs and behavior may change between releases.
+
+### Configure a forked subagent
+
+Set `mode: "fork"` on a [`SubAgent`](https://reference.langchain.com/python/deepagents/middleware/subagents/SubAgent) (the default is `mode: "isolated"`). All [`SubAgent`](https://reference.langchain.com/python/deepagents/middleware/subagents/SubAgent) fields are available:
+`name`, `description`, `tools`, `model`, `middleware`, `interrupt_on`, `permissions`, and `response_format`.
+
+`skills` is rejected if provided. `system_prompt` is allowed and is appended to the parent's inherited prompt as an addendum, but doing so typically breaks the prompt cache, so leave it unset unless you have a specific need for fork-only instructions.
 
 
-def read_diff(path: str) -&gt; str:
+```python
+from deepagents import create_deep_agent
+
+
+def read_diff(path: str) -> str:
     """Read a file's diff."""
     return f"diff for {path}"
 
@@ -510,10 +494,16 @@ result = agent.invoke(
         ]
     }
 )
-</code></pre>
-<h3 id="how-it-works">它是如何运作的</h3>
-<p>分叉不会获得新的任务描述。它获取父级自己的对话，但有一个更改：委托给它的尾随调用被删除，并替换为一个简短的前导码，将上面的消息标记为延续，而不是新的请求。当 fork 完成时，它的答案会作为正常的工具结果返回，并且父级会从它停止的地方继续。</p>
-<pre><code class="language-python"># What the parent has, right before delegating
+```
+
+
+### How it works
+
+A fork does not get a fresh task description. It gets the parent's own conversation, with one change: the trailing call that delegated to it is dropped and replaced with a short preamble marking the messages above as a continuation, not a fresh request. When the fork finishes, its answer comes back as a normal tool result, and the parent picks up right where it left off.
+
+
+```python
+# What the parent has, right before delegating
 [
     HumanMessage("Review the changes in PR #482"),
     AIMessage("", tool_calls=[{"name": "read_diff", "args": {"path": "src/auth/session.py"}}]),
@@ -532,53 +522,46 @@ result = agent.invoke(
     HumanMessage("Good catch. Draft review comments for those."),
     HumanMessage("Continuing as the subagent that was just invoked. Draft review comments for the two issues found above."),
 ]
-</code></pre>
-<p>重用父级的确切前缀还意味着 fork 可以重用父级的提示缓存，而不是冷启动，尽管与父级不同的工具使用仍然会错过。</p>
-<p><a href="https://reference.langchain.com/python/deepagents/middleware/subagents/CompiledSubAgent"><code>CompiledSubAgent</code></a> 也支持 <code>mode: "fork"</code>，尽管它保留自己的系统提示，因为图形已经构建。</p>
-<h3 id="when-to-use-forking">何时使用分叉</h3>
-<p>沿着这些维度比较隔离模式和分叉模式：</p>
-<table>
-<thead>
-<tr>
-<th>方面</th>
-<th>隔离（默认）</th>
-<th>叉状</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong id="context">语境</strong></td>
-<td>仅您传入的任务描述</td>
-<td>家长完整的通话记录和系统提示</td>
-</tr>
-<tr>
-<td><strong id="system-prompt-and-skills">系统提示及技巧</strong></td>
-<td>您将它们设置在子智能体上</td>
-<td>技能不可设置；系统提示符附加到父级提示符（破坏缓存，因此通常未设置）</td>
-</tr>
-<tr>
-<td><strong id="calling-other-subagents">呼叫其他子智能体</strong></td>
-<td>可以使用<code>task</code>工具</td>
-<td>不能使用<code>task</code>；必须自己完成工作</td>
-</tr>
-<tr>
-<td><strong id="best-for">最适合</strong></td>
-<td>不需要事先背景的重点工作</td>
-<td>家长已经开始继续调查</td>
-</tr>
-</tbody>
-</table>
-<h2 id="dynamic-subagents">动态子智能体</h2>
-<p>默认情况下，主代理通过 <code>task</code> 工具调用委托给子智能体（它可以一次性发出多个子智能体以并行运行它们）。连接了<a href="interpreters.html">解释器</a>后，代理可以<strong id="from-code">从代码</strong>分派子智能体——使用循环、分支和并行批处理来跨多个项目展开工作并以编程方式合成结果。这称为<a href="dynamic-subagents.html">动态子智能体</a>。</p>
-<p>当工作跨越多个独立单元（查看目录中的每个文件、对一批工单进行分类）、需要多个视角或从递归分析中受益时，可以使用动态子智能体。</p>
-<p>动态子智能体使用解释器运行时，该运行时位于 <a href="https://docs.langchain.com/oss/python/versioning"><strong>beta</strong></a> 中。 API 和生命周期行为可能会在版本之间发生变化。</p>
-<h3 id="enable-dynamic-subagents">启用动态子智能体</h3>
-<p>一旦代理同时拥有子智能体和解释器中间件，动态子智能体就变得可用。安装 QuickJS 解释器包，然后将 <code>CodeInterpreterMiddleware</code> 添加到您的代理。</p>
-<pre><code class="language-bash">pip install -U "deepagents[quickjs]"
-</code></pre>
-<pre><code class="language-bash">uv add "deepagents[quickjs]"
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+
+Reusing the parent's exact prefix also means the fork can reuse the parent's prompt cache instead of starting cold, though tool use that diverges from the parent's will still miss.
+
+A [`CompiledSubAgent`](https://reference.langchain.com/python/deepagents/middleware/subagents/CompiledSubAgent) supports `mode: "fork"` too, though it keeps its own system prompt since the graph is already built.
+
+### When to use forking
+
+Compare isolated and forked modes along these dimensions:
+
+| Dimension                    | Isolated (default)                           | Forked                                                                                             |
+| ---------------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| **Context**                  | Only the task description you pass in        | The parent's full conversation history and system prompt                                           |
+| **System prompt and skills** | You set them on the subagent                 | Skills not settable; system prompt appends to the parent's (breaks caching, so usually left unset) |
+| **Calling other subagents**  | Can use the `task` tool                      | Cannot use `task`; must finish the work itself                                                     |
+| **Best for**                 | Focused work that needs little prior context | Continuing an investigation the parent has already started                                         |
+
+## Dynamic subagents
+
+By default, the main agent delegates to subagents through `task` tool calls (it can issue several in a single turn to run them in parallel). With an [interpreter](/oss/python/deepagents/interpreters) attached, the agent can instead dispatch subagents **from code**—using loops, branches, and parallel batches to fan work out across many items and synthesize the results programmatically. This is called [dynamic subagents](/oss/python/deepagents/dynamic-subagents).
+
+Reach for dynamic subagents when work spans many independent units (reviewing every file in a directory, triaging a batch of tickets), needs multiple perspectives, or benefits from recursive analysis.
+
+  Dynamic subagents use the interpreter runtime, which is in [**beta**](/oss/python/versioning). APIs and lifecycle behavior may change between releases.
+
+### Enable dynamic subagents
+
+Dynamic subagents become available as soon as the agent has both subagents and the interpreter middleware. Install the QuickJS interpreter package, then add `CodeInterpreterMiddleware` to your agent.
+
+```bash
+pip install -U "deepagents[quickjs]"
+```
+
+```bash
+uv add "deepagents[quickjs]"
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -590,8 +573,10 @@ agent = create_deep_agent(
     }],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -603,8 +588,10 @@ agent = create_deep_agent(
     }],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -616,8 +603,10 @@ agent = create_deep_agent(
     }],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -629,8 +618,10 @@ agent = create_deep_agent(
     }],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -642,8 +633,10 @@ agent = create_deep_agent(
     }],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -655,8 +648,10 @@ agent = create_deep_agent(
     }],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -668,35 +663,68 @@ agent = create_deep_agent(
     }],
     middleware=[CodeInterpreterMiddleware()],
 )
-</code></pre>
-<p>只要代理具有子智能体和解释器中间件，动态子智能体调度就会默认启用。通过<code>CodeInterpreterMiddleware(subagents=False)</code>要求通过正常的<code>task</code>刀具路径调度。解释器需要 <code>langchain-quickjs&gt;=0.2.0</code> 和 Python <code>&gt;=3.11</code>。</p>
-<h3 id="trigger-dynamic-orchestration">触发动态编排</h3>
-<p>动态调度是隐式的：代理决定根据任务的形状（而不是每次调用标志）从代码中分散工作。</p>
-<p><strong id="the-word-workflow-is-a-useful-trigger">“工作流”一词是一个有用的触发器。</strong> 内置解释器系统提示将“工作流”视为通过解释器组织工作的信号 - 从代码中调度带有 <code>task()</code> 的子智能体。将请求表述为“工作流”是一个有意的杠杆，您可以选择动态编排：当您希望代理从代码中展开工作时，请包含它。对于单一的直接授权，请清楚地表达请求。</p>
-<p>例如，将请求表述为“工作流”，选择从代码中进行扇出：</p>
-<pre><code class="language-python">result = agent.invoke({
+```
+
+  Dynamic subagent dispatch is on by default whenever the agent has subagents and the interpreter middleware. Pass `CodeInterpreterMiddleware(subagents=False)` to require dispatch through the normal `task` tool path. Interpreters require `langchain-quickjs>=0.2.0` and Python `>=3.11`.
+
+### Trigger dynamic orchestration
+
+Dynamic dispatch is implicit: the agent decides to fan work out from code based on the shape of the task, not a per-call flag.
+
+  **The word "workflow" is a useful trigger.** The built-in interpreter system prompt treats a "workflow" as a signal to organize work through the interpreter—dispatching subagents with `task()` from code. Phrasing a request as a "workflow" is a deliberate lever you can pull to opt into dynamic orchestration: include it when you want the agent to fan work out from code. For a single, direct delegation, phrase the request plainly instead.
+
+For example, phrasing the request as a "workflow" opts into fan-out from code:
+
+
+```python
+result = agent.invoke({
     "messages": [{"role": "user", "content": "Run a workflow that reviews every file in src/routes/ and summarizes the top risks."}]
 })
-</code></pre>
-<p>有关配置、高级编排模式和安全注意事项，请参阅<a href="dynamic-subagents.html">动态子智能体</a>。</p>
-<h3 id="use-with-a-coding-agent">与编码剂一起使用</h3>
-<p>尝试动态子智能体的最快方法是使用 <code>dcode</code>，这是基于深度智能体构建的 LangChain 终端编程智能体。它附带启用的代码解释器，因此动态子智能体开箱即用，无需连接任何东西。</p>
-<p>安装<code>dcode</code>：</p>
-<pre><code class="language-bash">curl -LsSf https://langch.in/dcode | bash
-</code></pre>
-<p>运行它：</p>
-<pre><code class="language-bash">dcode
-</code></pre>
-<p>要触发动态子智能体，请要求“工作流程”。该代理不会编写工作本身或通过其本机 <code>task</code> 工具管理扇出，而是编写一个编排脚本来调用内置的 <code>task()</code> 全局并在代码解释器中运行它。例如：“运行工作流来检查 src/ 中的每个文件以进行 SQL 注入。”</p>
-<p>当子智能体生成时，<code>dcode</code> 在动态子智能体面板中实时显示它们，并按调度分组为阶段。</p>
-<p><img alt="dcode 动态子智能体面板显示按调度分组为阶段的生成子智能体" data-path="oss/images/deepagents/dcode-dynamic-subagents-panel.png" height="1832" src="../assets/e75e1d152da671d8.png" width="3134"/></p>
-<p><code>dcode</code> 是尝试此操作的最快方法，但您也可以在您选择的编程智能体中使用动态子智能体而不是 <a href="acp.html">ACP</a>（例如，Zed）。</p>
-<h2 id="streaming">流媒体</h2>
-<p>深度智能体支持来自协调器和每个委派子智能体的流式更新。</p>
-<p>使用 <a href="event-streaming.html"><code>stream_events</code></a> 获取类型化投影（子智能体、消息、工具调用和值的单独迭代器），以便您可以独立使用每个投影。</p>
-<h3 id="stream-subagent-progress">流式传输子智能体进度</h3>
-<p>最简单的模式是迭代 <code>stream.subagents</code> 来跟踪每个委派任务的启动、运行和完成。每个子智能体句柄公开 <code>.name</code>、<code>.messages</code>、<code>.tool_calls</code> 和 <code>.output</code>。</p>
-<pre><code class="language-python">from deepagents import (
+```
+
+
+For configuration, advanced orchestration patterns, and safety notes, see [Dynamic subagents](/oss/python/deepagents/dynamic-subagents).
+
+### Use with a coding agent
+
+The fastest way to try dynamic subagents is with `dcode`, the LangChain terminal coding agent built on a Deep Agent. It ships with the code interpreter enabled, so dynamic subagents work out of the box with nothing to wire up.
+
+Install `dcode`:
+
+
+```bash
+curl -LsSf https://langch.in/dcode | bash
+```
+
+
+Run it:
+
+
+```bash
+dcode
+```
+
+
+To trigger dynamic subagents, ask for a "workflow". Instead of grinding through the work itself or managing fan-out through its native `task` tool, the agent writes an orchestration script that calls the built-in `task()` global and runs it in the code interpreter. For example: "Run a workflow to review every file in src/ for SQL injection."
+
+As subagents spawn, `dcode` shows them live in the dynamic subagents panel, grouped into phases by dispatch.
+
+  <img src="https://mintcdn.com/langchain-5e9cc07a/mcM5dSw40KzBUENf/oss/images/deepagents/dcode-dynamic-subagents-panel.png?fit=max&auto=format&n=mcM5dSw40KzBUENf&q=85&s=bc20632b54e21fecfc5ff4f8d169a2c7" alt="The dcode dynamic subagents panel showing spawned subagents grouped into phases by dispatch" width="3134" height="1832" data-path="oss/images/deepagents/dcode-dynamic-subagents-panel.png" />
+
+`dcode` is the fastest way to try this, but you can also use dynamic subagents in the coding agent of your choice over [ACP](/oss/python/deepagents/acp) (for example, Zed).
+
+## Streaming
+
+Deep Agents support streaming updates from both the coordinator and every delegated subagent.
+
+Use [`stream_events`](/oss/python/deepagents/event-streaming) to get typed projections—separate iterators for subagents, messages, tool calls, and values—so you can consume each independently.
+
+### Stream subagent progress
+
+The simplest pattern is to iterate `stream.subagents` to track each delegated task as it starts, runs, and completes. Each subagent handle exposes `.name`, `.messages`, `.tool_calls`, and `.output`.
+
+```python
+from deepagents import (
     create_deep_agent
 )
 
@@ -748,8 +776,10 @@ if __name__ == "__main__":
             for message in item.messages:
                 print(f"[{item.name}]", message.text)
             print(f"[{item.name}] status: {item.status}")
-</code></pre>
-<pre><code class="language-python">from deepagents import (
+```
+
+```python
+from deepagents import (
     create_deep_agent
 )
 
@@ -801,8 +831,10 @@ if __name__ == "__main__":
             for message in item.messages:
                 print(f"[{item.name}]", message.text)
             print(f"[{item.name}] status: {item.status}")
-</code></pre>
-<pre><code class="language-python">from deepagents import (
+```
+
+```python
+from deepagents import (
     create_deep_agent
 )
 
@@ -854,8 +886,10 @@ if __name__ == "__main__":
             for message in item.messages:
                 print(f"[{item.name}]", message.text)
             print(f"[{item.name}] status: {item.status}")
-</code></pre>
-<pre><code class="language-python">from deepagents import (
+```
+
+```python
+from deepagents import (
     create_deep_agent
 )
 
@@ -907,8 +941,10 @@ if __name__ == "__main__":
             for message in item.messages:
                 print(f"[{item.name}]", message.text)
             print(f"[{item.name}] status: {item.status}")
-</code></pre>
-<pre><code class="language-python">from deepagents import (
+```
+
+```python
+from deepagents import (
     create_deep_agent
 )
 
@@ -960,8 +996,10 @@ if __name__ == "__main__":
             for message in item.messages:
                 print(f"[{item.name}]", message.text)
             print(f"[{item.name}] status: {item.status}")
-</code></pre>
-<pre><code class="language-python">from deepagents import (
+```
+
+```python
+from deepagents import (
     create_deep_agent
 )
 
@@ -1013,8 +1051,10 @@ if __name__ == "__main__":
             for message in item.messages:
                 print(f"[{item.name}]", message.text)
             print(f"[{item.name}] status: {item.status}")
-</code></pre>
-<pre><code class="language-python">from deepagents import (
+```
+
+```python
+from deepagents import (
     create_deep_agent
 )
 
@@ -1066,55 +1106,81 @@ if __name__ == "__main__":
             for message in item.messages:
                 print(f"[{item.name}]", message.text)
             print(f"[{item.name}] status: {item.status}")
-</code></pre>
-<h3 id="langsmith-tracing">兰史密斯追踪</h3>
-<p>当您的深度智能体运行时，子智能体或协调器执行的所有运行都将在 <code>lc_agent_name</code> 键下的元数据中包含代理名称，例如 <code>{'lc_agent_name': 'research-agent'}</code>。这使您可以在 LangSmith 中通过子智能体来识别和过滤运行。</p>
-<p><img alt="显示元数据的 LangSmith 示例跟踪" data-path="oss/images/deepagents/deepagents-langsmith.png" height="866" src="../assets/5c447755f3cf2f9d.png" width="907"/></p>
-<p>在 <a href="https://smith.langchain.com?utm_source=docs\&amp;utm_medium=cta\&amp;utm_campaign=langsmith-signup\&amp;utm_content=oss-deepagents-subagents">LangSmith</a> 中打开运行，将协调器跟踪与每个子智能体运行进行比较。按照<a href="https://docs.langchain.com/langsmith/observability-quickstart">可观测性快速入门</a> 进行设置。我们建议您还设置 <a href="https://docs.langchain.com/langsmith/engine">LangSmith Engine</a>，它可以监视您的痕迹、检测问题并提出修复建议。</p>
-<h2 id="filter-by-subagent-in-langsmith">按 LangSmith 中的子智能体过滤</h2>
-<p>由于每个子智能体的 <code>name</code> 都会在其生成的每次运行中写入 <code>lc_agent_name</code> 元数据键，因此您可以使用 LangSmith 的元数据过滤将所有运行与特定子智能体隔离，这对于调试、监控或比较子智能体随时间的行为非常有用。</p>
-<h3 id="filter-in-the-langsmith-ui">LangSmith UI 中的过滤器</h3>
-<ol>
-<li>在 <a href="https://smith.langchain.com?utm_source=docs\&amp;utm_medium=cta\&amp;utm_campaign=langsmith-signup\&amp;utm_content=oss-deepagents-subagents">LangSmith</a> 中打开您的跟踪项目。</li>
-<li>将跟踪项目页面上的视图切换到 <strong id="runs">Runs</strong> 以查看各个跨度。</li>
-<li>单击“<strong id="add-filter">添加过滤器</strong>”并选择“<strong id="metadata">元数据</strong>”。</li>
-<li>将 <strong id="key">Key</strong> 设置为 <code>lc_agent_name</code>，将 <strong id="value">Value</strong> 设置为子智能体名称，例如 <code>coordinator</code>。</li>
-</ol>
-<p><img alt="LangSmith 在 lc_agent_name 设置为协调器上使用元数据过滤器运行视图" data-path="langsmith/images/deepagents-lc-agent-name-filter.png" height="533" src="../assets/966fbf094047e332.png" width="1024"/></p>
-<p>这仅显示该子智能体生成的运行。您可以将过滤器保存为命名视图以供重复使用。有关过滤选项的完整参考，请参阅<a href="https://docs.langchain.com/langsmith/filter-traces-in-application">过滤跟踪</a>。</p>
-<h3 id="filter-programmatically-with-the-sdk">使用 SDK 以编程方式过滤</h3>
-<p>使用 LangSmith 过滤器查询语言中的 <code>has</code> 比较器来按元数据键值对匹配运行：</p>
-<pre><code class="language-python">from langsmith import Client
+```
+
+### LangSmith tracing
+
+As your deep agent runs, all runs executed by a subagent or the coordinator will have the agent name in their metadata under the `lc_agent_name` key—for example, `{'lc_agent_name': 'research-agent'}`. This lets you identify and filter runs by subagent in LangSmith.
+
+<img src="https://mintcdn.com/langchain-5e9cc07a/IlqYrcANJ39avG84/oss/images/deepagents/deepagents-langsmith.png?fit=max&auto=format&n=IlqYrcANJ39avG84&q=85&s=4c3a1512fb27abc30da37751aee19afd" alt="LangSmith Example trace showing the metadata" width="907" height="866" data-path="oss/images/deepagents/deepagents-langsmith.png" />
+
+  Open the run in [LangSmith](https://smith.langchain.com?utm_source=docs\&utm_medium=cta\&utm_campaign=langsmith-signup\&utm_content=oss-deepagents-subagents) to compare the coordinator trace with each subagent run. Follow the [observability quickstart](/langsmith/observability-quickstart) to get set up. We recommend you also set up [LangSmith Engine](/langsmith/engine) which monitors your traces, detects issues, and proposes fixes.
+
+## Filter by subagent in LangSmith
+
+Because each subagent's `name` is written to the `lc_agent_name` metadata key on every run it produces, you can use LangSmith's metadata filtering to isolate all runs from a specific subagent — useful for debugging, monitoring, or comparing subagent behavior over time.
+
+### Filter in the LangSmith UI
+
+1. Open your tracing project in [LangSmith](https://smith.langchain.com?utm_source=docs\&utm_medium=cta\&utm_campaign=langsmith-signup\&utm_content=oss-deepagents-subagents).
+2. Switch the view to **Runs** on the Tracing project page to see individual spans.
+3. Click **Add filter** and select **Metadata**.
+4. Set the **Key** to `lc_agent_name` and the **Value** to the subagent name, for example `coordinator`.
+
+<img src="https://mintcdn.com/langchain-5e9cc07a/t_yuR4Fo_XGdcWGH/langsmith/images/deepagents-lc-agent-name-filter.png?fit=max&auto=format&n=t_yuR4Fo_XGdcWGH&q=85&s=ffc65c0b9b5292fce5f0589b8f2478ce" alt="LangSmith Runs view with a metadata filter on lc_agent_name set to coordinator" width="1024" height="533" data-path="langsmith/images/deepagents-lc-agent-name-filter.png" />
+
+This shows only the runs produced by that subagent. You can save the filter as a named view for reuse. For a full reference on filtering options, see [Filter traces](/langsmith/filter-traces-in-application).
+
+### Filter programmatically with the SDK
+
+Use the `has` comparator in the LangSmith filter query language to match runs by metadata key-value pair:
+
+
+```python
+from langsmith import Client
 
 client = Client()
 
 runs = client.list_runs(
-    project_name="&lt;your-project&gt;",
+    project_name="<your-project>",
     filter='has(metadata, \'{"lc_agent_name": "research-agent"}\')',
 )
 
 for run in runs:
     print(run.name, run.start_time, run.status)
-</code></pre>
-<p>要从<em>任何</em>命名的子智能体（不包括主代理）获取运行，请过滤根本具有 <code>lc_agent_name</code> 键的运行：</p>
-<pre><code class="language-python">runs = client.list_runs(
-    project_name="&lt;your-project&gt;",
+```
+
+
+To fetch runs from *any* named subagent (excluding the main agent), filter for runs that have the `lc_agent_name` key at all:
+
+
+```python
+runs = client.list_runs(
+    project_name="<your-project>",
     filter="has(metadata, 'lc_agent_name')",
 )
-</code></pre>
-<p>有关完整的过滤器查询语言参考，请参阅<a href="https://docs.langchain.com/langsmith/trace-query-syntax">跟踪查询语法</a>。</p>
-<h2 id="structured-output">结构化输出</h2>
-<p>子智能体支持<a href="https://docs.langchain.com/oss/python/langchain/structured-output">结构化输出</a>，因此父代理接收可预测、可解析的 JSON，而不是自由格式的文本。</p>
-<p>子智能体的结构化输出需要 <code>deepagents&gt;=0.5.3</code>。</p>
-<p>在子智能体配置上传递 <code>response_format</code>。当子智能体完成时，其结构化响应将被 JSON 序列化并作为 <code>ToolMessage</code> 内容返回到父代理。该模式接受 <a href="https://reference.langchain.com/python/langchain/agents/factory/create_agent"><code>create_agent</code></a> 支持的任何内容：Pydantic 模型、<code>ToolStrategy(...)</code>、<code>ProviderStrategy(...)</code> 或原始模式类型。</p>
-<pre><code class="language-python">import asyncio
+```
+
+
+For the full filter query language reference, see [Trace query syntax](/langsmith/trace-query-syntax).
+
+## Structured output
+
+Subagents support [structured output](/oss/python/langchain/structured-output), so the parent agent receives predictable, parseable JSON instead of free-form text.
+
+  Structured output for subagents requires `deepagents>=0.5.3`.
+
+Pass `response_format` on the subagent config. When the subagent finishes, its structured response is JSON-serialized and returned as the `ToolMessage` content to the parent agent. The schema accepts anything supported by [`create_agent`](https://reference.langchain.com/python/langchain/agents/factory/create_agent): Pydantic models, `ToolStrategy(...)`, `ProviderStrategy(...)`, or a raw schema type.
+
+```python
+import asyncio
 
 from pydantic import BaseModel, Field
 
 from deepagents import create_deep_agent
 
 
-def web_search(query: str) -&gt; str:
+def web_search(query: str) -> str:
     """Search the web."""
     return f"web results for {query}"
 
@@ -1150,15 +1216,17 @@ result = asyncio.run(main())
 
 # The parent's ToolMessage contains JSON-serialized structured data:
 # '{"summary": "...", "confidence": 0.87, "sources": ["https://..."]}'
-</code></pre>
-<pre><code class="language-python">import asyncio
+```
+
+```python
+import asyncio
 
 from pydantic import BaseModel, Field
 
 from deepagents import create_deep_agent
 
 
-def web_search(query: str) -&gt; str:
+def web_search(query: str) -> str:
     """Search the web."""
     return f"web results for {query}"
 
@@ -1194,15 +1262,17 @@ result = asyncio.run(main())
 
 # The parent's ToolMessage contains JSON-serialized structured data:
 # '{"summary": "...", "confidence": 0.87, "sources": ["https://..."]}'
-</code></pre>
-<pre><code class="language-python">import asyncio
+```
+
+```python
+import asyncio
 
 from pydantic import BaseModel, Field
 
 from deepagents import create_deep_agent
 
 
-def web_search(query: str) -&gt; str:
+def web_search(query: str) -> str:
     """Search the web."""
     return f"web results for {query}"
 
@@ -1238,15 +1308,17 @@ result = asyncio.run(main())
 
 # The parent's ToolMessage contains JSON-serialized structured data:
 # '{"summary": "...", "confidence": 0.87, "sources": ["https://..."]}'
-</code></pre>
-<pre><code class="language-python">import asyncio
+```
+
+```python
+import asyncio
 
 from pydantic import BaseModel, Field
 
 from deepagents import create_deep_agent
 
 
-def web_search(query: str) -&gt; str:
+def web_search(query: str) -> str:
     """Search the web."""
     return f"web results for {query}"
 
@@ -1282,15 +1354,17 @@ result = asyncio.run(main())
 
 # The parent's ToolMessage contains JSON-serialized structured data:
 # '{"summary": "...", "confidence": 0.87, "sources": ["https://..."]}'
-</code></pre>
-<pre><code class="language-python">import asyncio
+```
+
+```python
+import asyncio
 
 from pydantic import BaseModel, Field
 
 from deepagents import create_deep_agent
 
 
-def web_search(query: str) -&gt; str:
+def web_search(query: str) -> str:
     """Search the web."""
     return f"web results for {query}"
 
@@ -1326,15 +1400,17 @@ result = asyncio.run(main())
 
 # The parent's ToolMessage contains JSON-serialized structured data:
 # '{"summary": "...", "confidence": 0.87, "sources": ["https://..."]}'
-</code></pre>
-<pre><code class="language-python">import asyncio
+```
+
+```python
+import asyncio
 
 from pydantic import BaseModel, Field
 
 from deepagents import create_deep_agent
 
 
-def web_search(query: str) -&gt; str:
+def web_search(query: str) -> str:
     """Search the web."""
     return f"web results for {query}"
 
@@ -1370,15 +1446,17 @@ result = asyncio.run(main())
 
 # The parent's ToolMessage contains JSON-serialized structured data:
 # '{"summary": "...", "confidence": 0.87, "sources": ["https://..."]}'
-</code></pre>
-<pre><code class="language-python">import asyncio
+```
+
+```python
+import asyncio
 
 from pydantic import BaseModel, Field
 
 from deepagents import create_deep_agent
 
 
-def web_search(query: str) -&gt; str:
+def web_search(query: str) -> str:
     """Search the web."""
     return f"web results for {query}"
 
@@ -1414,23 +1492,30 @@ result = asyncio.run(main())
 
 # The parent's ToolMessage contains JSON-serialized structured data:
 # '{"summary": "...", "confidence": 0.87, "sources": ["https://..."]}'
-</code></pre>
-<p>如果没有 <code>response_format</code>，父代理将按原样接收子智能体的最后一条消息文本。有了它，父级始终会获得与架构匹配的有效 JSON，这在父级需要以编程方式处理结果或将其传递给下游工具时非常有用。</p>
-<p>有关架构类型和策略（工具调用与提供者本机）的完整详细信息，请参阅<a href="https://docs.langchain.com/oss/python/langchain/structured-output">结构化输出</a>。</p>
-<h2 id="the-general-purpose-subagent">通用子智能体</h2>
-<p>除了任何用户定义的子智能体之外，每个深度智能体都可以随时访问 <code>general-purpose</code> 子智能体。该子智能体：</p>
-<ul>
-<li>使用自己的<a href="customization.html#system-prompt">应用配置文件覆盖的默认系统提示</a></li>
-<li>可以访问所有相同的工具</li>
-<li>使用相同的模型（除非被覆盖）</li>
-<li>继承主代理的技能（配置技能时）</li>
-</ul>
-<h3 id="override-the-general-purpose-subagent">覆盖通用子智能体</h3>
-<p>在 <code>subagents</code> 列表中包含带有 <code>name="general-purpose"</code> 的子智能体以替换默认值。使用它可以为通用子智能体配置不同的模型、工具或系统提示：</p>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+Without `response_format`, the parent receives the subagent's last message text as-is. With it, the parent always gets valid JSON matching the schema, which is useful when the parent needs to process the result programmatically or pass it to downstream tools.
+
+For full details on schema types and strategies (tool calling vs. provider-native), see [Structured output](/oss/python/langchain/structured-output).
+
+## The general-purpose subagent
+
+In addition to any user-defined subagents, every deep agent has access to a `general-purpose` subagent at all times. This subagent:
+
+* Uses its own [default system prompt with profile overlays applied](/oss/python/deepagents/customization#system-prompt)
+* Has access to all the same tools
+* Uses the same model (unless overridden)
+* Inherits skills from the main agent (when skills are configured)
+
+### Override the general-purpose subagent
+
+Include a subagent with `name="general-purpose"` in your `subagents` list to replace the default. Use this to configure a different model, tools, or system prompt for the general-purpose subagent:
+
+```python
+from deepagents import create_deep_agent
 
 
-def internet_search(query: str) -&gt; str:
+def internet_search(query: str) -> str:
     """Run a web search."""
     return f"search results for {query}"
 
@@ -1449,11 +1534,13 @@ agent = create_deep_agent(
         },
     ],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 
 
-def internet_search(query: str) -&gt; str:
+def internet_search(query: str) -> str:
     """Run a web search."""
     return f"search results for {query}"
 
@@ -1472,11 +1559,13 @@ agent = create_deep_agent(
         },
     ],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 
 
-def internet_search(query: str) -&gt; str:
+def internet_search(query: str) -> str:
     """Run a web search."""
     return f"search results for {query}"
 
@@ -1495,11 +1584,13 @@ agent = create_deep_agent(
         },
     ],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 
 
-def internet_search(query: str) -&gt; str:
+def internet_search(query: str) -> str:
     """Run a web search."""
     return f"search results for {query}"
 
@@ -1518,11 +1609,13 @@ agent = create_deep_agent(
         },
     ],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 
 
-def internet_search(query: str) -&gt; str:
+def internet_search(query: str) -> str:
     """Run a web search."""
     return f"search results for {query}"
 
@@ -1541,11 +1634,13 @@ agent = create_deep_agent(
         },
     ],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 
 
-def internet_search(query: str) -&gt; str:
+def internet_search(query: str) -> str:
     """Run a web search."""
     return f"search results for {query}"
 
@@ -1564,11 +1659,13 @@ agent = create_deep_agent(
         },
     ],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 
 
-def internet_search(query: str) -&gt; str:
+def internet_search(query: str) -> str:
     """Run a web search."""
     return f"search results for {query}"
 
@@ -1587,21 +1684,32 @@ agent = create_deep_agent(
         },
     ],
 )
-</code></pre>
-<p>当您为子智能体提供通用名称时，不会添加默认的通用子智能体。您的规格完全取代了它。</p>
-<p>要完全删除内置通用子智能体而不是替换它，请将活动线束配置文件的通用子智能体 <code>enabled</code> 标志设置为 <code>False</code>。</p>
-<h3 id="when-to-use-it">何时使用它</h3>
-<p>通用子智能体非常适合上下文隔离，无需专门的行为。主代理可以将复杂的多步骤任务委托给该子智能体，并返回简洁的结果，而不会因中间工具调用而导致臃肿。</p>
-<p><strong id="example">例子</strong></p>
-<p>它不是由主代理进行 10 次网络搜索并用结果填充其上下文，而是委托给通用子智能体：<code>task(name="general-purpose", task="Research quantum computing trends")</code>。子智能体在内部执行所有搜索并仅返回摘要。</p>
-<h3 id="skills-inheritance">技能传承</h3>
-<p>当使用<code>create_deep_agent</code>配置<a href="skills.html">技能</a>时：</p>
-<ul>
-<li><strong id="general-purpose-subagent">通用子智能体</strong>：自动继承主代理的技能</li>
-<li><strong>自定义子智能体</strong>：默认情况下不继承技能 - 使用 <code>skills</code> 参数赋予它们自己的技能</li>
-</ul>
-<p>只有配置了技能的子智能体才能获得 <code>SkillsMiddleware</code> 实例，而没有 <code>skills</code> 参数的自定义子智能体则不会。当存在时，技能状态在两个方向上完全隔离：父级的技能对子级不可见，并且子级的技能不会传播回父级。</p>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+When you provide a subagent with the general-purpose name, the default general-purpose subagent is not added. Your spec fully replaces it.
+
+To remove the built-in general-purpose subagent entirely instead of replacing it, set the active harness profile's general-purpose subagent `enabled` flag to `False`.
+
+### When to use it
+
+The general-purpose subagent is ideal for context isolation without specialized behavior. The main agent can delegate a complex multi-step task to this subagent and get a concise result back without bloat from intermediate tool calls.
+
+
+**Example**
+
+  Instead of the main agent making 10 web searches and filling its context with results, it delegates to the general-purpose subagent: `task(name="general-purpose", task="Research quantum computing trends")`. The subagent performs all the searches internally and returns only a summary.
+
+### Skills inheritance
+
+When configuring [skills](/oss/python/deepagents/skills) with `create_deep_agent`:
+
+* **General-purpose subagent**: Automatically inherits skills from the main agent
+* **Custom subagents**: Do NOT inherit skills by default—use the `skills` parameter to give them their own skills
+
+  Only subagents configured with skills get a `SkillsMiddleware` instance—custom subagents without a `skills` parameter do not. When present, skill state is fully isolated in both directions: the parent's skills are not visible to the child, and the child's skills are not propagated back to the parent.
+
+```python
+from deepagents import create_deep_agent
 
 # Each path is a container with one subdirectory per skill:
 # /skills/main/
@@ -1622,15 +1730,26 @@ agent = create_deep_agent(
     skills=["/skills/main/"],  # Main agent and GP subagent get these
     subagents=[research_subagent],  # Researcher gets only its own skills
 )
-</code></pre>
-<h2 id="best-practices">最佳实践</h2>
-<h3 id="write-clear-descriptions">写出清晰的描述</h3>
-<p>主代理使用描述来决定调用哪个子智能体。具体一点：</p>
-<p>✅ <strong id="good">好：</strong> <code>"Analyzes financial data and generates investment insights with confidence scores"</code></p>
-<p>❌ <strong id="bad">坏：</strong> <code>"Does finance stuff"</code></p>
-<h3 id="keep-system-prompts-detailed">保持系统提示详细</h3>
-<p>包括有关如何使用工具和格式化输出的具体指南：</p>
-<pre><code class="language-python">research_subagent = {
+```
+
+
+## Best practices
+
+### Write clear descriptions
+
+The main agent uses descriptions to decide which subagent to call. Be specific:
+
+✅ **Good:** `"Analyzes financial data and generates investment insights with confidence scores"`
+
+❌ **Bad:** `"Does finance stuff"`
+
+### Keep system prompts detailed
+
+Include specific guidance on how to use tools and format outputs:
+
+
+```python
+research_subagent = {
     "name": "research-agent",
     "description": "Conducts in-depth research using web search and synthesizes findings",
     "system_prompt": """You are a thorough researcher. Your job is to:
@@ -1648,24 +1767,38 @@ agent = create_deep_agent(
     Keep your response under 500 words to maintain clean context.""",
     "tools": [internet_search],
 }
-</code></pre>
-<h3 id="minimize-tool-sets">最小化工具集</h3>
-<p>只为子智能体提供他们需要的工具。这可以提高注意力和安全性：</p>
-<pre><code class="language-python"># ✅ Good: Focused tool set
+```
+
+
+### Minimize tool sets
+
+Only give subagents the tools they need. This improves focus and security:
+
+
+```python
+# ✅ Good: Focused tool set
 email_agent = {
     "name": "email-sender",
     "tools": [send_email, validate_email],  # Only email-related
 }
-</code></pre>
-<pre><code class="language-python"># ❌ Bad: Too many tools
+```
+
+```python
+# ❌ Bad: Too many tools
 email_agent = {
     "name": "email-sender",
     "tools": [send_email, web_search_tool, database_query, format_document],  # Unfocused
 }
-</code></pre>
-<h3 id="choose-models-by-task">按任务选择模型</h3>
-<p>不同的模型擅长不同的任务：</p>
-<pre><code class="language-python">subagents = [
+```
+
+
+### Choose models by task
+
+Different models excel at different tasks:
+
+
+```python
+subagents = [
     {
         "name": "contract-reviewer",
         "description": "Reviews legal documents and contracts",
@@ -1681,10 +1814,16 @@ email_agent = {
         "model": "openai:gpt-5.5",  # Better for numerical analysis
     },
 ]
-</code></pre>
-<h3 id="return-concise-results">返回简洁的结果</h3>
-<p>指示子智能体返回摘要，而不是原始数据：</p>
-<pre><code class="language-python">data_analyst = {
+```
+
+
+### Return concise results
+
+Instruct subagents to return summaries, not raw data:
+
+
+```python
+data_analyst = {
     "system_prompt": """Analyze the data and return:
     1. Key insights (3-5 bullet points)
     2. Overall confidence score
@@ -1697,11 +1836,17 @@ email_agent = {
 
     Keep response under 300 words."""
 }
-</code></pre>
-<h2 id="common-patterns">常见模式</h2>
-<h3 id="multiple-specialized-subagents">多个专业子智能体</h3>
-<p>为不同的域创建专门的子智能体：</p>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+
+## Common patterns
+
+### Multiple specialized subagents
+
+Create specialized subagents for different domains:
+
+```python
+from deepagents import create_deep_agent
 
 subagents = [
     {
@@ -1729,8 +1874,10 @@ agent = create_deep_agent(
     system_prompt="You coordinate data analysis and reporting. Use subagents for specialized tasks.",
     subagents=subagents,
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 
 subagents = [
     {
@@ -1758,8 +1905,10 @@ agent = create_deep_agent(
     system_prompt="You coordinate data analysis and reporting. Use subagents for specialized tasks.",
     subagents=subagents,
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 
 subagents = [
     {
@@ -1787,8 +1936,10 @@ agent = create_deep_agent(
     system_prompt="You coordinate data analysis and reporting. Use subagents for specialized tasks.",
     subagents=subagents,
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 
 subagents = [
     {
@@ -1816,8 +1967,10 @@ agent = create_deep_agent(
     system_prompt="You coordinate data analysis and reporting. Use subagents for specialized tasks.",
     subagents=subagents,
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 
 subagents = [
     {
@@ -1845,8 +1998,10 @@ agent = create_deep_agent(
     system_prompt="You coordinate data analysis and reporting. Use subagents for specialized tasks.",
     subagents=subagents,
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 
 subagents = [
     {
@@ -1874,8 +2029,10 @@ agent = create_deep_agent(
     system_prompt="You coordinate data analysis and reporting. Use subagents for specialized tasks.",
     subagents=subagents,
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 
 subagents = [
     {
@@ -1903,20 +2060,26 @@ agent = create_deep_agent(
     system_prompt="You coordinate data analysis and reporting. Use subagents for specialized tasks.",
     subagents=subagents,
 )
-</code></pre>
-<p><strong id="workflow">工作流程：</strong></p>
-<ol>
-<li>主代理人制定高层计划</li>
-<li>将数据收集委托给数据收集者</li>
-<li>将结果传递给数据分析器</li>
-<li>向报告撰写者发送见解</li>
-<li>编译最终输出</li>
-</ol>
-<p>每个子智能体都在干净的上下文中工作，仅专注于其任务。</p>
-<h2 id="context-management">上下文管理</h2>
-<p>当您使用<a href="https://docs.langchain.com/oss/python/langchain/runtime">运行时上下文</a> 调用父代理时，该上下文会自动传播到所有子智能体。每个子智能体运行都会接收您在父 <code>invoke</code> / <code>ainvoke</code> 调用中传递的相同运行时上下文。</p>
-<p>这意味着在任何子智能体内运行的工具都可以访问您提供给父​​代理的相同上下文值：</p>
-<pre><code class="language-python">from dataclasses import dataclass
+```
+
+**Workflow:**
+
+1. Main agent creates high-level plan
+2. Delegates data collection to data-collector
+3. Passes results to data-analyzer
+4. Sends insights to report-writer
+5. Compiles final output
+
+Each subagent works with clean context focused only on its task.
+
+## Context management
+
+When you invoke a parent agent with [runtime context](/oss/python/langchain/runtime), that context automatically propagates to all subagents. Each subagent run receives the same runtime context you passed on the parent `invoke` / `ainvoke` call.
+
+This means tools running inside any subagent can access the same context values you provided to the parent:
+
+```python
+from dataclasses import dataclass
 
 from deepagents import create_deep_agent
 from langchain.messages import HumanMessage
@@ -1930,7 +2093,7 @@ class Context:
 
 
 @tool
-def get_user_data(query: str, runtime: ToolRuntime[Context]) -&gt; str:
+def get_user_data(query: str, runtime: ToolRuntime[Context]) -> str:
     """Fetch data for the current user."""
     user_id = runtime.context.user_id
     return f"Data for user {user_id}: {query}"
@@ -1954,8 +2117,10 @@ result = agent.invoke(
     {"messages": [HumanMessage("Look up my recent activity")]},
     context=Context(user_id="user-123", session_id="abc"),
 )
-</code></pre>
-<pre><code class="language-python">from dataclasses import dataclass
+```
+
+```python
+from dataclasses import dataclass
 
 from deepagents import create_deep_agent
 from langchain.messages import HumanMessage
@@ -1969,7 +2134,7 @@ class Context:
 
 
 @tool
-def get_user_data(query: str, runtime: ToolRuntime[Context]) -&gt; str:
+def get_user_data(query: str, runtime: ToolRuntime[Context]) -> str:
     """Fetch data for the current user."""
     user_id = runtime.context.user_id
     return f"Data for user {user_id}: {query}"
@@ -1993,8 +2158,10 @@ result = agent.invoke(
     {"messages": [HumanMessage("Look up my recent activity")]},
     context=Context(user_id="user-123", session_id="abc"),
 )
-</code></pre>
-<pre><code class="language-python">from dataclasses import dataclass
+```
+
+```python
+from dataclasses import dataclass
 
 from deepagents import create_deep_agent
 from langchain.messages import HumanMessage
@@ -2008,7 +2175,7 @@ class Context:
 
 
 @tool
-def get_user_data(query: str, runtime: ToolRuntime[Context]) -&gt; str:
+def get_user_data(query: str, runtime: ToolRuntime[Context]) -> str:
     """Fetch data for the current user."""
     user_id = runtime.context.user_id
     return f"Data for user {user_id}: {query}"
@@ -2032,8 +2199,10 @@ result = agent.invoke(
     {"messages": [HumanMessage("Look up my recent activity")]},
     context=Context(user_id="user-123", session_id="abc"),
 )
-</code></pre>
-<pre><code class="language-python">from dataclasses import dataclass
+```
+
+```python
+from dataclasses import dataclass
 
 from deepagents import create_deep_agent
 from langchain.messages import HumanMessage
@@ -2047,7 +2216,7 @@ class Context:
 
 
 @tool
-def get_user_data(query: str, runtime: ToolRuntime[Context]) -&gt; str:
+def get_user_data(query: str, runtime: ToolRuntime[Context]) -> str:
     """Fetch data for the current user."""
     user_id = runtime.context.user_id
     return f"Data for user {user_id}: {query}"
@@ -2071,8 +2240,10 @@ result = agent.invoke(
     {"messages": [HumanMessage("Look up my recent activity")]},
     context=Context(user_id="user-123", session_id="abc"),
 )
-</code></pre>
-<pre><code class="language-python">from dataclasses import dataclass
+```
+
+```python
+from dataclasses import dataclass
 
 from deepagents import create_deep_agent
 from langchain.messages import HumanMessage
@@ -2086,7 +2257,7 @@ class Context:
 
 
 @tool
-def get_user_data(query: str, runtime: ToolRuntime[Context]) -&gt; str:
+def get_user_data(query: str, runtime: ToolRuntime[Context]) -> str:
     """Fetch data for the current user."""
     user_id = runtime.context.user_id
     return f"Data for user {user_id}: {query}"
@@ -2110,8 +2281,10 @@ result = agent.invoke(
     {"messages": [HumanMessage("Look up my recent activity")]},
     context=Context(user_id="user-123", session_id="abc"),
 )
-</code></pre>
-<pre><code class="language-python">from dataclasses import dataclass
+```
+
+```python
+from dataclasses import dataclass
 
 from deepagents import create_deep_agent
 from langchain.messages import HumanMessage
@@ -2125,7 +2298,7 @@ class Context:
 
 
 @tool
-def get_user_data(query: str, runtime: ToolRuntime[Context]) -&gt; str:
+def get_user_data(query: str, runtime: ToolRuntime[Context]) -> str:
     """Fetch data for the current user."""
     user_id = runtime.context.user_id
     return f"Data for user {user_id}: {query}"
@@ -2149,8 +2322,10 @@ result = agent.invoke(
     {"messages": [HumanMessage("Look up my recent activity")]},
     context=Context(user_id="user-123", session_id="abc"),
 )
-</code></pre>
-<pre><code class="language-python">from dataclasses import dataclass
+```
+
+```python
+from dataclasses import dataclass
 
 from deepagents import create_deep_agent
 from langchain.messages import HumanMessage
@@ -2164,7 +2339,7 @@ class Context:
 
 
 @tool
-def get_user_data(query: str, runtime: ToolRuntime[Context]) -&gt; str:
+def get_user_data(query: str, runtime: ToolRuntime[Context]) -> str:
     """Fetch data for the current user."""
     user_id = runtime.context.user_id
     return f"Data for user {user_id}: {query}"
@@ -2188,10 +2363,14 @@ result = agent.invoke(
     {"messages": [HumanMessage("Look up my recent activity")]},
     context=Context(user_id="user-123", session_id="abc"),
 )
-</code></pre>
-<h3 id="per-subagent-context">每个子智能体上下文</h3>
-<p>所有子智能体都接收相同的父上下文。要传递特定于特定子智能体的配置，请在平面 <code>context</code> 映射中使用<strong id="namespaced-keys">命名空间键</strong>（带有子智能体名称的前缀键，例如 <code>researcher:max_depth</code>），<strong id="or">或</strong>将这些设置建模为上下文类型上的单独字段：</p>
-<pre><code class="language-python">from dataclasses import dataclass
+```
+
+### Per-subagent context
+
+All subagents receive the same parent context. To pass configuration that is specific to a particular subagent, use **namespaced keys** (prefix keys with the subagent name, for example `researcher:max_depth`) in a flat `context` mapping, **or** model those settings as separate fields on your context type:
+
+```python
+from dataclasses import dataclass
 
 from deepagents import create_deep_agent
 from langchain.messages import HumanMessage
@@ -2206,7 +2385,7 @@ class Context:
 
 
 @tool
-def verify_claim(claim: str, runtime: ToolRuntime[Context]) -&gt; str:
+def verify_claim(claim: str, runtime: ToolRuntime[Context]) -> str:
     """Verify a factual claim."""
     strict_mode = runtime.context.fact_checker_strict_mode or False
     if strict_mode:
@@ -2235,8 +2414,10 @@ result = agent.invoke(
         fact_checker_strict_mode=True,
     ),
 )
-</code></pre>
-<pre><code class="language-python">from dataclasses import dataclass
+```
+
+```python
+from dataclasses import dataclass
 
 from deepagents import create_deep_agent
 from langchain.messages import HumanMessage
@@ -2251,7 +2432,7 @@ class Context:
 
 
 @tool
-def verify_claim(claim: str, runtime: ToolRuntime[Context]) -&gt; str:
+def verify_claim(claim: str, runtime: ToolRuntime[Context]) -> str:
     """Verify a factual claim."""
     strict_mode = runtime.context.fact_checker_strict_mode or False
     if strict_mode:
@@ -2280,8 +2461,10 @@ result = agent.invoke(
         fact_checker_strict_mode=True,
     ),
 )
-</code></pre>
-<pre><code class="language-python">from dataclasses import dataclass
+```
+
+```python
+from dataclasses import dataclass
 
 from deepagents import create_deep_agent
 from langchain.messages import HumanMessage
@@ -2296,7 +2479,7 @@ class Context:
 
 
 @tool
-def verify_claim(claim: str, runtime: ToolRuntime[Context]) -&gt; str:
+def verify_claim(claim: str, runtime: ToolRuntime[Context]) -> str:
     """Verify a factual claim."""
     strict_mode = runtime.context.fact_checker_strict_mode or False
     if strict_mode:
@@ -2325,8 +2508,10 @@ result = agent.invoke(
         fact_checker_strict_mode=True,
     ),
 )
-</code></pre>
-<pre><code class="language-python">from dataclasses import dataclass
+```
+
+```python
+from dataclasses import dataclass
 
 from deepagents import create_deep_agent
 from langchain.messages import HumanMessage
@@ -2341,7 +2526,7 @@ class Context:
 
 
 @tool
-def verify_claim(claim: str, runtime: ToolRuntime[Context]) -&gt; str:
+def verify_claim(claim: str, runtime: ToolRuntime[Context]) -> str:
     """Verify a factual claim."""
     strict_mode = runtime.context.fact_checker_strict_mode or False
     if strict_mode:
@@ -2370,8 +2555,10 @@ result = agent.invoke(
         fact_checker_strict_mode=True,
     ),
 )
-</code></pre>
-<pre><code class="language-python">from dataclasses import dataclass
+```
+
+```python
+from dataclasses import dataclass
 
 from deepagents import create_deep_agent
 from langchain.messages import HumanMessage
@@ -2386,7 +2573,7 @@ class Context:
 
 
 @tool
-def verify_claim(claim: str, runtime: ToolRuntime[Context]) -&gt; str:
+def verify_claim(claim: str, runtime: ToolRuntime[Context]) -> str:
     """Verify a factual claim."""
     strict_mode = runtime.context.fact_checker_strict_mode or False
     if strict_mode:
@@ -2415,8 +2602,10 @@ result = agent.invoke(
         fact_checker_strict_mode=True,
     ),
 )
-</code></pre>
-<pre><code class="language-python">from dataclasses import dataclass
+```
+
+```python
+from dataclasses import dataclass
 
 from deepagents import create_deep_agent
 from langchain.messages import HumanMessage
@@ -2431,7 +2620,7 @@ class Context:
 
 
 @tool
-def verify_claim(claim: str, runtime: ToolRuntime[Context]) -&gt; str:
+def verify_claim(claim: str, runtime: ToolRuntime[Context]) -> str:
     """Verify a factual claim."""
     strict_mode = runtime.context.fact_checker_strict_mode or False
     if strict_mode:
@@ -2460,8 +2649,10 @@ result = agent.invoke(
         fact_checker_strict_mode=True,
     ),
 )
-</code></pre>
-<pre><code class="language-python">from dataclasses import dataclass
+```
+
+```python
+from dataclasses import dataclass
 
 from deepagents import create_deep_agent
 from langchain.messages import HumanMessage
@@ -2476,7 +2667,7 @@ class Context:
 
 
 @tool
-def verify_claim(claim: str, runtime: ToolRuntime[Context]) -&gt; str:
+def verify_claim(claim: str, runtime: ToolRuntime[Context]) -> str:
     """Verify a factual claim."""
     strict_mode = runtime.context.fact_checker_strict_mode or False
     if strict_mode:
@@ -2505,24 +2696,34 @@ result = agent.invoke(
         fact_checker_strict_mode=True,
     ),
 )
-</code></pre>
-<h3 id="identifying-which-subagent-called-a-tool">识别哪个子智能体调用了工具</h3>
-<p>当父代理和多个子智能体之间共享同一工具时，您可以使用 <code>lc_agent_name</code> 元数据（与 <a href="#streaming">streaming</a> 中使用的值相同）来确定哪个代理发起了呼叫：</p>
-<pre><code class="language-python">
+```
+
+### Identifying which subagent called a tool
+
+When the same tool is shared between the parent and multiple subagents, you can use the `lc_agent_name` metadata (the same value used in [streaming](#streaming)) to determine which agent initiated the call:
+
+
+```python
+
 # :snippet-start: subagents-shared-lookup-py
 from langchain.tools import ToolRuntime, tool
 
 
 @tool
-def shared_lookup(query: str, runtime: ToolRuntime) -&gt; str:
+def shared_lookup(query: str, runtime: ToolRuntime) -> str:
     """Look up information."""
     agent_name = runtime.config.get("metadata", {}).get("lc_agent_name")
     if agent_name == "fact-checker":
         return strict_lookup(query)
     return general_lookup(query)
-</code></pre>
-<p>您可以组合这两种模式 - 在分支工具行为时从 <code>runtime.context</code> 读取代理特定设置并从 <code>runtime.config</code> 元数据读取 <code>lc_agent_name</code>。</p>
-<pre><code class="language-python">from dataclasses import dataclass
+```
+
+
+You can combine both patterns—read agent-specific settings from `runtime.context` and read `lc_agent_name` from `runtime.config` metadata when branching tool behavior.
+
+
+```python
+from dataclasses import dataclass
 
 from langchain.tools import ToolRuntime, tool
 
@@ -2535,7 +2736,7 @@ class Context:
 
 
 @tool
-def flexible_search(query: str, runtime: ToolRuntime[Context]) -&gt; str:
+def flexible_search(query: str, runtime: ToolRuntime[Context]) -> str:
     """Search with agent-specific settings."""
     agent_name = runtime.config.get("metadata", {}).get("lc_agent_name", "unknown")
     ctx = runtime.context
@@ -2546,30 +2747,43 @@ def flexible_search(query: str, runtime: ToolRuntime[Context]) -&gt; str:
     include_raw = False
 
     return perform_search(query, max_results=max_results, include_raw=include_raw)
-</code></pre>
-<h2 id="troubleshooting">故障排除</h2>
-<h3 id="subagent-not-being-called">子智能体未被调用</h3>
-<p><strong id="problem">问题</strong>：主代理尝试自己完成工作而不是委派工作。</p>
-<p><strong id="solutions">解决方案</strong>：</p>
-<ol>
-<li><strong id="make-descriptions-more-specific">使描述更具体：</strong></li>
-</ol>
-<pre><code class="language-python"># ✅ Good
+```
+
+
+## Troubleshooting
+
+### Subagent not being called
+
+**Problem**: Main agent tries to do work itself instead of delegating.
+
+**Solutions**:
+
+1. **Make descriptions more specific:**
+
+
+```python
+# ✅ Good
 good_subagent = {
     "name": "research-specialist",
     "description": "Conducts in-depth research on specific topics using web search. Use when you need detailed information that requires multiple searches.",
 }
-</code></pre>
-<pre><code class="language-python"># ❌ Bad
+```
+
+```python
+# ❌ Bad
 bad_subagent = {
     "name": "helper",
     "description": "helps with stuff",
 }
-</code></pre>
-<ol start="2">
-<li><strong id="instruct-main-agent-to-delegate">指示主代理进行委托：</strong></li>
-</ol>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+
+2. **Instruct main agent to delegate:**
+
+   
+
+```python
+from deepagents import create_deep_agent
 
 agent = create_deep_agent(
     model="google_genai:gemini-3.6-flash",
@@ -2585,8 +2799,10 @@ agent = create_deep_agent(
         },
     ],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 
 agent = create_deep_agent(
     model="openai:gpt-5.5",
@@ -2602,8 +2818,10 @@ agent = create_deep_agent(
         },
     ],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 
 agent = create_deep_agent(
     model="anthropic:claude-sonnet-4-6",
@@ -2619,8 +2837,10 @@ agent = create_deep_agent(
         },
     ],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 
 agent = create_deep_agent(
     model="openrouter:z-ai/glm-5.2",
@@ -2636,8 +2856,10 @@ agent = create_deep_agent(
         },
     ],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 
 agent = create_deep_agent(
     model="fireworks:accounts/fireworks/models/glm-5p2",
@@ -2653,8 +2875,10 @@ agent = create_deep_agent(
         },
     ],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 
 agent = create_deep_agent(
     model="baseten:zai-org/GLM-5.2",
@@ -2670,8 +2894,10 @@ agent = create_deep_agent(
         },
     ],
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 
 agent = create_deep_agent(
     model="ollama:north-mini-code-1.0",
@@ -2687,33 +2913,52 @@ agent = create_deep_agent(
         },
     ],
 )
-</code></pre>
-<h3 id="context-still-getting-bloated">上下文仍然变得臃肿</h3>
-<p><strong>问题</strong>：尽管使用了子智能体，上下文仍被填满。</p>
-<p><strong>解决方案</strong>：</p>
-<ol>
-<li><strong id="instruct-subagent-to-return-concise-results">指示子智能体返回简洁的结果：</strong></li>
-</ol>
-<pre><code class="language-python">system_prompt = """...
+```
+
+
+   
+
+
+### Context still getting bloated
+
+**Problem**: Context fills up despite using subagents.
+
+**Solutions**:
+
+1. **Instruct subagent to return concise results:**
+
+
+```python
+system_prompt = """...
 
 IMPORTANT: Return only the essential summary.
 Do NOT include raw data, intermediate search results, or detailed tool outputs.
 Your response should be under 500 words."""
-</code></pre>
-<ol start="2">
-<li><strong id="use-filesystem-for-large-data">使用文件系统处理大数据：</strong></li>
-</ol>
-<pre><code class="language-python">system_prompt = """When you gather large amounts of data:
+```
+
+
+2. **Use filesystem for large data:**
+
+
+```python
+system_prompt = """When you gather large amounts of data:
 1. Save raw data to /data/raw_results.txt
 2. Process and analyze the data
 3. Return only the analysis summary
 
 This keeps context clean."""
-</code></pre>
-<h3 id="wrong-subagent-being-selected">选择了错误的子智能体</h3>
-<p><strong>问题</strong>：主代理为任务调用不适当的子智能体。</p>
-<p><strong id="solution">解决方案</strong>：在描述中清楚地区分子智能体：</p>
-<pre><code class="language-python">subagents = [
+```
+
+
+### Wrong subagent being selected
+
+**Problem**: Main agent calls inappropriate subagent for the task.
+
+**Solution**: Differentiate subagents clearly in descriptions:
+
+
+```python
+subagents = [
     {
         "name": "quick-researcher",
         "description": "For simple, quick research questions that need 1-2 searches. Use when you need basic facts or definitions.",
@@ -2725,22 +2970,21 @@ This keeps context clean."""
         "system_prompt": "You are the deep-researcher subagent.",
     },
 ]
-</code></pre>
-<hr/>
-<div classname="source-links">
+```
 
 
+***
+
+<div className="source-links">
+  
+
+    [Connect these docs](/use-these-docs) to Claude, VSCode, and more via MCP for real-time answers.
+  
 
 
-[将这些文档](https://docs.langchain.com/use-these-docs) 通过 MCP 连接到 Claude、VSCode 等以获得实时答案。
+  
 
+    [Edit this page on GitHub](https://github.com/langchain-ai/docs/edit/main/src/oss/deepagents/subagents.mdx) or [file an issue](https://github.com/langchain-ai/docs/issues/new/choose).
+  
 
-
-
-
-
-[在 GitHub 上编辑此页面](https://github.com/langchain-ai/docs/edit/main/src/oss/deepagents/subagents.mdx) 或 [提交问题](https://github.com/langchain-ai/docs/issues/new/choose)。
-
-
-
-</div><footer>非官方中文离线整理版。代码与原图保留；在线演示需要联网。© LangChain · <a href="../LICENSE">MIT 许可</a></footer></main><nav class="page-toc" aria-label="本页目录"><h2>本页目录</h2><ul><li><a href="#why-use-subagents">为什么要使用子智能体？</a></li><li><a href="#configuration">配置</a></li><li><a href="#custom-subagents">自定义子智能体</a></li><li><a href="#using-subagent">使用子智能体</a></li><li><a href="#using-compiledsubagent">使用 CompiledSubAgent</a></li><li><a href="#forked-subagents">分叉子智能体</a></li><li><a href="#dynamic-subagents">动态子智能体</a></li><li><a href="#streaming">流媒体</a></li><li><a href="#filter-by-subagent-in-langsmith">按 LangSmith 中的子智能体过滤</a></li><li><a href="#structured-output">结构化输出</a></li><li><a href="#the-general-purpose-subagent">通用子智能体</a></li><li><a href="#best-practices">最佳实践</a></li><li><a href="#common-patterns">常见模式</a></li><li><a href="#context-management">上下文管理</a></li><li><a href="#troubleshooting">故障排除</a></li></ul></nav></div></html>
+</div>

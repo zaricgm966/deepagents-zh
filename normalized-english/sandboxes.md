@@ -1,27 +1,27 @@
-<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>沙箱 · Deep Agents</title><link rel="stylesheet" href="../style.css"><script defer src="../assets/mermaid/mermaid.min.js"></script><script defer src="../assets/mermaid/render-diagrams.js"></script><aside><a class="brand" href="../index.html">Deep Agents<span>中文离线文档</span></a><h3>入门与选型</h3><a href="overview.html">Deep Agents 概览</a><a href="quickstart.html">快速入门</a><a href="models.html">模型选择</a><a href="comparison.html">与 Claude Agent SDK 的对比</a><a href="code-link.html">Deep Agents Code 简介</a><h3>配置与核心能力</h3><a href="customization.html">自定义 Deep Agents</a><a href="tools.html">工具</a><a href="profiles.html">配置档案</a><a href="backends.html">文件系统后端</a><a href="interpreters.html">代码解释器</a><a href="sandboxes.html">沙箱</a><a href="memory.html">记忆</a><a href="skills.html">技能</a><a href="permissions.html">权限</a><a href="human-in-the-loop.html">人工介入</a><a href="multimodal.html">多模态输入与输出</a><h3>任务与上下文管理</h3><a href="context-engineering.html">上下文工程</a><a href="subagents.html">子智能体</a><a href="dynamic-subagents.html">动态子智能体</a><a href="async-subagents.html">异步子智能体</a><a href="streaming.html">流式输出</a><a href="event-streaming.html">事件流</a><a href="fault-tolerance.html">容错</a><a href="retrieval.html">检索</a><a href="rubric.html">评分标准</a><h3>应用教程</h3><a href="data-analysis.html">构建数据分析智能体</a><a href="content-builder.html">构建内容创作智能体</a><a href="deep-research.html">构建深度研究智能体</a><a href="rag.html">构建检索增强生成（RAG）智能体</a><h3>协议与集成</h3><a href="mcp.html">模型上下文协议（MCP）</a><a href="acp.html">智能体客户端协议（ACP）</a><a href="a2a.html">A2A 服务器</a><h3>前端开发</h3><a href="frontend--overview.html">前端集成概览</a><a href="frontend--sandbox.html">前端沙箱</a><a href="frontend--subagent-streaming.html">前端子智能体流式输出</a><a href="frontend--todo-list.html">前端待办事项列表</a><h3>生产环境与知识库</h3><a href="going-to-production.html">部署到生产环境</a><a href="openwiki.html">OpenWiki</a><h3>Coding Agent 源码解析</h3><a href="codex-source-analysis.html">Codex 源码解析</a><a href="claude-code-source-analysis.html">Claude Code 源码解析：公开 SDK 与运行时边界</a><h3>版本更新</h3><a href="changelog-py.html">Python 更新日志</a><a href="changelog-js.html">JavaScript / TypeScript 更新日志</a></aside><script src="../sidebar.js"></script><div class="reading-layout"><main><div class="meta">中文机器翻译 · 文档快照 2026-09-07 · <a href="https://docs.langchain.com/oss/python/deepagents/sandboxes">在线原文</a> · <a href="../markdown/sandboxes.md">编辑中文 Markdown</a> · <a href="../original-markdown/sandboxes.md">英文原稿</a></div><h1 id="sandboxes">沙箱</h1>
-<blockquote>
-<p>在具有沙箱后端的隔离环境中执行代码</p>
-</blockquote>
-<p>代理生成代码、与文件系统交互并运行 shell 命令。由于您无法预测代理可能会做什么，因此隔离其环境非常重要，这样它就无法访问凭据、文件或网络。沙箱通过在代理的执行环境和主机系统之间创建边界来提供这种隔离。</p>
-<p>在 Deep Agents 中，<strong id="sandboxes-are-backends">沙箱是定义代理运行环境的<a href="backends.html">后端</a></strong>。与仅公开文件操作的其他后端（状态、文件系统、存储）不同，沙箱后端还为代理提供了用于运行 shell 命令的 <code>execute</code> 工具。当您配置沙箱后端时，代理将获取：</p>
-<ul>
-<li>
-<p>所有标准文件系统工具（<code>ls</code>、<code>read_file</code>、<code>write_file</code>、<code>edit_file</code>、<code>delete</code>、<code>glob</code>、<code>grep</code>）</p>
-</li>
-<li>
-<p>用于在沙箱中运行任意 shell 命令的 <code>execute</code> 工具</p>
-</li>
-<li>
-<p>保护您的主机系统的安全边界</p>
-</li>
-</ul>
-<pre><code class="language-mermaid">graph LR
+
+# Sandboxes
+
+> Execute code in isolated environments with sandbox backends
+
+Agents generate code, interact with filesystems, and run shell commands. Because you can't predict what an agent might do, it's important that its environment is isolated so it can't access credentials, files, or the network. Sandboxes provide this isolation by creating a boundary between the agent's execution environment and your host system.
+
+In Deep Agents, **sandboxes are [backends](/oss/python/deepagents/backends)** that define the environment where the agent operates. Unlike other backends (State, Filesystem, Store) which only expose file operations, sandbox backends also give the agent an `execute` tool for running shell commands. When you configure a sandbox backend, the agent gets:
+
+* All standard filesystem tools (`ls`, `read_file`, `write_file`, `edit_file`, `delete`, `glob`, `grep`)
+
+* The `execute` tool for running arbitrary shell commands in the sandbox
+
+* A secure boundary that protects your host system
+
+
+```mermaid
+graph LR
     subgraph Agent
-        LLM --&gt; Tools
-        Tools --&gt; LLM
+        LLM --> Tools
+        Tools --> LLM
     end
 
-    Agent &lt;-- backend protocol --&gt; Sandbox
+    Agent <-- backend protocol --> Sandbox
 
     subgraph Sandbox
         Filesystem
@@ -34,24 +34,49 @@
 
     class LLM,Tools process
     class Filesystem,Bash,Dependencies output
-</code></pre>
-<h2 id="why-use-sandboxes">为什么要使用沙箱？</h2>
-<p>沙箱用于安全性。它们允许代理执行任意代码、访问文件和使用网络，而不会损害您的凭据、本地文件或主机系统。当代理自主运行时，这种隔离至关重要。</p>
-<p>沙箱特别适用于：</p>
-<ul>
-<li>编程智能体：自主运行的代理可以使用 shell、git、克隆存储库（许多提供商提供本机 git API，例如 <a href="https://www.daytona.io/docs/en/git-operations/">Daytona 的 git 操作</a>），并运行 Docker-in-Docker 来构建和测试管道</li>
-<li>数据分析代理：在安全、隔离的环境中加载文件、安装数据分析库（pandas、numpy 等）、运行统计计算以及创建 PowerPoint 演示文稿等输出</li>
-</ul>
-<p><strong id="using-deep-agents-code">使用 Deep Agents Code？</strong> Deep Agents Code 通过 <code>--sandbox</code> 标志具有内置沙箱支持。请参阅<a href="https://docs.langchain.com/oss/deepagents/code/remote-sandboxes">使用远程沙箱</a>，了解 Deep Agent 代码特定的设置、标志（<code>--sandbox-id</code>、<code>--sandbox-setup</code>）和示例。</p>
-<p><strong id="if-youre-looking-for-langsmith-sandboxes">如果您正在寻找 LangSmith 沙箱：</strong> LangSmith 提供第一方托管沙箱，您可以直接从 LangSmith UI 或 SDK 使用，无需第三方帐户。有关托管沙箱资源、快照、服务 URL 和身份验证代理，请参阅 <a href="https://docs.langchain.com/langsmith/sandboxes">LangSmith 沙箱</a>。</p>
-<h2 id="basic-usage">基本用法</h2>
-<p>这些示例假设您已经使用提供商的 SDK 创建了沙箱/开发箱并设置了凭据。有关注册、身份验证和特定于提供商的生命周期详细信息，请参阅<a href="#available-providers">可用提供商</a>。</p>
-<p><strong id="langsmith">朗史密斯</strong></p>
-<pre><code class="language-bash">pip install "langsmith[sandbox]"
-</code></pre>
-<pre><code class="language-bash">uv add "langsmith[sandbox]"
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+
+## Why use sandboxes?
+
+Sandboxes are used for security.
+They let agents execute arbitrary code, access files, and use the network without compromising your credentials, local files, or host system.
+This isolation is essential when agents run autonomously.
+
+Sandboxes are especially useful for:
+
+* Coding agents: Agents that run autonomously can use shell, git, clone repositories (many providers offer native git APIs, e.g., [Daytona's git operations](https://www.daytona.io/docs/en/git-operations/)), and run Docker-in-Docker for build and test pipelines
+* Data analysis agents: Load files, install data analysis libraries (pandas, numpy, etc.), run statistical calculations, and create outputs like PowerPoint presentations in a safe, isolated environment
+
+  **Using Deep Agents Code?** Deep Agents Code has built-in sandbox support via the `--sandbox` flag. See [Use remote sandboxes](/oss/deepagents/code/remote-sandboxes) for Deep Agents Code-specific setup, flags (`--sandbox-id`, `--sandbox-setup`), and examples.
+
+  **If you're looking for LangSmith sandboxes:** LangSmith provides first-party managed sandboxes you can use directly from the LangSmith UI or SDK without a third-party account required. For managed sandbox resources, snapshots, service URLs, and the auth proxy, refer to [LangSmith Sandboxes](/langsmith/sandboxes).
+
+## Basic usage
+
+These examples assume you have already created a sandbox/devbox using the provider's SDK and have credentials set up. For signup, authentication, and provider-specific lifecycle details, see [Available providers](#available-providers).
+
+  
+**LangSmith**
+
+    
+
+```bash
+pip install "langsmith[sandbox]"
+```
+
+```bash
+uv add "langsmith[sandbox]"
+```
+
+
+    
+
+
+    
+
+```python
+from deepagents import create_deep_agent
 from deepagents.backends import LangSmithSandbox
 from langchain_anthropic import ChatAnthropic
 from langsmith.sandbox import SandboxClient
@@ -78,8 +103,10 @@ try:
     )
 finally:
     client.delete_sandbox(ls_sandbox.name)
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from deepagents.backends import LangSmithSandbox
 from langchain_anthropic import ChatAnthropic
 from langsmith.sandbox import SandboxClient
@@ -106,8 +133,10 @@ try:
     )
 finally:
     client.delete_sandbox(ls_sandbox.name)
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from deepagents.backends import LangSmithSandbox
 from langchain_anthropic import ChatAnthropic
 from langsmith.sandbox import SandboxClient
@@ -134,8 +163,10 @@ try:
     )
 finally:
     client.delete_sandbox(ls_sandbox.name)
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from deepagents.backends import LangSmithSandbox
 from langchain_anthropic import ChatAnthropic
 from langsmith.sandbox import SandboxClient
@@ -162,8 +193,10 @@ try:
     )
 finally:
     client.delete_sandbox(ls_sandbox.name)
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from deepagents.backends import LangSmithSandbox
 from langchain_anthropic import ChatAnthropic
 from langsmith.sandbox import SandboxClient
@@ -190,8 +223,10 @@ try:
     )
 finally:
     client.delete_sandbox(ls_sandbox.name)
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from deepagents.backends import LangSmithSandbox
 from langchain_anthropic import ChatAnthropic
 from langsmith.sandbox import SandboxClient
@@ -218,8 +253,10 @@ try:
     )
 finally:
     client.delete_sandbox(ls_sandbox.name)
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from deepagents.backends import LangSmithSandbox
 from langchain_anthropic import ChatAnthropic
 from langsmith.sandbox import SandboxClient
@@ -246,13 +283,35 @@ try:
     )
 finally:
     client.delete_sandbox(ls_sandbox.name)
-</code></pre>
-<p><strong id="daytona">代托纳</strong></p>
-<pre><code class="language-bash">pip install langchain-daytona
-</code></pre>
-<pre><code class="language-bash">uv add langchain-daytona
-</code></pre>
-<pre><code class="language-python">from daytona import Daytona
+```
+
+
+    
+
+  
+
+
+  
+**Daytona**
+
+    
+
+```bash
+pip install langchain-daytona
+```
+
+```bash
+uv add langchain-daytona
+```
+
+
+    
+
+
+    
+
+```python
+from daytona import Daytona
 from deepagents import create_deep_agent
 from langchain_anthropic import ChatAnthropic
 from langchain_daytona import DaytonaSandbox
@@ -279,8 +338,10 @@ try:
     )
 finally:
     sandbox.stop()
-</code></pre>
-<pre><code class="language-python">from daytona import Daytona
+```
+
+```python
+from daytona import Daytona
 from deepagents import create_deep_agent
 from langchain_anthropic import ChatAnthropic
 from langchain_daytona import DaytonaSandbox
@@ -307,8 +368,10 @@ try:
     )
 finally:
     sandbox.stop()
-</code></pre>
-<pre><code class="language-python">from daytona import Daytona
+```
+
+```python
+from daytona import Daytona
 from deepagents import create_deep_agent
 from langchain_anthropic import ChatAnthropic
 from langchain_daytona import DaytonaSandbox
@@ -335,8 +398,10 @@ try:
     )
 finally:
     sandbox.stop()
-</code></pre>
-<pre><code class="language-python">from daytona import Daytona
+```
+
+```python
+from daytona import Daytona
 from deepagents import create_deep_agent
 from langchain_anthropic import ChatAnthropic
 from langchain_daytona import DaytonaSandbox
@@ -363,8 +428,10 @@ try:
     )
 finally:
     sandbox.stop()
-</code></pre>
-<pre><code class="language-python">from daytona import Daytona
+```
+
+```python
+from daytona import Daytona
 from deepagents import create_deep_agent
 from langchain_anthropic import ChatAnthropic
 from langchain_daytona import DaytonaSandbox
@@ -391,8 +458,10 @@ try:
     )
 finally:
     sandbox.stop()
-</code></pre>
-<pre><code class="language-python">from daytona import Daytona
+```
+
+```python
+from daytona import Daytona
 from deepagents import create_deep_agent
 from langchain_anthropic import ChatAnthropic
 from langchain_daytona import DaytonaSandbox
@@ -419,8 +488,10 @@ try:
     )
 finally:
     sandbox.stop()
-</code></pre>
-<pre><code class="language-python">from daytona import Daytona
+```
+
+```python
+from daytona import Daytona
 from deepagents import create_deep_agent
 from langchain_anthropic import ChatAnthropic
 from langchain_daytona import DaytonaSandbox
@@ -447,13 +518,32 @@ try:
     )
 finally:
     sandbox.stop()
-</code></pre>
-<p><strong id="e2b">E2B</strong></p>
-<pre><code class="language-bash">pip install langchain-e2b
-</code></pre>
-<pre><code class="language-bash">uv add langchain-e2b
-</code></pre>
-<pre><code class="language-python">from e2b import Sandbox
+```
+
+
+    
+
+  
+
+
+  
+**E2B**
+
+    
+
+```bash
+pip install langchain-e2b
+```
+
+```bash
+uv add langchain-e2b
+```
+
+
+    
+
+```python
+from e2b import Sandbox
 from deepagents import create_deep_agent
 from langchain_anthropic import ChatAnthropic
 from langchain_e2b import E2BSandbox
@@ -480,13 +570,30 @@ try:
     )
 finally:
     e2b_sandbox.kill()
-</code></pre>
-<p><strong id="modal">莫代尔</strong></p>
-<pre><code class="language-bash">pip install langchain-modal
-</code></pre>
-<pre><code class="language-bash">uv add langchain-modal
-</code></pre>
-<pre><code class="language-python">import modal
+```
+
+
+  
+
+
+  
+**Modal**
+
+    
+
+```bash
+pip install langchain-modal
+```
+
+```bash
+uv add langchain-modal
+```
+
+
+    
+
+```python
+import modal
 from deepagents import create_deep_agent
 from langchain_anthropic import ChatAnthropic
 from langchain_modal import ModalSandbox
@@ -513,13 +620,30 @@ try:
     )
 finally:
     modal_sandbox.terminate()
-</code></pre>
-<p><strong id="runloop">运行循环</strong></p>
-<pre><code class="language-bash">pip install langchain-runloop
-</code></pre>
-<pre><code class="language-bash">uv add langchain-runloop
-</code></pre>
-<pre><code class="language-python">import os
+```
+
+
+  
+
+
+  
+**Runloop**
+
+    
+
+```bash
+pip install langchain-runloop
+```
+
+```bash
+uv add langchain-runloop
+```
+
+
+    
+
+```python
+import os
 
 from deepagents import create_deep_agent
 from langchain_anthropic import ChatAnthropic
@@ -550,13 +674,30 @@ try:
     )
 finally:
     devbox.shutdown()
-</code></pre>
-<p><strong id="vercel">韦尔塞尔</strong></p>
-<pre><code class="language-bash">pip install langchain-vercel-sandbox
-</code></pre>
-<pre><code class="language-bash">uv add langchain-vercel-sandbox
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+
+  
+
+
+  
+**Vercel**
+
+    
+
+```bash
+pip install langchain-vercel-sandbox
+```
+
+```bash
+uv add langchain-vercel-sandbox
+```
+
+
+    
+
+```python
+from deepagents import create_deep_agent
 from langchain_anthropic import ChatAnthropic
 from langchain_vercel_sandbox import VercelSandbox
 from vercel.sandbox import Sandbox
@@ -583,19 +724,35 @@ try:
     )
 finally:
     sandbox.stop()
-</code></pre>
-<p><a href="https://smith.langchain.com?utm_source=docs\&amp;utm_medium=cta\&amp;utm_campaign=langsmith-signup\&amp;utm_content=oss-deepagents-sandboxes">LangSmith</a> 跟踪显示沙箱内运行了哪些 shell 命令以及代理如何使用文件系统工具。按照<a href="https://docs.langchain.com/langsmith/observability-quickstart">可观测性快速入门</a> 进行设置。对于托管沙箱托管，请参阅 <a href="https://docs.langchain.com/langsmith/sandboxes">LangSmith 沙箱</a>。</p>
-<p>我们建议您还设置 <a href="https://docs.langchain.com/langsmith/engine">LangSmith Engine</a>，它会监视您的痕迹、检测问题并提出修复建议。</p>
-<h2 id="available-providers">可用的提供商</h2>
-<p>有关特定于提供商的设置、身份验证和生命周期详细信息，请参阅<a href="https://docs.langchain.com/oss/python/integrations/sandboxes">沙箱集成</a>。</p>
-<h2 id="lifecycle-and-scoping">生命周期和范围</h2>
-<p>大多数应用程序选择为每个<a href="https://docs.langchain.com/langsmith/use-threads">线程</a> 使用一个沙箱（线程范围），或者为同一<a href="https://docs.langchain.com/langsmith/assistants">助理</a> 上的每个线程选择一个共享沙箱（助理范围）。</p>
-<p>沙箱会消耗资源并耗费金钱，直到它们被关闭为止。确保在不再使用沙箱后将其关闭。</p>
-<p>有关完整的生命周期表、异步<a href="https://docs.langchain.com/langsmith/graph-rebuild">图工厂</a>注释、TTL 行为、LangGraph 部署连接和客户端示例，请参阅进入生产中的<a href="going-to-production.html#lifecycle">沙盒生命周期</a>。</p>
-<h3 id="thread-scoped-default">线程范围（默认）</h3>
-<p>每个对话都有自己的沙箱。第一次运行会创建它；后续打开同一个线程重用它。当线程结束或沙箱 TTL 到期时，环境就会消失。使用沙箱名称或元数据存储映射，如下例所示，以便每次运行解析到相同的沙箱。</p>
-<p>当用户可以在空闲时间后返回时，在沙箱上配置 TTL，以便提供商自动删除或存档空闲环境。</p>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+
+  
+
+  [LangSmith](https://smith.langchain.com?utm_source=docs\&utm_medium=cta\&utm_campaign=langsmith-signup\&utm_content=oss-deepagents-sandboxes) traces show which shell commands ran inside a sandbox and how the agent used filesystem tools. Follow the [observability quickstart](/langsmith/observability-quickstart) to get set up. For managed sandbox hosting, see [LangSmith Sandboxes](/langsmith/sandboxes).
+
+  We recommend you also set up [LangSmith Engine](/langsmith/engine), which monitors your traces, detects issues, and proposes fixes.
+
+## Available providers
+
+For provider-specific setup, authentication, and lifecycle details, see [sandbox integrations](/oss/python/integrations/sandboxes).
+
+## Lifecycle and scoping
+
+Most applications choose either one sandbox per [thread](/langsmith/use-threads) (thread-scoped) or one shared sandbox for every thread on the same [assistant](/langsmith/assistants) (assistant-scoped).
+
+Sandboxes consume resources and cost money until they are shut down. Make sure you shut sandboxes down once they are no longer in use.
+
+For the full lifecycle table, async [graph factory](/langsmith/graph-rebuild) notes, TTL behavior, LangGraph Deployment wiring, and client-side examples, see [Sandbox lifecycle](/oss/python/deepagents/going-to-production#lifecycle) in Going to production.
+
+### Thread-scoped (default)
+
+Each conversation gets its own sandbox. The first run creates it; follow-up turns on the same thread reuse it. When the thread ends or the sandbox TTL expires, the environment goes away. Store the mapping with sandbox names or metadata as in the following example so each run resolves to the same sandbox.
+
+  When users can return after idle time, configure a TTL on the sandbox so the provider deletes or archives idle environments automatically.
+
+```python
+from deepagents import create_deep_agent
 from deepagents.backends.langsmith import LangSmithSandbox
 from langchain_core.runnables import RunnableConfig
 from langsmith.sandbox import SandboxClient
@@ -622,8 +779,10 @@ async def agent(config: RunnableConfig):
         model="google_genai:gemini-3.6-flash",
         backend=LangSmithSandbox(sandbox=ls_sandbox),
     )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from deepagents.backends.langsmith import LangSmithSandbox
 from langchain_core.runnables import RunnableConfig
 from langsmith.sandbox import SandboxClient
@@ -650,8 +809,10 @@ async def agent(config: RunnableConfig):
         model="openai:gpt-5.5",
         backend=LangSmithSandbox(sandbox=ls_sandbox),
     )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from deepagents.backends.langsmith import LangSmithSandbox
 from langchain_core.runnables import RunnableConfig
 from langsmith.sandbox import SandboxClient
@@ -678,8 +839,10 @@ async def agent(config: RunnableConfig):
         model="anthropic:claude-sonnet-4-6",
         backend=LangSmithSandbox(sandbox=ls_sandbox),
     )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from deepagents.backends.langsmith import LangSmithSandbox
 from langchain_core.runnables import RunnableConfig
 from langsmith.sandbox import SandboxClient
@@ -706,8 +869,10 @@ async def agent(config: RunnableConfig):
         model="openrouter:z-ai/glm-5.2",
         backend=LangSmithSandbox(sandbox=ls_sandbox),
     )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from deepagents.backends.langsmith import LangSmithSandbox
 from langchain_core.runnables import RunnableConfig
 from langsmith.sandbox import SandboxClient
@@ -734,8 +899,10 @@ async def agent(config: RunnableConfig):
         model="fireworks:accounts/fireworks/models/glm-5p2",
         backend=LangSmithSandbox(sandbox=ls_sandbox),
     )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from deepagents.backends.langsmith import LangSmithSandbox
 from langchain_core.runnables import RunnableConfig
 from langsmith.sandbox import SandboxClient
@@ -762,8 +929,10 @@ async def agent(config: RunnableConfig):
         model="baseten:zai-org/GLM-5.2",
         backend=LangSmithSandbox(sandbox=ls_sandbox),
     )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from deepagents.backends.langsmith import LangSmithSandbox
 from langchain_core.runnables import RunnableConfig
 from langsmith.sandbox import SandboxClient
@@ -790,11 +959,16 @@ async def agent(config: RunnableConfig):
         model="ollama:north-mini-code-1.0",
         backend=LangSmithSandbox(sandbox=ls_sandbox),
     )
-</code></pre>
-<h3 id="assistant-scoped">助理范围</h3>
-<p>同一助手上的每个线程都重复使用一个沙箱。文件、已安装的包和克隆的存储库在对话中保留。</p>
-<p>随着时间的推移，助理范围的沙箱会积累沙箱内的状态。使用沙箱提供程序配置 TTL、使用快照定期重置或实施清理逻辑，以便磁盘和内存不会无限制地增长。</p>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+### Assistant-scoped
+
+Every thread on the same assistant reuses one sandbox. Files, installed packages, and cloned repositories persist across conversations.
+
+  Assistant-scoped sandboxes accumulate in-sandbox state over time. Configure a TTL with your sandbox provider, use snapshots to reset periodically, or implement cleanup logic so disk and memory do not grow without bound.
+
+```python
+from deepagents import create_deep_agent
 from deepagents.backends.langsmith import LangSmithSandbox
 from langchain_core.runnables import RunnableConfig
 from langsmith.sandbox import SandboxClient
@@ -818,8 +992,10 @@ async def agent(config: RunnableConfig):
         model="google_genai:gemini-3.6-flash",
         backend=LangSmithSandbox(sandbox=ls_sandbox),
     )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from deepagents.backends.langsmith import LangSmithSandbox
 from langchain_core.runnables import RunnableConfig
 from langsmith.sandbox import SandboxClient
@@ -843,8 +1019,10 @@ async def agent(config: RunnableConfig):
         model="openai:gpt-5.5",
         backend=LangSmithSandbox(sandbox=ls_sandbox),
     )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from deepagents.backends.langsmith import LangSmithSandbox
 from langchain_core.runnables import RunnableConfig
 from langsmith.sandbox import SandboxClient
@@ -868,8 +1046,10 @@ async def agent(config: RunnableConfig):
         model="anthropic:claude-sonnet-4-6",
         backend=LangSmithSandbox(sandbox=ls_sandbox),
     )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from deepagents.backends.langsmith import LangSmithSandbox
 from langchain_core.runnables import RunnableConfig
 from langsmith.sandbox import SandboxClient
@@ -893,8 +1073,10 @@ async def agent(config: RunnableConfig):
         model="openrouter:z-ai/glm-5.2",
         backend=LangSmithSandbox(sandbox=ls_sandbox),
     )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from deepagents.backends.langsmith import LangSmithSandbox
 from langchain_core.runnables import RunnableConfig
 from langsmith.sandbox import SandboxClient
@@ -918,8 +1100,10 @@ async def agent(config: RunnableConfig):
         model="fireworks:accounts/fireworks/models/glm-5p2",
         backend=LangSmithSandbox(sandbox=ls_sandbox),
     )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from deepagents.backends.langsmith import LangSmithSandbox
 from langchain_core.runnables import RunnableConfig
 from langsmith.sandbox import SandboxClient
@@ -943,8 +1127,10 @@ async def agent(config: RunnableConfig):
         model="baseten:zai-org/GLM-5.2",
         backend=LangSmithSandbox(sandbox=ls_sandbox),
     )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from deepagents.backends.langsmith import LangSmithSandbox
 from langchain_core.runnables import RunnableConfig
 from langsmith.sandbox import SandboxClient
@@ -968,44 +1154,60 @@ async def agent(config: RunnableConfig):
         model="ollama:north-mini-code-1.0",
         backend=LangSmithSandbox(sandbox=ls_sandbox),
     )
-</code></pre>
-<p>有关在图工厂外部手动创建、执行和拆卸的信息，请参阅<a href="#basic-usage">基本用法</a> 和<a href="https://docs.langchain.com/oss/python/integrations/sandboxes">沙箱集成</a> 以了解特定于提供者的 API。</p>
-<h2 id="integration-patterns">整合模式</h2>
-<p>根据代理运行的位置，有两种将代理与沙箱集成的架构模式。</p>
-<h3 id="agent-in-sandbox-pattern">沙盒模式中的代理</h3>
-<p>该代理在沙箱内运行，您通过网络与其进行通信。您可以构建预安装代理框架的 Docker 或 VM 映像，在沙箱内运行它，然后从外部连接以发送消息。</p>
-<p>好处：</p>
-<ul>
-<li>✅ 密切反映当地发展。</li>
-<li>✅ 代理与环境之间的紧密耦合。</li>
-</ul>
-<p>权衡：</p>
-<ul>
-<li>🔴 API 密钥必须位于沙箱内（安全风险）。</li>
-<li>🔴 更新需要重建镜像。</li>
-<li>🔴 需要通信基础设施（WebSocket 或 HTTP 层）。</li>
-</ul>
-<p>要在沙箱中运行代理，请构建映像并在其上安装 deepagents。</p>
-<pre><code class="language-dockerfile">FROM python:3.11
+```
+
+For manual create, execute, and teardown outside a graph factory, see [Basic usage](#basic-usage) and [sandbox integrations](/oss/python/integrations/sandboxes) for provider-specific APIs.
+
+## Integration patterns
+
+There are two architecture patterns for integrating agents with sandboxes, based on where the agent runs.
+
+### Agent in sandbox pattern
+
+The agent runs inside the sandbox and you communicate with it over the network. You build a Docker or VM image with your agent framework pre-installed, run it inside the sandbox, and connect from outside to send messages.
+
+Benefits:
+
+* ✅ Mirrors local development closely.
+* ✅ Tight coupling between agent and environment.
+
+Trade-offs:
+
+* 🔴 API keys must live inside the sandbox (security risk).
+* 🔴 Updates require rebuilding images.
+* 🔴 Requires infrastructure for communication (WebSocket or HTTP layer).
+
+To run an agent in a sandbox, build an image and install deepagents on it.
+
+
+```dockerfile
+FROM python:3.11
 RUN pip install deepagents-code
-</code></pre>
-<p>然后在沙箱内运行代理。要在沙箱内使用代理，您必须添加额外的基础设施来处理应用程序与沙箱内的代理之间的通信。</p>
-<h3 id="sandbox-as-tool-pattern">沙箱作为工具模式</h3>
-<p>代理在您的计算机或服务器上运行。当需要执行代码时，它会调用沙箱工具（例如 <code>execute</code>、<code>read_file</code> 或 <code>write_file</code>），这些工具调用提供程序的 API 以在远程沙箱中运行操作。</p>
-<p>好处：</p>
-<ul>
-<li>✅ 立即更新代理代码，无需重建镜像。</li>
-<li>✅ 代理状态和执行之间更清晰的分离。</li>
-<li>API 密钥保留在沙箱之外。</li>
-<li>沙箱失败不会丢失代理状态。</li>
-<li>在多个沙箱中并行运行任务的选项。</li>
-<li>✅ 只需按执行时间付费。</li>
-</ul>
-<p>权衡：</p>
-<ul>
-<li>🔴 每次执行调用的网络延迟。</li>
-</ul>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+
+Then run the agent inside the sandbox.
+To use the agent inside the sandbox you have to add additional infrastructure to handle communication between your application and the agent inside the sandbox.
+
+### Sandbox as tool pattern
+
+The agent runs on your machine or server. When it needs to execute code, it calls sandbox tools (such as `execute`, `read_file`, or `write_file`) which invoke the provider's APIs to run operations in a remote sandbox.
+
+Benefits:
+
+* ✅ Update agent code instantly without rebuilding images.
+* ✅ Cleaner separation between agent state and execution.
+  * API keys stay outside the sandbox.
+  * Sandbox failures don't lose agent state.
+  * Option to run tasks in multiple sandboxes in parallel.
+* ✅ Pay only for execution time.
+
+Trade-offs:
+
+* 🔴 Network latency on each execution call.
+
+```python
+from deepagents import create_deep_agent
 from deepagents.backends.langsmith import LangSmithSandbox
 from langsmith.sandbox import SandboxClient
 
@@ -1033,8 +1235,10 @@ try:
     print(result["messages"][-1].content)
 finally:
     client.delete_sandbox(ls_sandbox.name)
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from deepagents.backends.langsmith import LangSmithSandbox
 from langsmith.sandbox import SandboxClient
 
@@ -1062,8 +1266,10 @@ try:
     print(result["messages"][-1].content)
 finally:
     client.delete_sandbox(ls_sandbox.name)
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from deepagents.backends.langsmith import LangSmithSandbox
 from langsmith.sandbox import SandboxClient
 
@@ -1091,8 +1297,10 @@ try:
     print(result["messages"][-1].content)
 finally:
     client.delete_sandbox(ls_sandbox.name)
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from deepagents.backends.langsmith import LangSmithSandbox
 from langsmith.sandbox import SandboxClient
 
@@ -1120,8 +1328,10 @@ try:
     print(result["messages"][-1].content)
 finally:
     client.delete_sandbox(ls_sandbox.name)
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from deepagents.backends.langsmith import LangSmithSandbox
 from langsmith.sandbox import SandboxClient
 
@@ -1149,8 +1359,10 @@ try:
     print(result["messages"][-1].content)
 finally:
     client.delete_sandbox(ls_sandbox.name)
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from deepagents.backends.langsmith import LangSmithSandbox
 from langsmith.sandbox import SandboxClient
 
@@ -1178,8 +1390,10 @@ try:
     print(result["messages"][-1].content)
 finally:
     client.delete_sandbox(ls_sandbox.name)
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from deepagents.backends.langsmith import LangSmithSandbox
 from langsmith.sandbox import SandboxClient
 
@@ -1207,29 +1421,41 @@ try:
     print(result["messages"][-1].content)
 finally:
     client.delete_sandbox(ls_sandbox.name)
-</code></pre>
-<p>本文档中的示例使用沙箱作为工具模式。当您的提供商的 SDK 处理通信层并且您希望生产能够反映本地开发时，请选择沙箱模式中的代理。当您需要快速迭代代理逻辑、将 API 密钥保留在沙箱之外或希望更清晰地分离关注点时，请选择沙箱作为工具模式。</p>
-<h2 id="how-sandboxes-work">沙箱如何工作</h2>
-<h3 id="isolation-boundaries">隔离边界</h3>
-<p>所有沙箱提供程序都会保护您的主机系统免受代理文件系统和 shell 操作的影响。代理无法读取您的本地文件、访问计算机上的环境变量或干扰其他进程。然而，沙箱本身<strong id="not">不能</strong>防止：</p>
-<ul>
-<li><strong id="context-injection">上下文注入</strong>：控制代理部分输入的攻击者可以指示其在沙箱内运行任意命令。沙箱是隔离的，但代理在其中拥有完全控制权。</li>
-<li><strong id="network-exfiltration">网络渗透</strong>：除非网络访问被阻止，否则上下文注入代理可以通过 HTTP 或 DNS 将数据发送到沙箱之外。一些提供商支持阻止网络访问（例如 Modal 上的 <code>blockNetwork: true</code>）。</li>
-</ul>
-<p>请参阅<a href="#security-considerations">安全注意事项</a>，了解如何处理机密并减轻这些风险。</p>
-<h3 id="the-execute-method"><code>execute</code> 方法</h3>
-<p>沙箱后端具有简单的架构：提供者必须实现的唯一方法是 <code>execute()</code>，它运行 shell 命令并返回其输出。</p>
-<p>所有其他文件系统操作（<code>read</code>、<code>write</code>、<code>edit</code>、<code>delete</code>、<code>ls</code>、<code>glob</code>、<code>grep</code>）均构建在 <code>execute()</code> 之上<a href="https://reference.langchain.com/python/deepagents/backends/sandbox/BaseSandbox"><code>BaseSandbox</code></a> 基类，它构造脚本并通过 <code>execute()</code> 在沙箱内运行它们。</p>
-<pre><code class="language-mermaid">graph TB
+```
+
+The examples in this doc use the sandbox as a tool pattern.
+Choose the agent in sandbox pattern when your provider's SDK handles the communication layer and you want production to mirror local development.
+Choose the sandbox as tool pattern when you need to iterate quickly on agent logic, keep API keys outside the sandbox, or prefer cleaner separation of concerns.
+
+## How sandboxes work
+
+### Isolation boundaries
+
+All sandbox providers protect your host system from the agent's filesystem and shell operations. The agent cannot read your local files, access environment variables on your machine, or interfere with other processes. However, sandboxes alone do **not** protect against:
+
+* **Context injection**: An attacker who controls part of the agent's input can instruct it to run arbitrary commands inside the sandbox. The sandbox is isolated, but the agent has full control within it.
+* **Network exfiltration**: Unless network access is blocked, a context-injected agent can send data out of the sandbox over HTTP or DNS. Some providers support blocking network access (e.g., `blockNetwork: true` on Modal).
+
+See [security considerations](#security-considerations) for how to handle secrets and mitigate these risks.
+
+### The `execute` method
+
+Sandbox backends have a simple architecture: the only method a provider must implement is `execute()`, which runs a shell command and returns its output.
+
+Every other filesystem operation (`read`, `write`, `edit`, `delete`, `ls`, `glob`, `grep`) is built on top of `execute()` by the [`BaseSandbox`](https://reference.langchain.com/python/deepagents/backends/sandbox/BaseSandbox) base class, which constructs scripts and runs them inside the sandbox via `execute()`.
+
+
+```mermaid
+graph TB
     subgraph "Agent tools"
         Tools["ls, read_file, ..."]
         execute
     end
 
-    BaseSandbox["BaseSandbox&lt;br/&gt;(uses execute)"] --&gt; Tools
-    execute_method["execute()"] --&gt; BaseSandbox
-    execute_method --&gt; execute
-    Provider["Provider SDK"] --&gt; execute_method
+    BaseSandbox["BaseSandbox<br/>(uses execute)"] --> Tools
+    execute_method["execute()"] --> BaseSandbox
+    execute_method --> execute
+    Provider["Provider SDK"] --> execute_method
 
     classDef process fill:#E5F4FF,stroke:#006DDD,stroke-width:2px,color:#030710
     classDef trigger fill:#F6FFDB,stroke:#6E8900,stroke-width:2px,color:#2E3900
@@ -1237,16 +1463,23 @@ finally:
     class Tools,execute process
     class BaseSandbox,execute_method process
     class Provider trigger
-</code></pre>
-<p>这个设计的意思是：</p>
-<ul>
-<li><strong id="adding-a-new-provider-is-straightforward">添加新的提供程序非常简单。</strong> 实现 <code>execute()</code> — 基类处理其他所有事情。</li>
-<li><strong id="the-execute-tool-is-conditionally-available"><code>execute</code> 工具有条件可用。</strong> 在每次模型调用时，线束都会检查后端是否实现 <a href="https://reference.langchain.com/python/deepagents/backends/protocol/SandboxBackendProtocol"><code>SandboxBackendProtocol</code></a>。如果不是，该工具将被过滤掉，代理永远不会看到它。</li>
-</ul>
-<p>当代理调用 <code>execute</code> 工具时，它会提供 <code>command</code> 字符串，并返回组合的 stdout/stderr、退出代码以及输出太大时的截断通知。</p>
-<p>您还可以直接在应用程序代码中调用后端 <code>execute()</code> 方法。</p>
-<p><strong>朗史密斯</strong></p>
-<pre><code class="language-python">from deepagents.backends.langsmith import LangSmithSandbox
+```
+
+
+This design means:
+
+* **Adding a new provider is straightforward.** Implement `execute()`—the base class handles everything else.
+* **The `execute` tool is conditionally available.** On every model call, the harness checks whether the backend implements [`SandboxBackendProtocol`](https://reference.langchain.com/python/deepagents/backends/protocol/SandboxBackendProtocol). If not, the tool is filtered out and the agent never sees it.
+
+When the agent calls the `execute` tool, it provides a `command` string and gets back the combined stdout/stderr, exit code, and a truncation notice if the output was too large.
+
+You can also call the backend `execute()` method directly in your application code.
+
+  
+**LangSmith**
+
+```python
+from deepagents.backends.langsmith import LangSmithSandbox
 from langsmith.sandbox import SandboxClient
 
 client = SandboxClient()
@@ -1255,13 +1488,30 @@ backend = LangSmithSandbox(sandbox=ls_sandbox)
 
 result = backend.execute("python --version")
 print(result.output)
-</code></pre>
-<p><strong id="agentcore">代理核心</strong></p>
-<pre><code class="language-bash">pip install langchain-agentcore-codeinterpreter
-</code></pre>
-<pre><code class="language-bash">uv add langchain-agentcore-codeinterpreter
-</code></pre>
-<pre><code class="language-python">from bedrock_agentcore.tools.code_interpreter_client import CodeInterpreter
+```
+
+
+  
+
+
+  
+**AgentCore**
+
+    
+
+```bash
+pip install langchain-agentcore-codeinterpreter
+```
+
+```bash
+uv add langchain-agentcore-codeinterpreter
+```
+
+
+    
+
+```python
+from bedrock_agentcore.tools.code_interpreter_client import CodeInterpreter
 
 from langchain_agentcore_codeinterpreter import AgentCoreSandbox
 
@@ -1275,13 +1525,30 @@ try:
     print(result.output)
 finally:
     interpreter.stop()
-</code></pre>
-<p><strong>代托纳</strong></p>
-<pre><code class="language-bash">pip install langchain-daytona
-</code></pre>
-<pre><code class="language-bash">uv add langchain-daytona
-</code></pre>
-<pre><code class="language-python">from daytona import Daytona
+```
+
+
+  
+
+
+  
+**Daytona**
+
+    
+
+```bash
+pip install langchain-daytona
+```
+
+```bash
+uv add langchain-daytona
+```
+
+
+    
+
+```python
+from daytona import Daytona
 
 from langchain_daytona import DaytonaSandbox
 
@@ -1290,13 +1557,30 @@ backend = DaytonaSandbox(sandbox=sandbox)
 
 result = backend.execute("python --version")
 print(result.output)
-</code></pre>
-<p><strong>E2B</strong></p>
-<pre><code class="language-bash">pip install langchain-e2b
-</code></pre>
-<pre><code class="language-bash">uv add langchain-e2b
-</code></pre>
-<pre><code class="language-python">from e2b import Sandbox
+```
+
+
+  
+
+
+  
+**E2B**
+
+    
+
+```bash
+pip install langchain-e2b
+```
+
+```bash
+uv add langchain-e2b
+```
+
+
+    
+
+```python
+from e2b import Sandbox
 from langchain_e2b import E2BSandbox
 
 e2b_sandbox = Sandbox.create()
@@ -1307,9 +1591,17 @@ try:
     print(result.output)
 finally:
     e2b_sandbox.kill()
-</code></pre>
-<p><strong>莫代尔</strong></p>
-<pre><code class="language-python">import modal
+```
+
+
+  
+
+
+  
+**Modal**
+
+```python
+import modal
 
 from langchain_modal import ModalSandbox
 
@@ -1319,13 +1611,30 @@ backend = ModalSandbox(sandbox=modal_sandbox)
 
 result = backend.execute("python --version")
 print(result.output)
-</code></pre>
-<p><strong id="nvidia-openshell">NVIDIA OpenShell</strong></p>
-<pre><code class="language-bash">pip install langchain-nvidia-openshell
-</code></pre>
-<pre><code class="language-bash">uv add langchain-nvidia-openshell
-</code></pre>
-<pre><code class="language-python">import openshell
+```
+
+
+  
+
+
+  
+**NVIDIA OpenShell**
+
+    
+
+```bash
+pip install langchain-nvidia-openshell
+```
+
+```bash
+uv add langchain-nvidia-openshell
+```
+
+
+    
+
+```python
+import openshell
 
 from langchain_nvidia_openshell import OpenShellSandbox
 
@@ -1334,13 +1643,30 @@ with openshell.Sandbox(delete_on_exit=True) as sandbox:
 
     result = backend.execute("python3 --version")
     print(result.output)
-</code></pre>
-<p><strong>运行循环</strong></p>
-<pre><code class="language-bash">pip install langchain-runloop
-</code></pre>
-<pre><code class="language-bash">uv add langchain-runloop
-</code></pre>
-<pre><code class="language-python">from runloop_api_client import RunloopSDK
+```
+
+
+  
+
+
+  
+**Runloop**
+
+    
+
+```bash
+pip install langchain-runloop
+```
+
+```bash
+uv add langchain-runloop
+```
+
+
+    
+
+```python
+from runloop_api_client import RunloopSDK
 
 from langchain_runloop import RunloopSandbox
 
@@ -1355,13 +1681,30 @@ try:
     print(result.output)
 finally:
     devbox.shutdown()
-</code></pre>
-<p><strong>韦尔塞尔</strong></p>
-<pre><code class="language-bash">pip install langchain-vercel-sandbox
-</code></pre>
-<pre><code class="language-bash">uv add langchain-vercel-sandbox
-</code></pre>
-<pre><code class="language-python">from vercel.sandbox import Sandbox
+```
+
+
+  
+
+
+  
+**Vercel**
+
+    
+
+```bash
+pip install langchain-vercel-sandbox
+```
+
+```bash
+uv add langchain-vercel-sandbox
+```
+
+
+    
+
+```python
+from vercel.sandbox import Sandbox
 
 from langchain_vercel_sandbox import VercelSandbox
 
@@ -1373,40 +1716,57 @@ try:
     print(result.output)
 finally:
     sandbox.stop()
-</code></pre>
-<p>例如：</p>
-<pre><code>4
+```
+
+
+  
+
+For example:
+
+
+```
+4
 [Command succeeded with exit code 0]
-</code></pre>
-<pre><code>bash: foobar: command not found
+```
+
+```
+bash: foobar: command not found
 [Command failed with exit code 127]
-</code></pre>
-<p>如果命令产生非常大的输出，结果会自动保存到文件中，并指示代理使用 <code>read_file</code> 增量访问它。这可以防止上下文窗口溢出。</p>
-<h3 id="two-planes-of-file-access">文件访问的两个平面</h3>
-<p>文件移入和移出沙箱有两种不同的方式，了解何时使用每种方式非常重要：</p>
-<p><strong id="agent-filesystem-tools">代理文件系统工具</strong>：<code>read_file</code>、<code>write_file</code>、<code>edit_file</code>、<code>delete</code>、<code>ls</code>、<code>glob</code>、<code>grep</code>、<code>execute</code>是LLM在执行期间调用的工具。这些通过沙箱内的 <code>execute()</code> 进行。代理使用它们来读取代码、写入文件和运行命令作为其任务的一部分。</p>
-<p><strong id="file-transfer-apis">文件传输 API</strong>：您的应用程序代码调用的 <code>uploadFiles()</code> 和 <code>downloadFiles()</code> 方法。它们使用提供商的本机文件传输 API（不是 shell 命令），旨在在主机环境和沙箱之间移动文件。使用它们可以：</p>
-<ul>
-<li><strong id="seed-the-sandbox">在代理运行之前使用源代码、配置或数据为沙箱播种</strong></li>
-<li><strong id="retrieve-artifacts">代理完成后检索工件</strong>（生成的代码、构建输出、报告）</li>
-<li><strong id="pre-populate-dependencies">预填充代理所需的依赖项</strong></li>
-</ul>
-<pre><code class="language-mermaid">graph LR
+```
+
+
+If a command produces very large output, the result is automatically saved to a file and the agent is instructed to use `read_file` to access it incrementally. This prevents context window overflow.
+
+### Two planes of file access
+
+There are two distinct ways files move in and out of a sandbox, and it's important to understand when to use each:
+
+**Agent filesystem tools**: `read_file`, `write_file`, `edit_file`, `delete`, `ls`, `glob`, `grep`, `execute` are the tools the LLM calls during its execution. These go through `execute()` inside the sandbox. The agent uses them to read code, write files, and run commands as part of its task.
+
+**File transfer APIs**: the `uploadFiles()` and `downloadFiles()` methods that your application code calls. These use the provider's native file transfer APIs (not shell commands) and are designed for moving files between your host environment and the sandbox. Use these to:
+
+* **Seed the sandbox** with source code, configuration, or data before the agent runs
+* **Retrieve artifacts** (generated code, build outputs, reports) after the agent finishes
+* **Pre-populate dependencies** that the agent will need
+
+
+```mermaid
+graph LR
     subgraph "Your application"
         App[Application code]
     end
 
     subgraph "Agent"
-        LLM --&gt; Tools["read_file, write_file, ..."]
-        Tools --&gt; LLM
+        LLM --> Tools["read_file, write_file, ..."]
+        Tools --> LLM
     end
 
     subgraph "Sandbox"
         FS[Filesystem]
     end
 
-    App -- "Provider API" --&gt; FS
-    Tools -- "execute()" --&gt; FS
+    App -- "Provider API" --> FS
+    Tools -- "execute()" --> FS
 
     classDef trigger fill:#F6FFDB,stroke:#6E8900,stroke-width:2px,color:#2E3900
     classDef process fill:#E5F4FF,stroke:#006DDD,stroke-width:2px,color:#030710
@@ -1415,13 +1775,22 @@ finally:
     class App trigger
     class LLM,Tools process
     class FS output
-</code></pre>
-<h2 id="working-with-files">处理文件</h2>
-<p>deepagents 沙箱后端支持文件传输 API，用于在应用程序和沙箱之间移动文件。</p>
-<h3 id="seeding-the-sandbox">沙箱播种</h3>
-<p>在代理运行之前使用 <code>upload_files()</code> 填充沙箱。路径必须是绝对路径，内容为 <code>bytes</code>：</p>
-<p><strong>朗史密斯</strong></p>
-<pre><code class="language-python">from deepagents.backends.langsmith import LangSmithSandbox
+```
+
+
+## Working with files
+
+The deepagents sandbox backends support file transfer APIs for moving files between your application and the sandbox.
+
+### Seeding the sandbox
+
+Use `upload_files()` to populate the sandbox before the agent runs. Paths must be absolute and contents are `bytes`:
+
+  
+**LangSmith**
+
+```python
+from deepagents.backends.langsmith import LangSmithSandbox
 from langsmith.sandbox import SandboxClient
 
 client = SandboxClient()
@@ -1434,13 +1803,30 @@ backend.upload_files(
         ("/pyproject.toml", b"[project]\nname = 'my-app'\n"),
     ]
 )
-</code></pre>
-<p><strong>代理核心</strong></p>
-<pre><code class="language-bash">pip install langchain-agentcore-codeinterpreter
-</code></pre>
-<pre><code class="language-bash">uv add langchain-agentcore-codeinterpreter
-</code></pre>
-<pre><code class="language-python">from bedrock_agentcore.tools.code_interpreter_client import CodeInterpreter
+```
+
+
+  
+
+
+  
+**AgentCore**
+
+    
+
+```bash
+pip install langchain-agentcore-codeinterpreter
+```
+
+```bash
+uv add langchain-agentcore-codeinterpreter
+```
+
+
+    
+
+```python
+from bedrock_agentcore.tools.code_interpreter_client import CodeInterpreter
 
 from langchain_agentcore_codeinterpreter import AgentCoreSandbox
 
@@ -1455,13 +1841,30 @@ backend.upload_files(
         ("data.csv", b"name,value\na,1\nb,2\n"),
     ]
 )
-</code></pre>
-<p><strong>代托纳</strong></p>
-<pre><code class="language-bash">pip install langchain-daytona
-</code></pre>
-<pre><code class="language-bash">uv add langchain-daytona
-</code></pre>
-<pre><code class="language-python">from daytona import Daytona
+```
+
+
+  
+
+
+  
+**Daytona**
+
+    
+
+```bash
+pip install langchain-daytona
+```
+
+```bash
+uv add langchain-daytona
+```
+
+
+    
+
+```python
+from daytona import Daytona
 
 from langchain_daytona import DaytonaSandbox
 
@@ -1474,13 +1877,30 @@ backend.upload_files(
         ("/pyproject.toml", b"[project]\nname = 'my-app'\n"),
     ]
 )
-</code></pre>
-<p><strong>E2B</strong></p>
-<pre><code class="language-bash">pip install langchain-e2b
-</code></pre>
-<pre><code class="language-bash">uv add langchain-e2b
-</code></pre>
-<pre><code class="language-python">from e2b import Sandbox
+```
+
+
+  
+
+
+  
+**E2B**
+
+    
+
+```bash
+pip install langchain-e2b
+```
+
+```bash
+uv add langchain-e2b
+```
+
+
+    
+
+```python
+from e2b import Sandbox
 from langchain_e2b import E2BSandbox
 
 e2b_sandbox = Sandbox.create()
@@ -1495,9 +1915,17 @@ try:
     )
 finally:
     e2b_sandbox.kill()
-</code></pre>
-<p><strong>莫代尔</strong></p>
-<pre><code class="language-python">import modal
+```
+
+
+  
+
+
+  
+**Modal**
+
+```python
+import modal
 
 from langchain_modal import ModalSandbox
 
@@ -1511,13 +1939,30 @@ backend.upload_files(
         ("/pyproject.toml", b"[project]\nname = 'my-app'\n"),
     ]
 )
-</code></pre>
-<p><strong>运行循环</strong></p>
-<pre><code class="language-bash">pip install langchain-runloop
-</code></pre>
-<pre><code class="language-bash">uv add langchain-runloop
-</code></pre>
-<pre><code class="language-python">from runloop_api_client import RunloopSDK
+```
+
+
+  
+
+
+  
+**Runloop**
+
+    
+
+```bash
+pip install langchain-runloop
+```
+
+```bash
+uv add langchain-runloop
+```
+
+
+    
+
+```python
+from runloop_api_client import RunloopSDK
 
 from langchain_runloop import RunloopSandbox
 
@@ -1533,13 +1978,30 @@ backend.upload_files(
         ("/pyproject.toml", b"[project]\nname = 'my-app'\n"),
     ]
 )
-</code></pre>
-<p><strong>韦尔塞尔</strong></p>
-<pre><code class="language-bash">pip install langchain-vercel-sandbox
-</code></pre>
-<pre><code class="language-bash">uv add langchain-vercel-sandbox
-</code></pre>
-<pre><code class="language-python">from vercel.sandbox import Sandbox
+```
+
+
+  
+
+
+  
+**Vercel**
+
+    
+
+```bash
+pip install langchain-vercel-sandbox
+```
+
+```bash
+uv add langchain-vercel-sandbox
+```
+
+
+    
+
+```python
+from vercel.sandbox import Sandbox
 
 from langchain_vercel_sandbox import VercelSandbox
 
@@ -1552,11 +2014,20 @@ backend.upload_files(
         ("/pyproject.toml", b"[project]\nname = 'my-app'\n"),
     ]
 )
-</code></pre>
-<h3 id="retrieving-artifacts">检索文物</h3>
-<p>代理完成后，使用 <code>download_files()</code> 从沙箱中检索文件：</p>
-<p><strong>朗史密斯</strong></p>
-<pre><code class="language-python">from deepagents.backends.langsmith import LangSmithSandbox
+```
+
+
+  
+
+### Retrieving artifacts
+
+Use `download_files()` to retrieve files from the sandbox after the agent finishes:
+
+  
+**LangSmith**
+
+```python
+from deepagents.backends.langsmith import LangSmithSandbox
 from langsmith.sandbox import SandboxClient
 
 client = SandboxClient()
@@ -1570,13 +2041,30 @@ for result in results:
         print(f"{result.path}: {result.content.decode()}")
     else:
         print(f"Failed to download {result.path}: {result.error}")
-</code></pre>
-<p><strong>代理核心</strong></p>
-<pre><code class="language-bash">pip install langchain-agentcore-codeinterpreter
-</code></pre>
-<pre><code class="language-bash">uv add langchain-agentcore-codeinterpreter
-</code></pre>
-<pre><code class="language-python">from bedrock_agentcore.tools.code_interpreter_client import CodeInterpreter
+```
+
+
+  
+
+
+  
+**AgentCore**
+
+    
+
+```bash
+pip install langchain-agentcore-codeinterpreter
+```
+
+```bash
+uv add langchain-agentcore-codeinterpreter
+```
+
+
+    
+
+```python
+from bedrock_agentcore.tools.code_interpreter_client import CodeInterpreter
 
 from langchain_agentcore_codeinterpreter import AgentCoreSandbox
 
@@ -1593,13 +2081,30 @@ for result in results:
         print(f"Failed to download {result.path}: {result.error}")
 
 interpreter.stop()
-</code></pre>
-<p><strong>代托纳</strong></p>
-<pre><code class="language-bash">pip install langchain-daytona
-</code></pre>
-<pre><code class="language-bash">uv add langchain-daytona
-</code></pre>
-<pre><code class="language-python">from daytona import Daytona
+```
+
+
+  
+
+
+  
+**Daytona**
+
+    
+
+```bash
+pip install langchain-daytona
+```
+
+```bash
+uv add langchain-daytona
+```
+
+
+    
+
+```python
+from daytona import Daytona
 
 from langchain_daytona import DaytonaSandbox
 
@@ -1612,13 +2117,30 @@ for result in results:
         print(f"{result.path}: {result.content.decode()}")
     else:
         print(f"Failed to download {result.path}: {result.error}")
-</code></pre>
-<p><strong>E2B</strong></p>
-<pre><code class="language-bash">pip install langchain-e2b
-</code></pre>
-<pre><code class="language-bash">uv add langchain-e2b
-</code></pre>
-<pre><code class="language-python">from e2b import Sandbox
+```
+
+
+  
+
+
+  
+**E2B**
+
+    
+
+```bash
+pip install langchain-e2b
+```
+
+```bash
+uv add langchain-e2b
+```
+
+
+    
+
+```python
+from e2b import Sandbox
 from langchain_e2b import E2BSandbox
 
 e2b_sandbox = Sandbox.create()
@@ -1633,9 +2155,17 @@ try:
             print(f"Failed to download {result.path}: {result.error}")
 finally:
     e2b_sandbox.kill()
-</code></pre>
-<p><strong>莫代尔</strong></p>
-<pre><code class="language-python">import modal
+```
+
+
+  
+
+
+  
+**Modal**
+
+```python
+import modal
 
 from langchain_modal import ModalSandbox
 
@@ -1649,13 +2179,30 @@ for result in results:
         print(f"{result.path}: {result.content.decode()}")
     else:
         print(f"Failed to download {result.path}: {result.error}")
-</code></pre>
-<p><strong>运行循环</strong></p>
-<pre><code class="language-bash">pip install langchain-runloop
-</code></pre>
-<pre><code class="language-bash">uv add langchain-runloop
-</code></pre>
-<pre><code class="language-python">from runloop_api_client import RunloopSDK
+```
+
+
+  
+
+
+  
+**Runloop**
+
+    
+
+```bash
+pip install langchain-runloop
+```
+
+```bash
+uv add langchain-runloop
+```
+
+
+    
+
+```python
+from runloop_api_client import RunloopSDK
 
 from langchain_runloop import RunloopSandbox
 
@@ -1671,13 +2218,30 @@ for result in results:
         print(f"{result.path}: {result.content.decode()}")
     else:
         print(f"Failed to download {result.path}: {result.error}")
-</code></pre>
-<p><strong>韦尔塞尔</strong></p>
-<pre><code class="language-bash">pip install langchain-vercel-sandbox
-</code></pre>
-<pre><code class="language-bash">uv add langchain-vercel-sandbox
-</code></pre>
-<pre><code class="language-python">from vercel.sandbox import Sandbox
+```
+
+
+  
+
+
+  
+**Vercel**
+
+    
+
+```bash
+pip install langchain-vercel-sandbox
+```
+
+```bash
+uv add langchain-vercel-sandbox
+```
+
+
+    
+
+```python
+from vercel.sandbox import Sandbox
 
 from langchain_vercel_sandbox import VercelSandbox
 
@@ -1690,51 +2254,55 @@ for result in results:
         print(f"{result.path}: {result.content.decode()}")
     else:
         print(f"Failed to download {result.path}: {result.error}")
-</code></pre>
-<p>在沙箱内，代理使用文件系统工具（<code>read_file</code>、<code>write_file</code>）。 <code>upload_files</code> 和 <code>download_files</code> 方法供您的应用程序代码跨主机和沙箱之间的边界移动文件。</p>
-<h2 id="security-considerations">安全考虑</h2>
-<p>沙箱将代码执行与主机系统隔离，但它们不能防止<strong>上下文注入</strong>。控制代理部分输入的攻击者可以指示其读取文件、运行命令或从沙箱内窃取数据。这使得沙箱内的凭证特别危险。</p>
-<p><strong id="never-put-secrets-inside-a-sandbox">切勿将机密放入沙箱中。</strong> API 密钥、令牌、数据库凭据以及注入沙箱的其他机密（通过环境变量、挂载文件或 <code>secrets</code> 选项）可以由上下文注入代理读取和泄露。这甚至适用于短期或有范围的凭证——如果代理可以访问它们，那么攻击者也可以。</p>
-<h3 id="handling-secrets-safely">安全处理秘密</h3>
-<p>如果您的代理需要调用经过身份验证的 API 或访问受保护的资源，您有两种选择：</p>
-<ol>
-<li>
-<p><strong id="keep-secrets-in-tools-outside-the-sandbox">在沙箱外部的工具中保守秘密。</strong>定义在主机环境（而不是沙箱内部）中运行的工具并在那里处理身份验证。代理通过名称调用这些工具，但从未看到凭据。这是推荐的方法。</p>
-</li>
-<li>
-<p><strong id="use-a-network-proxy-that-injects-credentials">使用注入凭据的网络代理。</strong> 某些沙箱提供程序支持代理拦截来自沙箱的传出 HTTP 请求并在转发凭据之前附加凭据（例如 <code>Authorization</code> 标头）。代理永远不会看到秘密——它只是向 URL 发出简单的请求。这种方法尚未在提供商之间广泛使用。</p>
-</li>
-</ol>
-<p>如果必须将机密注入沙箱（不推荐），请采取以下预防措施：</p>
-<ul>
-<li>对<strong id="all">所有</strong>工具调用启用<a href="human-in-the-loop.html">人机交互</a> 批准，而不仅仅是敏感的工具调用</li>
-<li>阻止或限制沙箱的网络访问以限制渗透路径</li>
-<li>使用尽可能窄的凭证范围和尽可能短的生命周期</li>
-<li>监控沙箱网络流量以发现意外的出站请求</li>
-</ul>
-<p>即使有这些保护措施，这仍然是一个不安全的解决方法。足够有创意的上下文注入攻击可以绕过输出过滤和 HITL 审查。</p>
-<h3 id="general-best-practices">一般最佳实践</h3>
-<ul>
-<li>在应用程序中对沙箱输出进行操作之前先检查它们</li>
-<li>不需要时阻止沙箱网络访问</li>
-<li>使用<a href="https://docs.langchain.com/oss/python/langchain/middleware">中间件</a> 过滤或编辑工具输出中的敏感模式</li>
-<li>将沙箱内产生的所有内容视为不受信任的输入</li>
-</ul>
-<hr/>
-<div classname="source-links">
+```
 
 
+  
+
+  Inside the sandbox, the agent uses filesystem tools (`read_file`, `write_file`). The `upload_files` and `download_files` methods are for your application code to move files across the boundary between your host and the sandbox.
+
+## Security considerations
+
+Sandboxes isolate code execution from your host system, but they don't protect against **context injection**. An attacker who controls part of the agent's input can instruct it to read files, run commands, or exfiltrate data from within the sandbox. This makes credentials inside the sandbox especially dangerous.
+
+  **Never put secrets inside a sandbox.** API keys, tokens, database credentials, and other secrets injected into a sandbox (via environment variables, mounted files, or the `secrets` option) can be read and exfiltrated by a context-injected agent. This applies even to short-lived or scoped credentials—if an agent can access them, so can an attacker.
+
+### Handling secrets safely
+
+If your agent needs to call authenticated APIs or access protected resources, you have two options:
+
+1. **Keep secrets in tools outside the sandbox.** Define tools that run in your host environment (not inside the sandbox) and handle authentication there. The agent calls these tools by name, but never sees the credentials. This is the recommended approach.
+
+2. **Use a network proxy that injects credentials.** Some sandbox providers support proxies that intercept outgoing HTTP requests from the sandbox and attach credentials (e.g., `Authorization` headers) before forwarding them. The agent never sees the secret—it just makes plain requests to a URL. This approach is not yet widely available across providers.
+
+  If you must inject secrets into a sandbox (not recommended), take these precautions:
+
+  * Enable [human-in-the-loop](/oss/python/deepagents/human-in-the-loop) approval for **all** tool calls, not just sensitive ones
+  * Block or restrict network access from the sandbox to limit exfiltration paths
+  * Use the narrowest possible credential scope and shortest possible lifetime
+  * Monitor sandbox network traffic for unexpected outbound requests
+
+  Even with these safeguards, this remains an unsafe workaround. A sufficiently creative enough context injection attack can bypass output filtering and HITL review.
+
+### General best practices
+
+* Review sandbox outputs before acting on them in your application
+* Block sandbox network access when not needed
+* Use [middleware](/oss/python/langchain/middleware) to filter or redact sensitive patterns in tool outputs
+* Treat everything produced inside the sandbox as untrusted input
+
+***
+
+<div className="source-links">
+  
+
+    [Connect these docs](/use-these-docs) to Claude, VSCode, and more via MCP for real-time answers.
+  
 
 
-[将这些文档](https://docs.langchain.com/use-these-docs) 通过 MCP 连接到 Claude、VSCode 等以获得实时答案。
+  
 
+    [Edit this page on GitHub](https://github.com/langchain-ai/docs/edit/main/src/oss/deepagents/sandboxes.mdx) or [file an issue](https://github.com/langchain-ai/docs/issues/new/choose).
+  
 
-
-
-
-
-[在 GitHub 上编辑此页面](https://github.com/langchain-ai/docs/edit/main/src/oss/deepagents/sandboxes.mdx) 或 [提交问题](https://github.com/langchain-ai/docs/issues/new/choose)。
-
-
-
-</div><footer>非官方中文离线整理版。代码与原图保留；在线演示需要联网。© LangChain · <a href="../LICENSE">MIT 许可</a></footer></main><nav class="page-toc" aria-label="本页目录"><h2>本页目录</h2><ul><li><a href="#why-use-sandboxes">为什么要使用沙箱？</a></li><li><a href="#basic-usage">基本用法</a></li><li><a href="#available-providers">可用的提供商</a></li><li><a href="#lifecycle-and-scoping">生命周期和范围</a></li><li><a href="#integration-patterns">整合模式</a></li><li><a href="#how-sandboxes-work">沙箱如何工作</a></li><li><a href="#working-with-files">处理文件</a></li><li><a href="#security-considerations">安全考虑</a></li></ul></nav></div></html>
+</div>

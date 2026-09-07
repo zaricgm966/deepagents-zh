@@ -1,20 +1,24 @@
-<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>人工介入 · Deep Agents</title><link rel="stylesheet" href="../style.css"><script defer src="../assets/mermaid/mermaid.min.js"></script><script defer src="../assets/mermaid/render-diagrams.js"></script><aside><a class="brand" href="../index.html">Deep Agents<span>中文离线文档</span></a><h3>入门与选型</h3><a href="overview.html">Deep Agents 概览</a><a href="quickstart.html">快速入门</a><a href="models.html">模型选择</a><a href="comparison.html">与 Claude Agent SDK 的对比</a><a href="code-link.html">Deep Agents Code 简介</a><h3>配置与核心能力</h3><a href="customization.html">自定义 Deep Agents</a><a href="tools.html">工具</a><a href="profiles.html">配置档案</a><a href="backends.html">文件系统后端</a><a href="interpreters.html">代码解释器</a><a href="sandboxes.html">沙箱</a><a href="memory.html">记忆</a><a href="skills.html">技能</a><a href="permissions.html">权限</a><a href="human-in-the-loop.html">人工介入</a><a href="multimodal.html">多模态输入与输出</a><h3>任务与上下文管理</h3><a href="context-engineering.html">上下文工程</a><a href="subagents.html">子智能体</a><a href="dynamic-subagents.html">动态子智能体</a><a href="async-subagents.html">异步子智能体</a><a href="streaming.html">流式输出</a><a href="event-streaming.html">事件流</a><a href="fault-tolerance.html">容错</a><a href="retrieval.html">检索</a><a href="rubric.html">评分标准</a><h3>应用教程</h3><a href="data-analysis.html">构建数据分析智能体</a><a href="content-builder.html">构建内容创作智能体</a><a href="deep-research.html">构建深度研究智能体</a><a href="rag.html">构建检索增强生成（RAG）智能体</a><h3>协议与集成</h3><a href="mcp.html">模型上下文协议（MCP）</a><a href="acp.html">智能体客户端协议（ACP）</a><a href="a2a.html">A2A 服务器</a><h3>前端开发</h3><a href="frontend--overview.html">前端集成概览</a><a href="frontend--sandbox.html">前端沙箱</a><a href="frontend--subagent-streaming.html">前端子智能体流式输出</a><a href="frontend--todo-list.html">前端待办事项列表</a><h3>生产环境与知识库</h3><a href="going-to-production.html">部署到生产环境</a><a href="openwiki.html">OpenWiki</a><h3>Coding Agent 源码解析</h3><a href="codex-source-analysis.html">Codex 源码解析</a><a href="claude-code-source-analysis.html">Claude Code 源码解析：公开 SDK 与运行时边界</a><h3>版本更新</h3><a href="changelog-py.html">Python 更新日志</a><a href="changelog-js.html">JavaScript / TypeScript 更新日志</a></aside><script src="../sidebar.js"></script><div class="reading-layout"><main><div class="meta">中文机器翻译 · 文档快照 2026-09-07 · <a href="https://docs.langchain.com/oss/python/deepagents/human-in-the-loop">在线原文</a> · <a href="../markdown/human-in-the-loop.md">编辑中文 Markdown</a> · <a href="../original-markdown/human-in-the-loop.md">英文原稿</a></div><h1 id="human-in-the-loop">人工介入</h1>
-<blockquote>
-<p>了解如何为敏感工具操作配置人工审批</p>
-</blockquote>
-<p>某些工具操作可能很敏感，需要人工批准才能执行。深度智能体通过 LangGraph 的中断功能支持人机交互工作流程。您可以使用 <code>interrupt_on</code> 参数配置哪些工具需要批准。设置 <code>interrupt_on</code> 后，<code>HumanInTheLoopMiddleware</code> 将添加到 <a href="customization.html#deep-agents-stack">深度智能体堆栈</a>。如果在工具返回结果之前取消或中断运行，同一堆栈中的 <a href="https://reference.langchain.com/python/deepagents/middleware/patch_tool_calls/PatchToolCallsMiddleware"><code>PatchToolCallsMiddleware</code></a> 会自动修复消息历史记录。</p>
-<pre><code class="language-mermaid">graph LR
-    Agent[Agent] --&gt; Check{Interrupt?}
-    Check --&gt; |no| Execute[Execute]
-    Check --&gt; |yes| Human{Human}
 
-    Human --&gt; |approve| Execute
-    Human --&gt; |edit| Execute
-    Human --&gt; |reject| ToolMessage[ToolMessage]
-    Human --&gt; |respond| ToolMessage
+# Human-in-the-loop
 
-    Execute --&gt; Agent
-    ToolMessage --&gt; Agent
+> Learn how to configure human approval for sensitive tool operations
+
+Some tool operations may be sensitive and require human approval before execution. Deep Agents support human-in-the-loop workflows through LangGraph's interrupt capabilities. You can configure which tools require approval using the `interrupt_on` parameter. When `interrupt_on` is set, `HumanInTheLoopMiddleware` is added to the [Deep Agents stack](/oss/python/deepagents/customization#deep-agents-stack). If a run is cancelled or interrupted before a tool returns a result, [`PatchToolCallsMiddleware`](https://reference.langchain.com/python/deepagents/middleware/patch_tool_calls/PatchToolCallsMiddleware) in the same stack repairs the message history automatically.
+
+
+```mermaid
+graph LR
+    Agent[Agent] --> Check{Interrupt?}
+    Check --> |no| Execute[Execute]
+    Check --> |yes| Human{Human}
+
+    Human --> |approve| Execute
+    Human --> |edit| Execute
+    Human --> |reject| ToolMessage[ToolMessage]
+    Human --> |respond| ToolMessage
+
+    Execute --> Agent
+    ToolMessage --> Agent
 
     classDef trigger fill:#F6FFDB,stroke:#6E8900,stroke-width:2px,color:#2E3900
     classDef process fill:#E5F4FF,stroke:#006DDD,stroke-width:2px,color:#030710
@@ -25,34 +29,38 @@
     class Check,Human decision
     class Execute process
     class ToolMessage process
-</code></pre>
-<h2 id="basic-configuration">基本配置</h2>
-<p><code>interrupt_on</code> 参数接受字典映射工具名称以中断配置。每个工具都可以配置：</p>
-<ul>
-<li><strong id="true"><code>True</code></strong>：以默认行为启用中断（允许批准、编辑、拒绝、响应）</li>
-<li><strong id="false"><code>False</code></strong>：禁用该工具的中断</li>
-<li><strong id="interruptonconfig"><code>InterruptOnConfig</code></strong>：自定义配置。设置 <code>allowed_decisions</code> 来控制审阅选项。
-在 Python 中，添加可选的 <code>when</code> 谓词以仅中断特定调用（请参阅<a href="#conditional-interrupts">条件中断</a>）。</li>
-</ul>
-<pre><code class="language-python">from langchain.tools import tool
+```
+
+
+## Basic configuration
+
+The `interrupt_on` parameter accepts a dictionary mapping tool names to interrupt configurations. Each tool can be configured with:
+
+* **`True`**: Enable interrupts with default behavior (approve, edit, reject, respond allowed)
+* **`False`**: Disable interrupts for this tool
+* **`InterruptOnConfig`**: Custom configuration. Set `allowed_decisions` to control review options.
+  In Python, add an optional `when` predicate to interrupt only specific calls (see [Conditional interrupts](#conditional-interrupts)).
+
+```python
+from langchain.tools import tool
 from deepagents import create_deep_agent
 from langgraph.checkpoint.memory import MemorySaver
 
 
 @tool
-def remove_file(path: str) -&gt; str:
+def remove_file(path: str) -> str:
     """Delete a file from the filesystem."""
     return f"Deleted {path}"
 
 
 @tool
-def fetch_file(path: str) -&gt; str:
+def fetch_file(path: str) -> str:
     """Read a file from the filesystem."""
     return f"Contents of {path}"
 
 
 @tool
-def notify_email(to: str, subject: str, body: str) -&gt; str:
+def notify_email(to: str, subject: str, body: str) -> str:
     """Send an email."""
     return f"Sent email to {to}"
 
@@ -70,26 +78,28 @@ agent = create_deep_agent(
     },
     checkpointer=checkpointer,  # Required!
 )
-</code></pre>
-<pre><code class="language-python">from langchain.tools import tool
+```
+
+```python
+from langchain.tools import tool
 from deepagents import create_deep_agent
 from langgraph.checkpoint.memory import MemorySaver
 
 
 @tool
-def remove_file(path: str) -&gt; str:
+def remove_file(path: str) -> str:
     """Delete a file from the filesystem."""
     return f"Deleted {path}"
 
 
 @tool
-def fetch_file(path: str) -&gt; str:
+def fetch_file(path: str) -> str:
     """Read a file from the filesystem."""
     return f"Contents of {path}"
 
 
 @tool
-def notify_email(to: str, subject: str, body: str) -&gt; str:
+def notify_email(to: str, subject: str, body: str) -> str:
     """Send an email."""
     return f"Sent email to {to}"
 
@@ -107,26 +117,28 @@ agent = create_deep_agent(
     },
     checkpointer=checkpointer,  # Required!
 )
-</code></pre>
-<pre><code class="language-python">from langchain.tools import tool
+```
+
+```python
+from langchain.tools import tool
 from deepagents import create_deep_agent
 from langgraph.checkpoint.memory import MemorySaver
 
 
 @tool
-def remove_file(path: str) -&gt; str:
+def remove_file(path: str) -> str:
     """Delete a file from the filesystem."""
     return f"Deleted {path}"
 
 
 @tool
-def fetch_file(path: str) -&gt; str:
+def fetch_file(path: str) -> str:
     """Read a file from the filesystem."""
     return f"Contents of {path}"
 
 
 @tool
-def notify_email(to: str, subject: str, body: str) -&gt; str:
+def notify_email(to: str, subject: str, body: str) -> str:
     """Send an email."""
     return f"Sent email to {to}"
 
@@ -144,26 +156,28 @@ agent = create_deep_agent(
     },
     checkpointer=checkpointer,  # Required!
 )
-</code></pre>
-<pre><code class="language-python">from langchain.tools import tool
+```
+
+```python
+from langchain.tools import tool
 from deepagents import create_deep_agent
 from langgraph.checkpoint.memory import MemorySaver
 
 
 @tool
-def remove_file(path: str) -&gt; str:
+def remove_file(path: str) -> str:
     """Delete a file from the filesystem."""
     return f"Deleted {path}"
 
 
 @tool
-def fetch_file(path: str) -&gt; str:
+def fetch_file(path: str) -> str:
     """Read a file from the filesystem."""
     return f"Contents of {path}"
 
 
 @tool
-def notify_email(to: str, subject: str, body: str) -&gt; str:
+def notify_email(to: str, subject: str, body: str) -> str:
     """Send an email."""
     return f"Sent email to {to}"
 
@@ -181,26 +195,28 @@ agent = create_deep_agent(
     },
     checkpointer=checkpointer,  # Required!
 )
-</code></pre>
-<pre><code class="language-python">from langchain.tools import tool
+```
+
+```python
+from langchain.tools import tool
 from deepagents import create_deep_agent
 from langgraph.checkpoint.memory import MemorySaver
 
 
 @tool
-def remove_file(path: str) -&gt; str:
+def remove_file(path: str) -> str:
     """Delete a file from the filesystem."""
     return f"Deleted {path}"
 
 
 @tool
-def fetch_file(path: str) -&gt; str:
+def fetch_file(path: str) -> str:
     """Read a file from the filesystem."""
     return f"Contents of {path}"
 
 
 @tool
-def notify_email(to: str, subject: str, body: str) -&gt; str:
+def notify_email(to: str, subject: str, body: str) -> str:
     """Send an email."""
     return f"Sent email to {to}"
 
@@ -218,26 +234,28 @@ agent = create_deep_agent(
     },
     checkpointer=checkpointer,  # Required!
 )
-</code></pre>
-<pre><code class="language-python">from langchain.tools import tool
+```
+
+```python
+from langchain.tools import tool
 from deepagents import create_deep_agent
 from langgraph.checkpoint.memory import MemorySaver
 
 
 @tool
-def remove_file(path: str) -&gt; str:
+def remove_file(path: str) -> str:
     """Delete a file from the filesystem."""
     return f"Deleted {path}"
 
 
 @tool
-def fetch_file(path: str) -&gt; str:
+def fetch_file(path: str) -> str:
     """Read a file from the filesystem."""
     return f"Contents of {path}"
 
 
 @tool
-def notify_email(to: str, subject: str, body: str) -&gt; str:
+def notify_email(to: str, subject: str, body: str) -> str:
     """Send an email."""
     return f"Sent email to {to}"
 
@@ -255,26 +273,28 @@ agent = create_deep_agent(
     },
     checkpointer=checkpointer,  # Required!
 )
-</code></pre>
-<pre><code class="language-python">from langchain.tools import tool
+```
+
+```python
+from langchain.tools import tool
 from deepagents import create_deep_agent
 from langgraph.checkpoint.memory import MemorySaver
 
 
 @tool
-def remove_file(path: str) -&gt; str:
+def remove_file(path: str) -> str:
     """Delete a file from the filesystem."""
     return f"Deleted {path}"
 
 
 @tool
-def fetch_file(path: str) -&gt; str:
+def fetch_file(path: str) -> str:
     """Read a file from the filesystem."""
     return f"Contents of {path}"
 
 
 @tool
-def notify_email(to: str, subject: str, body: str) -&gt; str:
+def notify_email(to: str, subject: str, body: str) -> str:
     """Send an email."""
     return f"Sent email to {to}"
 
@@ -292,44 +312,28 @@ agent = create_deep_agent(
     },
     checkpointer=checkpointer,  # Required!
 )
-</code></pre>
-<h2 id="decision-types">决策类型</h2>
-<p><code>allowed_decisions</code> 列表控制人们在查看工具调用时可以采取的操作：</p>
-<table>
-<thead>
-<tr>
-<th>决策类型</th>
-<th>描述</th>
-<th>示例用例</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>✅ <code>approve</code></td>
-<td>使用代理建议的原始参数执行该工具。</td>
-<td>发送与书面内容完全一致的电子邮件草稿</td>
-</tr>
-<tr>
-<td>✏️<code>edit</code></td>
-<td>执行前修改工具参数。</td>
-<td>发送电子邮件之前更改收件人</td>
-</tr>
-<tr>
-<td>❌<code>reject</code></td>
-<td>完全跳过执行此工具调用并向代理返回拒绝反馈。</td>
-<td>拒绝删除文件并解释原因</td>
-</tr>
-<tr>
-<td>💬<code>respond</code></td>
-<td>对于“询问用户”风格的工具，直接将人类的消息作为合成工具结果返回，跳过执行。</td>
-<td>通过直接回复回答 <code>"ask_user"</code> 提示</td>
-</tr>
-</tbody>
-</table>
-<p>当人类拒绝提议的操作时，使用 <code>reject</code>。仅当人类充当工具时才使用 <code>respond</code>，例如回答 <code>ask_user</code> 提示。不要使用 <code>respond</code> 来拒绝副作用工具，因为模型可能会将其消息视为成功的工具结果。</p>
-<p><strong id="editing">编辑</strong>工具参数时，请保守地进行更改。对原始参数的重大修改可能会导致模型重新评估其方法，并可能多次执行该工具或采取意外的操作。</p>
-<p>您可以自定义每个工具可用的决策：</p>
-<pre><code class="language-python">interrupt_on = {
+```
+
+## Decision types
+
+The `allowed_decisions` list controls what actions a human can take when reviewing a tool call:
+
+| Decision Type | Description                                                                                                     | Example Use Case                                  |
+| ------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| ✅ `approve`   | Execute the tool with the original arguments as proposed by the agent.                                          | Send an email draft exactly as written            |
+| ✏️ `edit`     | Modify the tool arguments before execution.                                                                     | Change the recipient before sending an email      |
+| ❌ `reject`    | Skip executing this tool call entirely and return rejection feedback to the agent.                              | Deny file deletion and explain why                |
+| 💬 `respond`  | Return the human's message directly as a synthetic tool result, skipping execution, for "ask user" style tools. | Answer an `"ask_user"` prompt with a direct reply |
+
+Use `reject` when the human denies a proposed action. Use `respond` only when the human is acting as the tool, such as answering an `ask_user` prompt. Do not use `respond` to deny side-effecting tools, because its message may be treated by the model as a successful tool result.
+
+  When **editing** tool arguments, make changes conservatively. Significant modifications to the original arguments may cause the model to re-evaluate its approach and potentially execute the tool multiple times or take unexpected actions.
+
+You can customize which decisions are available for each tool:
+
+
+```python
+interrupt_on = {
     # Sensitive operations: allow all options
     "delete_file": {"allowed_decisions": ["approve", "edit", "reject"]},
 
@@ -339,16 +343,22 @@ agent = create_deep_agent(
     # Must approve (no rejection allowed)
     "critical_operation": {"allowed_decisions": ["approve"]},
 }
-</code></pre>
-<h2 id="conditional-interrupts">条件中断</h2>
-<p>默认情况下，<code>interrupt_on</code> 中列出的每个工具调用都会暂停以供审核。要仅暂停某些调用，请将 <code>when</code> 谓词添加到工具的 <code>InterruptOnConfig</code>。该谓词接收 <a href="https://reference.langchain.com/python/langgraph.prebuilt/tool_node/ToolCallRequest">ToolCallRequest</a> 并返回 <code>True</code> 以进行中断或返回 <code>False</code> 以进行自动批准，以便您可以控制工具的参数。</p>
-<p>条件中断需要 <code>langchain&gt;=1.3.3</code>。</p>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+
+## Conditional interrupts
+
+By default, every tool call listed in `interrupt_on` pauses for review. To pause only some calls, add a `when` predicate to a tool's `InterruptOnConfig`. The predicate receives a [ToolCallRequest](https://reference.langchain.com/python/langgraph.prebuilt/tool_node/ToolCallRequest) and returns `True` to interrupt or `False` to auto-approve, so you can gate on the tool's arguments.
+
+  Conditional interrupts require `langchain>=1.3.3`.
+
+```python
+from deepagents import create_deep_agent
 from langchain.agents.middleware import ToolCallRequest
 from langgraph.checkpoint.memory import MemorySaver
 
 
-def writes_outside_workspace(request: ToolCallRequest) -&gt; bool:
+def writes_outside_workspace(request: ToolCallRequest) -> bool:
     """Pause writes to paths outside the workspace directory."""
     path = request.tool_call["args"].get("file_path", "")
     return not path.startswith("/workspace/")
@@ -364,13 +374,15 @@ agent = create_deep_agent(
     },
     checkpointer=MemorySaver(),
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain.agents.middleware import ToolCallRequest
 from langgraph.checkpoint.memory import MemorySaver
 
 
-def writes_outside_workspace(request: ToolCallRequest) -&gt; bool:
+def writes_outside_workspace(request: ToolCallRequest) -> bool:
     """Pause writes to paths outside the workspace directory."""
     path = request.tool_call["args"].get("file_path", "")
     return not path.startswith("/workspace/")
@@ -386,13 +398,15 @@ agent = create_deep_agent(
     },
     checkpointer=MemorySaver(),
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain.agents.middleware import ToolCallRequest
 from langgraph.checkpoint.memory import MemorySaver
 
 
-def writes_outside_workspace(request: ToolCallRequest) -&gt; bool:
+def writes_outside_workspace(request: ToolCallRequest) -> bool:
     """Pause writes to paths outside the workspace directory."""
     path = request.tool_call["args"].get("file_path", "")
     return not path.startswith("/workspace/")
@@ -408,13 +422,15 @@ agent = create_deep_agent(
     },
     checkpointer=MemorySaver(),
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain.agents.middleware import ToolCallRequest
 from langgraph.checkpoint.memory import MemorySaver
 
 
-def writes_outside_workspace(request: ToolCallRequest) -&gt; bool:
+def writes_outside_workspace(request: ToolCallRequest) -> bool:
     """Pause writes to paths outside the workspace directory."""
     path = request.tool_call["args"].get("file_path", "")
     return not path.startswith("/workspace/")
@@ -430,13 +446,15 @@ agent = create_deep_agent(
     },
     checkpointer=MemorySaver(),
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain.agents.middleware import ToolCallRequest
 from langgraph.checkpoint.memory import MemorySaver
 
 
-def writes_outside_workspace(request: ToolCallRequest) -&gt; bool:
+def writes_outside_workspace(request: ToolCallRequest) -> bool:
     """Pause writes to paths outside the workspace directory."""
     path = request.tool_call["args"].get("file_path", "")
     return not path.startswith("/workspace/")
@@ -452,13 +470,15 @@ agent = create_deep_agent(
     },
     checkpointer=MemorySaver(),
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain.agents.middleware import ToolCallRequest
 from langgraph.checkpoint.memory import MemorySaver
 
 
-def writes_outside_workspace(request: ToolCallRequest) -&gt; bool:
+def writes_outside_workspace(request: ToolCallRequest) -> bool:
     """Pause writes to paths outside the workspace directory."""
     path = request.tool_call["args"].get("file_path", "")
     return not path.startswith("/workspace/")
@@ -474,13 +494,15 @@ agent = create_deep_agent(
     },
     checkpointer=MemorySaver(),
 )
-</code></pre>
-<pre><code class="language-python">from deepagents import create_deep_agent
+```
+
+```python
+from deepagents import create_deep_agent
 from langchain.agents.middleware import ToolCallRequest
 from langgraph.checkpoint.memory import MemorySaver
 
 
-def writes_outside_workspace(request: ToolCallRequest) -&gt; bool:
+def writes_outside_workspace(request: ToolCallRequest) -> bool:
     """Pause writes to paths outside the workspace directory."""
     path = request.tool_call["args"].get("file_path", "")
     return not path.startswith("/workspace/")
@@ -496,12 +518,19 @@ agent = create_deep_agent(
     },
     checkpointer=MemorySaver(),
 )
-</code></pre>
-<p>当 <code>when</code> 谓词返回 <code>False</code> 时，调用将不中断地运行。当它返回 <code>True</code> 时，或者当您省略 <code>when</code> 时，呼叫照常暂停。评估为 <code>False</code> 的调用永远不会添加到中断批次中，因此审核者只能看到需要决策的操作。</p>
-<p>有关其他配置选项和示例，请参阅 <a href="https://docs.langchain.com/oss/python/langchain/human-in-the-loop#conditional-interrupts">LangChain 人机交互文档</a>。</p>
-<h2 id="handle-interrupts">处理中断</h2>
-<p>当中断被触发时，代理暂停执行并返回控制权。检查结果中是否存在中断并进行相应处理。如果用户拒绝某个操作，请包含一个明确的 <code>message</code>，告诉代理该工具未执行以及下一步要做什么。</p>
-<pre><code class="language-python">from langchain_core.utils.uuid import uuid7
+```
+
+When the `when` predicate returns `False`, the call runs without interrupting. When it returns `True`, or when you omit `when`, the call pauses as usual. Calls that evaluate to `False` are never added to the interrupt batch, so a reviewer only sees the actions that need a decision.
+
+See the [LangChain human-in-the-loop documentation](/oss/python/langchain/human-in-the-loop#conditional-interrupts) for additional configuration options and examples.
+
+## Handle interrupts
+
+When an interrupt is triggered, the agent pauses execution and returns control. Check for interrupts in the result and handle them accordingly. If the user rejects an action, include a clear `message` that tells the agent the tool was not executed and what to do next.
+
+
+```python
+from langchain_core.utils.uuid import uuid7
 from langgraph.types import Command
 
 # Create config with thread_id for state persistence
@@ -548,10 +577,16 @@ if result.interrupts:  # [!code highlight]
 
 # Process final result
 print(result.value["messages"][-1].content)  # [!code highlight]
-</code></pre>
-<h2 id="multiple-tool-calls">多个工具调用</h2>
-<p>当代理调用需要批准的多个工具时，所有中断都会在一个中断中批量处理。您必须按顺序为每一项做出决定。</p>
-<pre><code class="language-python">config = {"configurable": {"thread_id": str(uuid7())}}
+```
+
+
+## Multiple tool calls
+
+When the agent calls multiple tools that require approval, all interrupts are batched together in a single interrupt. You must provide decisions for each one in order.
+
+
+```python
+config = {"configurable": {"thread_id": str(uuid7())}}
 
 result = agent.invoke(
     {"messages": [{
@@ -583,20 +618,33 @@ if result.interrupts:  # [!code highlight]
         config=config,
         version="v2",
     )
-</code></pre>
-<h2 id="rejection-messages">拒绝消息</h2>
-<p>当审核者返回 <code>reject</code> 决策时，深度智能体会跳过工具调用并将拒绝反馈发送回代理。如果省略 <code>message</code>，默认反馈会告诉模型该工具尚未执行，并且除非用户要求，否则不要重试同一工具调用。</p>
-<p>对于敏感或副作用工具，请传递特定于域的 <code>message</code> 和决策。明确客服人员是否应该放弃该操作、提出后续问题或尝试更安全的替代方案。</p>
-<pre><code class="language-python">decisions = [
+```
+
+
+## Rejection messages
+
+When a reviewer returns a `reject` decision, Deep Agents skip the tool call and send rejection feedback back to the agent. If you omit `message`, the default feedback tells the model that the tool was not executed and not to retry the same tool call unless the user asks.
+
+For sensitive or side-effecting tools, pass a domain-specific `message` with the decision. Be explicit about whether the agent should abandon the action, ask a follow-up question, or try a safer alternative.
+
+
+```python
+decisions = [
     {
         "type": "reject",
         "message": "User rejected deleting this file. Do not retry deletion. Ask which file to archive instead.",
     }
 ]
-</code></pre>
-<h2 id="edit-tool-arguments">编辑工具参数</h2>
-<p>当 <code>"edit"</code> 处于允许决策范围内时，您可以在执行前修改工具参数：</p>
-<pre><code class="language-python">if result.interrupts:  # [!code highlight]
+```
+
+
+## Edit tool arguments
+
+When `"edit"` is in the allowed decisions, you can modify the tool arguments before execution:
+
+
+```python
+if result.interrupts:  # [!code highlight]
     interrupt_value = result.interrupts[0].value  # [!code highlight]
     action_request = interrupt_value["action_requests"][0]
 
@@ -617,12 +665,20 @@ if result.interrupts:  # [!code highlight]
         config=config,
         version="v2",
     )
-</code></pre>
-<h2 id="subagent-interrupts">子智能体中断</h2>
-<p>使用子智能体时，您可以<a href="#interrupts-on-tool-calls">在工具调用上</a> 和<a href="#interrupts-within-tool-calls">在工具调用内</a> 使用中断。</p>
-<h3 id="interrupts-on-tool-calls">工具调用中断</h3>
-<p>每个子智能体都可以有自己的 <code>interrupt_on</code> 配置，该配置会覆盖主代理的设置：</p>
-<pre><code class="language-python">agent = create_deep_agent(
+```
+
+
+## Subagent interrupts
+
+When using subagents, you can use interrupts [on tool calls](#interrupts-on-tool-calls) and [within tool calls](#interrupts-within-tool-calls).
+
+### Interrupts on tool calls
+
+Each subagent can have its own `interrupt_on` configuration that overrides the main agent's settings:
+
+
+```python
+agent = create_deep_agent(
     model="google_genai:gemini-3.6-flash",
     tools=[delete_file, read_file],
     interrupt_on={
@@ -642,11 +698,18 @@ if result.interrupts:  # [!code highlight]
     }],
     checkpointer=checkpointer
 )
-</code></pre>
-<p>当子智能体触发中断时，处理是相同的 - 检查结果中的 <code>interrupts</code> 并使用 <code>Command</code> 恢复。</p>
-<h3 id="interrupts-within-tool-calls">工具调用内的中断</h3>
-<p>子智能体工具可以直接调用<code>interrupt()</code>来暂停执行并等待批准：</p>
-<pre><code class="language-python">from langchain.agents import create_agent
+```
+
+
+When a subagent triggers an interrupt, the handling is the same—check for `interrupts` on the result and resume with `Command`.
+
+### Interrupts within tool calls
+
+Subagent tools can call `interrupt()` directly to pause execution and await approval:
+
+
+```python
+from langchain.agents import create_agent
 from langchain_anthropic import ChatAnthropic
 from langchain.messages import HumanMessage
 from langchain.tools import tool
@@ -658,7 +721,7 @@ from deepagents.middleware.subagents import CompiledSubAgent
 
 
 @tool(description="Request human approval before proceeding with an action.")
-def request_approval(action_description: str) -&gt; str:
+def request_approval(action_description: str) -> str:
     """Request human approval using the interrupt() primitive."""
     # interrupt() pauses execution and returns the value passed to Command(resume=...)
     approval = interrupt({
@@ -745,9 +808,14 @@ def main():
 
 if __name__ == "__main__":
     main()
-</code></pre>
-<p>运行时，会产生以下输出：</p>
-<pre><code class="language-text">Invoking agent - sub-agent will use request_approval tool...
+```
+
+
+When run, this produces the following output:
+
+
+```text
+Invoking agent - sub-agent will use request_approval tool...
 
 Interrupt received!
   Type: approval_request
@@ -758,11 +826,18 @@ Resuming with Command(resume={'approved': True})...
 
 Execution completed!
   Tool result: Great! The approval request has been processed. The action **"deploying to production"** was **APPROVED**. You can now proceed with the production deployment.
-</code></pre>
-<h2 id="filesystem-permission-interrupts">文件系统权限中断</h2>
-<p>文件系统权限中断需要 <code>deepagents&gt;=0.6.8</code>。</p>
-<p>除了<code>interrupt_on</code>之外，您还可以通过用<code>mode="interrupt"</code>标记<a href="permissions.html">权限规则</a>来暂停内置文件系统工具。当代理在与中断模式规则匹配的路径上调用 <code>write_file</code> 或 <code>edit_file</code> 时，<code>create_deep_agent</code> 会引发与已配置工具相同的人机交互中断，并使用文件系统工具的名称作为操作名称。</p>
-<pre><code class="language-python">from deepagents import FilesystemPermission, create_deep_agent
+```
+
+
+## Filesystem permission interrupts
+
+  Filesystem permission interrupts require `deepagents>=0.6.8`.
+
+Beyond `interrupt_on`, you can pause the built-in filesystem tools by marking a [permission rule](/oss/python/deepagents/permissions) with `mode="interrupt"`. When the agent calls `write_file` or `edit_file` on a path that matches an interrupt-mode rule, `create_deep_agent` raises the same human-in-the-loop interrupt as a configured tool, using the filesystem tool's name as the action name.
+
+
+```python
+from deepagents import FilesystemPermission, create_deep_agent
 from langgraph.checkpoint.memory import MemorySaver
 
 
@@ -777,9 +852,14 @@ agent = create_deep_agent(
     ],
     checkpointer=MemorySaver(),  # Required to pause and resume
 )
-</code></pre>
-<p>处理和恢复中断的方式与工具调用中断相同：运行直到暂停，检查请求，然后做出决定继续。</p>
-<pre><code class="language-python">from langgraph.types import Command
+```
+
+
+Handle and resume the interrupt the same way as a tool-call interrupt: run until it pauses, inspect the request, then resume with a decision.
+
+
+```python
+from langgraph.types import Command
 
 config = {"configurable": {"thread_id": "fs-thread-1"}}
 
@@ -799,12 +879,20 @@ if result.interrupts:
         config=config,  # Same thread ID
         version="v2",
     )
-</code></pre>
-<p>文件系统权限中断与您传递的任何 <code>interrupt_on</code> 合并，因此单个审查步骤可以涵盖自定义工具和受保护的文件系统路径。</p>
-<h2 id="best-practices">最佳实践</h2>
-<h3 id="always-use-a-checkpointer">始终使用检查点</h3>
-<p>人机交互需要一个检查指针来在中断和恢复之间保持代理状态：</p>
-<pre><code class="language-python">from langgraph.checkpoint.memory import MemorySaver
+```
+
+
+Filesystem-permission interrupts merge with any `interrupt_on` you pass, so a single review step can cover both custom tools and protected filesystem paths.
+
+## Best practices
+
+### Always use a checkpointer
+
+Human-in-the-loop requires a checkpointer to persist agent state between the interrupt and resume:
+
+
+```python
+from langgraph.checkpoint.memory import MemorySaver
 
 checkpointer = MemorySaver()
 agent = create_deep_agent(
@@ -813,19 +901,31 @@ agent = create_deep_agent(
     interrupt_on={...},
     checkpointer=checkpointer  # Required for HITL
 )
-</code></pre>
-<h3 id="use-the-same-thread-id">使用相同的线程ID</h3>
-<p>恢复时，您必须使用具有相同 <code>thread_id</code> 的相同配置：</p>
-<pre><code class="language-python"># First call
+```
+
+
+### Use the same thread ID
+
+When resuming, you must use the same config with the same `thread_id`:
+
+
+```python
+# First call
 config = {"configurable": {"thread_id": "my-thread"}}
 result = agent.invoke(input, config=config, version="v2")
 
 # Resume (use same config)
 result = agent.invoke(Command(resume={...}), config=config, version="v2")
-</code></pre>
-<h3 id="match-decision-order-to-actions">将决策顺序与行动相匹配</h3>
-<p>决策列表必须与 <code>action_requests</code> 的顺序匹配：</p>
-<pre><code class="language-python">if result.interrupts:  # [!code highlight]
+```
+
+
+### Match decision order to actions
+
+The decisions list must match the order of `action_requests`:
+
+
+```python
+if result.interrupts:  # [!code highlight]
     interrupt_value = result.interrupts[0].value  # [!code highlight]
     action_requests = interrupt_value["action_requests"]
 
@@ -840,10 +940,16 @@ result = agent.invoke(Command(resume={...}), config=config, version="v2")
         config=config,
         version="v2",
     )
-</code></pre>
-<h3 id="tailor-configurations-by-risk">按风险定制配置</h3>
-<p>根据风险级别配置不同的工具：</p>
-<pre><code class="language-python">interrupt_on = {
+```
+
+
+### Tailor configurations by risk
+
+Configure different tools based on their risk level:
+
+
+```python
+interrupt_on = {
     # High risk: full control (approve, edit, reject)
     "delete_file": {"allowed_decisions": ["approve", "edit", "reject"]},
     "send_email": {"allowed_decisions": ["approve", "edit", "reject"]},
@@ -855,22 +961,21 @@ result = agent.invoke(Command(resume={...}), config=config, version="v2")
     "read_file": False,
     "ls": False,
 }
-</code></pre>
-<hr/>
-<div classname="source-links">
+```
 
 
+***
+
+<div className="source-links">
+  
+
+    [Connect these docs](/use-these-docs) to Claude, VSCode, and more via MCP for real-time answers.
+  
 
 
-[将这些文档](https://docs.langchain.com/use-these-docs) 通过 MCP 连接到 Claude、VSCode 等以获得实时答案。
+  
 
+    [Edit this page on GitHub](https://github.com/langchain-ai/docs/edit/main/src/oss/deepagents/human-in-the-loop.mdx) or [file an issue](https://github.com/langchain-ai/docs/issues/new/choose).
+  
 
-
-
-
-
-[在 GitHub 上编辑此页面](https://github.com/langchain-ai/docs/edit/main/src/oss/deepagents/human-in-the-loop.mdx) 或 [提交问题](https://github.com/langchain-ai/docs/issues/new/choose)。
-
-
-
-</div><footer>非官方中文离线整理版。代码与原图保留；在线演示需要联网。© LangChain · <a href="../LICENSE">MIT 许可</a></footer></main><nav class="page-toc" aria-label="本页目录"><h2>本页目录</h2><ul><li><a href="#basic-configuration">基本配置</a></li><li><a href="#decision-types">决策类型</a></li><li><a href="#conditional-interrupts">条件中断</a></li><li><a href="#handle-interrupts">处理中断</a></li><li><a href="#multiple-tool-calls">多个工具调用</a></li><li><a href="#rejection-messages">拒绝消息</a></li><li><a href="#edit-tool-arguments">编辑工具参数</a></li><li><a href="#subagent-interrupts">子智能体中断</a></li><li><a href="#filesystem-permission-interrupts">文件系统权限中断</a></li><li><a href="#best-practices">最佳实践</a></li></ul></nav></div></html>
+</div>
