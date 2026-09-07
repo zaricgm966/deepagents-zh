@@ -163,7 +163,7 @@ create_deep_agent(
 
 
   
-**开放人工智能**
+**OpenAI**
 
 
 👉 阅读【OpenAI聊天模型集成文档】(/oss/python/integrations/chat/openai/)
@@ -231,10 +231,10 @@ agent = create_deep_agent(model=model)
 
   
 
- **人择**
+ **Anthropic**
 
 
-👉 阅读[人择聊天模型集成文档](https://docs.langchain.com/oss/python/integrations/chat/anthropic/)
+👉 阅读[Anthropic聊天模型集成文档](https://docs.langchain.com/oss/python/integrations/chat/anthropic/)
 
 
     
@@ -299,7 +299,7 @@ agent = create_deep_agent(model=model)
 
   
 
- **天蓝色**
+ **Azure**
 
 
 👉 阅读[Azure聊天模型集成文档](https://docs.langchain.com/oss/python/integrations/chat/azure_chat_openai/)
@@ -379,7 +379,7 @@ agent = create_deep_agent(model=model)
 
   
 
- **谷歌双子座**
+ **Google Gemini**
 
 
 👉 阅读 [Google GenAI 聊天模型集成文档](https://docs.langchain.com/oss/python/integrations/chat/google_generative_ai/)
@@ -521,7 +521,7 @@ agent = create_deep_agent(model=model)
 
   
 
- **拥抱脸**
+ **HuggingFace**
 
 
 👉 阅读[HuggingFace聊天模型集成文档](https://docs.langchain.com/oss/python/integrations/chat/huggingface/)
@@ -2685,7 +2685,7 @@ agent = create_deep_agent(
 
 
   
-**朗史密斯**
+**LangSmith**
 
 
     

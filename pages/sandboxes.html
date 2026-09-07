@@ -46,7 +46,7 @@
 <p><strong id="if-youre-looking-for-langsmith-sandboxes">如果您正在寻找 LangSmith 沙箱：</strong> LangSmith 提供第一方托管沙箱，您可以直接从 LangSmith UI 或 SDK 使用，无需第三方帐户。有关托管沙箱资源、快照、服务 URL 和身份验证代理，请参阅 <a href="https://docs.langchain.com/langsmith/sandboxes">LangSmith 沙箱</a>。</p>
 <h2 id="basic-usage">基本用法</h2>
 <p>这些示例假设您已经使用提供商的 SDK 创建了沙箱/开发箱并设置了凭据。有关注册、身份验证和特定于提供商的生命周期详细信息，请参阅<a href="#available-providers">可用提供商</a>。</p>
-<p><strong id="langsmith">朗史密斯</strong></p>
+<p><strong id="langsmith">LangSmith</strong></p>
 <pre><code class="language-bash">pip install "langsmith[sandbox]"
 </code></pre>
 <pre><code class="language-bash">uv add "langsmith[sandbox]"
@@ -1245,7 +1245,7 @@ finally:
 </ul>
 <p>当代理调用 <code>execute</code> 工具时，它会提供 <code>command</code> 字符串，并返回组合的 stdout/stderr、退出代码以及输出太大时的截断通知。</p>
 <p>您还可以直接在应用程序代码中调用后端 <code>execute()</code> 方法。</p>
-<p><strong>朗史密斯</strong></p>
+<p><strong>LangSmith</strong></p>
 <pre><code class="language-python">from deepagents.backends.langsmith import LangSmithSandbox
 from langsmith.sandbox import SandboxClient
 
@@ -1420,7 +1420,7 @@ finally:
 <p>deepagents 沙箱后端支持文件传输 API，用于在应用程序和沙箱之间移动文件。</p>
 <h3 id="seeding-the-sandbox">沙箱播种</h3>
 <p>在代理运行之前使用 <code>upload_files()</code> 填充沙箱。路径必须是绝对路径，内容为 <code>bytes</code>：</p>
-<p><strong>朗史密斯</strong></p>
+<p><strong>LangSmith</strong></p>
 <pre><code class="language-python">from deepagents.backends.langsmith import LangSmithSandbox
 from langsmith.sandbox import SandboxClient
 
@@ -1555,7 +1555,7 @@ backend.upload_files(
 </code></pre>
 <h3 id="retrieving-artifacts">检索文物</h3>
 <p>代理完成后，使用 <code>download_files()</code> 从沙箱中检索文件：</p>
-<p><strong>朗史密斯</strong></p>
+<p><strong>LangSmith</strong></p>
 <pre><code class="language-python">from deepagents.backends.langsmith import LangSmithSandbox
 from langsmith.sandbox import SandboxClient
 

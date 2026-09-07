@@ -168,7 +168,7 @@ agent = create_deep_agent(
 <h2 id="model">模型</h2>
 <p>传递 <code>provider:model</code> 格式的 <code>model</code> 字符串，或初始化的模型实例。请参阅<a href="models.html#supported-models">支持的型号</a> 了解所有提供商，并参阅<a href="models.html#suggested-models">建议的型号</a> 了解经过测试的建议。</p>
 <p>使用 <code>provider:model</code> 格式（例如 <code>openai:gpt-5.5</code>）可在模型之间快速切换。</p>
-<p><strong id="openai">开放人工智能</strong></p>
+<p><strong id="openai">OpenAI</strong></p>
 <p>👉 阅读【OpenAI聊天模型集成文档】(/oss/python/integrations/chat/openai/)</p>
 <pre><code class="language-bash">pip install -U "langchain[openai]"
 </code></pre>
@@ -201,8 +201,8 @@ os.environ["OPENAI_API_KEY"] = "sk-..."
 model = ChatOpenAI(model="gpt-5.5")
 agent = create_deep_agent(model=model)
 </code></pre>
-<p><strong id="anthropic">人择</strong></p>
-<p>👉 阅读<a href="https://docs.langchain.com/oss/python/integrations/chat/anthropic/">人择聊天模型集成文档</a></p>
+<p><strong id="anthropic">Anthropic</strong></p>
+<p>👉 阅读<a href="https://docs.langchain.com/oss/python/integrations/chat/anthropic/">Anthropic聊天模型集成文档</a></p>
 <pre><code class="language-bash">pip install -U "langchain[anthropic]"
 </code></pre>
 <pre><code class="language-bash">uv add "langchain[anthropic]"
@@ -234,7 +234,7 @@ os.environ["ANTHROPIC_API_KEY"] = "sk-..."
 model = ChatAnthropic(model="claude-sonnet-4-6")
 agent = create_deep_agent(model=model)
 </code></pre>
-<p><strong id="azure">天蓝色</strong></p>
+<p><strong id="azure">Azure</strong></p>
 <p>👉 阅读<a href="https://docs.langchain.com/oss/python/integrations/chat/azure_chat_openai/">Azure聊天模型集成文档</a></p>
 <pre><code class="language-bash">pip install -U "langchain[openai]"
 </code></pre>
@@ -279,7 +279,7 @@ model = AzureChatOpenAI(
 )
 agent = create_deep_agent(model=model)
 </code></pre>
-<p><strong id="google-gemini">谷歌双子座</strong></p>
+<p><strong id="google-gemini">Google Gemini</strong></p>
 <p>👉 阅读 <a href="https://docs.langchain.com/oss/python/integrations/chat/google_generative_ai/">Google GenAI 聊天模型集成文档</a></p>
 <pre><code class="language-bash">pip install -U "langchain[google-genai]"
 </code></pre>
@@ -351,7 +351,7 @@ from deepagents import create_deep_agent
 model = ChatBedrock(model="anthropic.claude-sonnet-4-6")
 agent = create_deep_agent(model=model)
 </code></pre>
-<p><strong id="huggingface">拥抱脸</strong></p>
+<p><strong id="huggingface">HuggingFace</strong></p>
 <p>👉 阅读<a href="https://docs.langchain.com/oss/python/integrations/chat/huggingface/">HuggingFace聊天模型集成文档</a></p>
 <pre><code class="language-bash">pip install -U "langchain[huggingface]"
 </code></pre>
@@ -1922,7 +1922,7 @@ agent = create_deep_agent(
 <h3 id="sandboxes">沙箱</h3>
 <p>沙箱是专门的<a href="backends.html">后端</a>，它在具有自己的文件系统和用于 shell 命令的 <code>execute</code> 工具的隔离环境中运行代理代码。当您希望深度智能体写入文件、安装依赖项并运行命令而不更改本地计算机上的任何内容时，请使用沙箱后端。</p>
 <p>在创建深度智能体时，您可以通过将沙箱后端传递给 <code>backend</code> 来配置沙箱：</p>
-<p><strong id="langsmith">朗史密斯</strong></p>
+<p><strong id="langsmith">LangSmith</strong></p>
 <pre><code class="language-bash">pip install "langsmith[sandbox]"
 </code></pre>
 <pre><code class="language-bash">uv add "langsmith[sandbox]"

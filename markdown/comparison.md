@@ -13,15 +13,15 @@
 ## 一目了然
 
 
-||**深层特工**|**克劳德代理SDK**|
+||**Deep Agents**|**Claude Agent SDK**|
 | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 |**代理运行的地方**|在沙箱内部，或在沙箱外部远程执行命令|沙箱内|
 |**执行后端**|可插拔：[本地、虚拟文件系统、远程沙箱或自定义](backends.md)|它运行的沙箱的本地文件系统|
-|**模型提供者**|任何（Anthropic、OpenAI、Google、100 多个其他）|克劳德（人类、基岩、顶点、天蓝色）|
+|**模型提供者**|任何（Anthropic、OpenAI、Google、100 多个其他）|Claude（Anthropic、Bedrock、Vertex、Azure）|
 |**每个提供商/模型调整**|[Harness 配置文件](profiles.md)（测试版）：系统提示、工具、中间件和子智能体调整的声明性捆绑包，按提供商或特定模型注册|在每个模型调用站点的代码中进行配置|
 |**部署**|LangSmith 中的[托管深度智能体](https://docs.langchain.com/langsmith/python/managed-deep-agents-overview)，或通过 [`langgraph build`](https://docs.langchain.com/langsmith/cli#build) 自托管一个[独立映像](https://docs.langchain.com/langsmith/deploy-standalone-server)|[自托管](https://code.claude.com/docs/en/agent-sdk/hosting)。您构建服务器、身份验证和流层。 [Claude 管理代理](https://platform.claude.com/docs/en/managed-agents/overview) 是一个单独的产品|
 |**多租户**|[内置](going-to-production.md#multi-tenancy)：作用域线程、每用户沙箱、RBAC|自己构建|
-|**执照**|麻省理工学院|麻省理工学院（克劳德代码本身是专有的）|
+|**许可证**|MIT|MIT（Claude Code本身是专有的）|
 
 
 ## 主要区别

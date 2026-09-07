@@ -485,7 +485,7 @@ Split documentation into 782 chunks.
 
 
   
-**开放人工智能**
+**OpenAI**
 
 
 ```shell
@@ -511,7 +511,7 @@ embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
 
   
 
- **天蓝色**
+ **Azure**
 
 
 ```shell
@@ -541,7 +541,7 @@ embeddings = AzureOpenAIEmbeddings(
 
   
 
- **谷歌双子座**
+ **Google Gemini**
 
 
 ```shell
@@ -567,7 +567,7 @@ embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
 
   
 
- **Gemini 企业代理平台**
+ **Gemini Enterprise Agent Platform**
 
 
 ```shell
@@ -607,7 +607,7 @@ embeddings = BedrockEmbeddings(model_id="amazon.titan-embed-text-v2:0")
 
   
 
- **拥抱脸**
+ **HuggingFace**
 
 
 ```shell
@@ -630,7 +630,7 @@ embeddings = HuggingFaceEmbeddings(
 
   
 
- **奥拉马**
+ **Ollama**
 
 
 ```shell
@@ -650,7 +650,7 @@ embeddings = OllamaEmbeddings(model="llama3")
 
   
 
- **连贯**
+ **Cohere**
 
 
 ```shell
@@ -676,7 +676,7 @@ embeddings = CohereEmbeddings(model="embed-english-v3.0")
 
   
 
- **米斯特拉尔人工智能**
+ **MistralAI**
 
 
 ```shell
@@ -702,7 +702,7 @@ embeddings = MistralAIEmbeddings(model="mistral-embed")
 
   
 
- **经济性**
+ **Nomic**
 
 
 ```shell
@@ -728,7 +728,7 @@ embeddings = NomicEmbeddings(model="nomic-embed-text-v1.5")
 
   
 
- **英伟达**
+ **NVIDIA**
 
 
 ```shell
@@ -754,7 +754,7 @@ embeddings = NVIDIAEmbeddings(model="NV-Embed-QA")
 
   
 
- **航行人工智能**
+ **Voyage AI**
 
 
 ```shell
@@ -780,7 +780,7 @@ embeddings = VoyageAIEmbeddings(model="voyage-3")
 
   
 
- **IBM WatsonX**
+ **IBM watsonx**
 
 
 ```shell
@@ -830,7 +830,7 @@ embeddings = DeterministicFakeEmbedding(size=4096)
 
   
 
- **以撒**
+ **Isaacus**
 
 
 ```shell
@@ -881,7 +881,7 @@ vector_store = InMemoryVectorStore(embeddings)
 
   
 
- **亚马逊开放搜索**
+ **Amazon OpenSearch**
 
 
 ```shell
@@ -918,7 +918,7 @@ vector_store = OpenSearchVectorSearch.from_documents(
 
   
 
- **阿斯特拉数据库**
+ **AstraDB**
 
 
 ```shell
@@ -944,7 +944,7 @@ vector_store = AstraDBVectorStore(
 
   
 
- **色度**
+ **Chroma**
 
 
 ```shell
@@ -968,7 +968,7 @@ vector_store = Chroma(
 
   
 
- **米尔武斯**
+ **Milvus**
 
 
 ```shell
@@ -1019,7 +1019,7 @@ vector_store = MongoDBAtlasVectorSearch(
 
   
 
- **PG向量**
+ **PGVector**
 
 
 ```shell
@@ -1071,7 +1071,7 @@ vector_store = PGVectorStore.create_sync(
 
   
 
- **松果**
+ **Pinecone**
 
 
 ```shell

@@ -131,7 +131,7 @@ OpenWiki 有两种模式：
 
 
   
-**朗史密斯追踪**
+**LangSmith追踪**
 
 
 [查看相关页面](https://docs.langchain.com/oss/openwiki/quickstart#trace-with-langsmith)

@@ -303,7 +303,7 @@ print(f"Split documentation into {len(all_splits)} chunks.")
 <h3 id="select-an-embeddings-model">选择嵌入模型</h3>
 <p><a href="https://docs.langchain.com/oss/python/integrations/embeddings">嵌入</a> 是一个数字向量，用于捕获每个文档块的含义。 <a href="https://reference.langchain.com/python/langchain-core/embeddings/embeddings/Embeddings">嵌入</a> 模型将这些块转换为向量，以便相似的含义在向量空间中紧密结合在一起，从而使您能够在用户提出问题时检索相关部分。</p>
 <p>您可以从许多不同的<a href="https://docs.langchain.com/oss/python/integrations/embeddings/">嵌入集成</a>中进行选择，它们都使用相同的<a href="https://reference.langchain.com/python/langchain-core/embeddings/embeddings/Embeddings">接口</a>：</p>
-<p><strong id="openai">开放人工智能</strong></p>
+<p><strong id="openai">OpenAI</strong></p>
 <pre><code class="language-shell">pip install -U "langchain-openai"
 </code></pre>
 <pre><code class="language-python">import getpass
@@ -316,7 +316,7 @@ from langchain_openai import OpenAIEmbeddings
 
 embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
 </code></pre>
-<p><strong id="azure">天蓝色</strong></p>
+<p><strong id="azure">Azure</strong></p>
 <pre><code class="language-shell">pip install -U "langchain-openai"
 </code></pre>
 <pre><code class="language-python">import getpass
@@ -333,7 +333,7 @@ embeddings = AzureOpenAIEmbeddings(
     openai_api_version=os.environ["AZURE_OPENAI_API_VERSION"],
 )
 </code></pre>
-<p><strong id="google-gemini">谷歌双子座</strong></p>
+<p><strong id="google-gemini">Google Gemini</strong></p>
 <pre><code class="language-shell">pip install -qU langchain-google-genai
 </code></pre>
 <pre><code class="language-python">import getpass
@@ -346,7 +346,7 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
 embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
 </code></pre>
-<p><strong id="gemini-enterprise-agent-platform">Gemini 企业代理平台</strong></p>
+<p><strong id="gemini-enterprise-agent-platform">Gemini Enterprise Agent Platform</strong></p>
 <pre><code class="language-shell">pip install -qU langchain-google-vertexai
 </code></pre>
 <pre><code class="language-python">from langchain_google_vertexai import VertexAIEmbeddings
@@ -360,7 +360,7 @@ embeddings = VertexAIEmbeddings(model="text-embedding-005")
 
 embeddings = BedrockEmbeddings(model_id="amazon.titan-embed-text-v2:0")
 </code></pre>
-<p><strong id="huggingface">拥抱脸</strong></p>
+<p><strong id="huggingface">HuggingFace</strong></p>
 <pre><code class="language-shell">pip install -qU langchain-huggingface
 </code></pre>
 <pre><code class="language-python">from langchain_huggingface import HuggingFaceEmbeddings
@@ -370,14 +370,14 @@ embeddings = HuggingFaceEmbeddings(
     encode_kwargs={"normalize_embeddings": True},
 )
 </code></pre>
-<p><strong id="ollama">奥拉马</strong></p>
+<p><strong id="ollama">Ollama</strong></p>
 <pre><code class="language-shell">pip install -qU langchain-ollama
 </code></pre>
 <pre><code class="language-python">from langchain_ollama import OllamaEmbeddings
 
 embeddings = OllamaEmbeddings(model="llama3")
 </code></pre>
-<p><strong id="cohere">连贯</strong></p>
+<p><strong id="cohere">Cohere</strong></p>
 <pre><code class="language-shell">pip install -qU langchain-cohere
 </code></pre>
 <pre><code class="language-python">import getpass
@@ -390,7 +390,7 @@ from langchain_cohere import CohereEmbeddings
 
 embeddings = CohereEmbeddings(model="embed-english-v3.0")
 </code></pre>
-<p><strong id="mistralai">米斯特拉尔人工智能</strong></p>
+<p><strong id="mistralai">MistralAI</strong></p>
 <pre><code class="language-shell">pip install -qU langchain-mistralai
 </code></pre>
 <pre><code class="language-python">import getpass
@@ -403,7 +403,7 @@ from langchain_mistralai import MistralAIEmbeddings
 
 embeddings = MistralAIEmbeddings(model="mistral-embed")
 </code></pre>
-<p><strong id="nomic">经济性</strong></p>
+<p><strong id="nomic">Nomic</strong></p>
 <pre><code class="language-shell">pip install -qU langchain-nomic
 </code></pre>
 <pre><code class="language-python">import getpass
@@ -416,7 +416,7 @@ from langchain_nomic import NomicEmbeddings
 
 embeddings = NomicEmbeddings(model="nomic-embed-text-v1.5")
 </code></pre>
-<p><strong id="nvidia">英伟达</strong></p>
+<p><strong id="nvidia">NVIDIA</strong></p>
 <pre><code class="language-shell">pip install -qU langchain-nvidia-ai-endpoints
 </code></pre>
 <pre><code class="language-python">import getpass
@@ -429,7 +429,7 @@ from langchain_nvidia_ai_endpoints import NVIDIAEmbeddings
 
 embeddings = NVIDIAEmbeddings(model="NV-Embed-QA")
 </code></pre>
-<p><strong id="voyage-ai">航行人工智能</strong></p>
+<p><strong id="voyage-ai">Voyage AI</strong></p>
 <pre><code class="language-shell">pip install -qU langchain-voyageai
 </code></pre>
 <pre><code class="language-python">import getpass
@@ -442,7 +442,7 @@ from langchain-voyageai import VoyageAIEmbeddings
 
 embeddings = VoyageAIEmbeddings(model="voyage-3")
 </code></pre>
-<p><strong id="ibm-watsonx">IBM WatsonX</strong></p>
+<p><strong id="ibm-watsonx">IBM watsonx</strong></p>
 <pre><code class="language-shell">pip install -qU langchain-ibm
 </code></pre>
 <pre><code class="language-python">import getpass
@@ -466,7 +466,7 @@ embeddings = WatsonxEmbeddings(
 
 embeddings = DeterministicFakeEmbedding(size=4096)
 </code></pre>
-<p><strong id="isaacus">以撒</strong></p>
+<p><strong id="isaacus">Isaacus</strong></p>
 <pre><code class="language-shell">pip install -qU langchain-isaacus
 </code></pre>
 <pre><code class="language-python">import getpass
@@ -488,7 +488,7 @@ embeddings = IsaacusEmbeddings(model="kanon-2-embedder")
 
 vector_store = InMemoryVectorStore(embeddings)
 </code></pre>
-<p><strong id="amazon-opensearch">亚马逊开放搜索</strong></p>
+<p><strong id="amazon-opensearch">Amazon OpenSearch</strong></p>
 <pre><code class="language-shell">pip install -qU  boto3
 </code></pre>
 <pre><code class="language-python">from opensearchpy import RequestsHttpConnection
@@ -512,7 +512,7 @@ vector_store = OpenSearchVectorSearch.from_documents(
     index_name="test-index",
 )
 </code></pre>
-<p><strong id="astradb">阿斯特拉数据库</strong></p>
+<p><strong id="astradb">AstraDB</strong></p>
 <pre><code class="language-shell">pip install -U "langchain-astradb"
 </code></pre>
 <pre><code class="language-python">from langchain_astradb import AstraDBVectorStore
@@ -525,7 +525,7 @@ vector_store = AstraDBVectorStore(
     namespace=ASTRA_DB_NAMESPACE,
 )
 </code></pre>
-<p><strong id="chroma">色度</strong></p>
+<p><strong id="chroma">Chroma</strong></p>
 <pre><code class="language-shell">pip install -qU langchain-chroma
 </code></pre>
 <pre><code class="language-python">from langchain_chroma import Chroma
@@ -536,7 +536,7 @@ vector_store = Chroma(
     persist_directory="./chroma_langchain_db",  # Where to save data locally, remove if not necessary
 )
 </code></pre>
-<p><strong id="milvus">米尔武斯</strong></p>
+<p><strong id="milvus">Milvus</strong></p>
 <pre><code class="language-shell">pip install -qU langchain-milvus
 </code></pre>
 <pre><code class="language-python">from langchain_milvus import Milvus
@@ -561,7 +561,7 @@ vector_store = MongoDBAtlasVectorSearch(
     relevance_score_fn="cosine",
 )
 </code></pre>
-<p><strong id="pgvector">PG向量</strong></p>
+<p><strong id="pgvector">PGVector</strong></p>
 <pre><code class="language-shell">pip install -qU langchain-postgres
 </code></pre>
 <pre><code class="language-python">from langchain_postgres import PGVector
@@ -587,7 +587,7 @@ vector_store = PGVectorStore.create_sync(
     embedding_service=embeddings
 )
 </code></pre>
-<p><strong id="pinecone">松果</strong></p>
+<p><strong id="pinecone">Pinecone</strong></p>
 <pre><code class="language-shell">pip install -qU langchain-pinecone
 </code></pre>
 <pre><code class="language-python">from langchain_pinecone import PineconeVectorStore

@@ -22,7 +22,7 @@
 <h2 id="prerequisites">先决条件</h2>
 <p>API 密钥用于：</p>
 <ul>
-<li>人择（克劳德）或谷歌（双子座）</li>
+<li>Anthropic（Claude）或Google（Gemini）</li>
 <li><a href="https://www.tavily.com/">Tavily</a> 用于网络搜索（可选 - 免费套餐足够）</li>
 <li><a href="https://smith.langchain.com?utm_source=docs\&amp;utm_medium=cta\&amp;utm_campaign=langsmith-signup\&amp;utm_content=oss-deepagents-deep-research">LangSmith</a> 用于跟踪（可选）</li>
 </ul>
@@ -32,14 +32,14 @@
 cd deep-research-agent
 </code></pre>
 <p><strong id="install-dependencies">安装依赖项</strong></p>
-<p><strong id="claude">克劳德</strong></p>
+<p><strong id="claude">Claude</strong></p>
 <pre><code class="language-bash">pip install deepagents tavily-python httpx markdownify langchain-anthropic langchain-core
 </code></pre>
 <pre><code class="language-bash">uv init
 uv add deepagents tavily-python httpx markdownify langchain-anthropic langchain-core
 uv sync
 </code></pre>
-<p><strong id="gemini">双子座</strong></p>
+<p><strong id="gemini">Gemini</strong></p>
 <pre><code class="language-bash">pip install deepagents tavily-python httpx markdownify langchain-google-genai langchain-core
 </code></pre>
 <pre><code class="language-bash">uv init
@@ -47,12 +47,12 @@ uv add deepagents tavily-python httpx markdownify langchain-google-genai langcha
 uv sync
 </code></pre>
 <p><strong id="set-api-keys">设置 API 密钥</strong></p>
-<p><strong>克劳德</strong></p>
+<p><strong>Claude</strong></p>
 <pre><code class="language-bash">export ANTHROPIC_API_KEY="your_anthropic_api_key"
 export TAVILY_API_KEY="your_tavily_api_key"
 export LANGSMITH_API_KEY="your_langsmith_api_key"   # Optional
 </code></pre>
-<p><strong>双子座</strong></p>
+<p><strong>Gemini</strong></p>
 <pre><code class="language-bash">export GOOGLE_API_KEY="your_google_api_key"
 export TAVILY_API_KEY="your_tavily_api_key"
 export LANGSMITH_API_KEY="your_langsmith_api_key"   # Optional
@@ -276,7 +276,7 @@ Your role is to coordinate research by delegating tasks from your TODO list to s
 <p>创建代理时，您可以在下一步中包含此中间件。</p>
 <p><strong id="create-the-agent">创建代理</strong></p>
 <p>将模型初始化和代理创建添加到<code>agent.py</code>。选择您的提供商。包括 <a href="https://reference.langchain.com/python/langchain/agents/middleware/todo/TodoListMiddleware"><code>TodoListMiddleware</code></a>，以便规划工具可用：</p>
-<p><strong>克劳德</strong></p>
+<p><strong>Claude</strong></p>
 <pre><code class="language-python">from datetime import datetime
 
 from deepagents import create_deep_agent
@@ -316,7 +316,7 @@ agent = create_deep_agent(
     middleware=[TodoListMiddleware()],
 )
 </code></pre>
-<p><strong>双子座</strong></p>
+<p><strong>Gemini</strong></p>
 <pre><code class="language-python">from datetime import datetime
 
 from deepagents import create_deep_agent

@@ -50,7 +50,7 @@ pip install tavily-python
 
 
   
-**谷歌**
+**Google**
 
 
 ```bash
@@ -63,7 +63,7 @@ export GOOGLE_API_KEY="your-api-key"
 
   
 
- **开放人工智能**
+ **OpenAI**
 
 
 ```bash
@@ -76,7 +76,7 @@ export OPENAI_API_KEY="your-api-key"
 
   
 
- **人择**
+ **Anthropic**
 
 
 ```bash
@@ -89,7 +89,7 @@ export ANTHROPIC_API_KEY="your-api-key"
 
   
 
- **开放路由器**
+ **OpenRouter**
 
 
 ```bash
@@ -103,7 +103,7 @@ export TAVILY_API_KEY="your-tavily-api-key"
 
   
 
- **烟花**
+ **Fireworks**
 
 
 ```bash
@@ -117,7 +117,7 @@ export TAVILY_API_KEY="your-tavily-api-key"
 
   
 
- **巴斯坦**
+ **Baseten**
 
 
 ```bash
@@ -131,7 +131,7 @@ export TAVILY_API_KEY="your-tavily-api-key"
 
   
 
- **奥拉马**
+ **Ollama**
 
 
 ```bash

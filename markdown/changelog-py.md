@@ -210,7 +210,7 @@ agent = create_deep_agent(backend=StoreBackend(namespace=lambda rt: (rt.server_i
     * 您现在可以直接实例化 `StateBackend()` 和 `StoreBackend()`。不推荐使用工厂指定（例如 `backend=(lambda rt: StateBackend(rt))`）。
 
 
-  * **人择提示缓存改进**：我们进行了一些改进，以提高人择模型的提示缓存性能。
+  * **Anthropic提示缓存改进**：我们进行了一些改进，以提高Anthropic模型的提示缓存性能。
 
 
 **2026 年 3 月 10 日**

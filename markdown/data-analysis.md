@@ -102,7 +102,7 @@ os.environ["LANGSMITH_API_KEY"] = getpass.getpass()
 
 
   
-**朗史密斯**
+**LangSmith**
 
 
     

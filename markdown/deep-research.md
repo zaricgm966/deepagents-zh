@@ -39,7 +39,7 @@
 API 密钥用于：
 
 
-* 人择（克劳德）或谷歌（双子座）
+* Anthropic（Claude）或Google（Gemini）
 * [Tavily](https://www.tavily.com/) 用于网络搜索（可选 - 免费套餐足够）
 * [LangSmith](https://smith.langchain.com?utm_source=docs\&utm_medium=cta\&utm_campaign=langsmith-signup\&utm_content=oss-deepagents-deep-research) 用于跟踪（可选）
 
@@ -68,7 +68,7 @@ cd deep-research-agent
     
 
       
-**克劳德**
+**Claude**
 
 
         
@@ -93,7 +93,7 @@ uv sync
 
       
 
- **双子座**
+ **Gemini**
 
 
         
@@ -128,7 +128,7 @@ uv sync
     
 
       
-**克劳德**
+**Claude**
 
 
 ```bash
@@ -143,7 +143,7 @@ export LANGSMITH_API_KEY="your_langsmith_api_key"   # Optional
 
       
 
- **双子座**
+ **Gemini**
 
 
 ```bash
@@ -433,7 +433,7 @@ from langchain.agents.middleware import TodoListMiddleware
     
 
       
-**克劳德**
+**Claude**
 
 
 ```python
@@ -483,7 +483,7 @@ agent = create_deep_agent(
 
       
 
- **双子座**
+ **Gemini**
 
 
 ```python
