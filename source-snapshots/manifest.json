@@ -1,0 +1,422 @@
+[
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/LICENSE",
+    "sha256": "d17f227e4df5da1600391338865ce0f3055211760a36688f816941d58232d8dc"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/NOTICE",
+    "sha256": "9d71575ecfd9a843fc1677b0efb08053c6ba9fd686a0de1a6f5382fd3c220915"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/codex-mcp/src/lib.rs",
+    "sha256": "53d8bfca78adfc68db0bf36c6ff06f9daa3b62e18d9b996e78eb987cf3763256"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/core/README.md",
+    "sha256": "90419618b596e4965d9326ff57d81a0a3a406dab586b52d114e6829cafc6da31"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/core/src/compact.rs",
+    "sha256": "d0da046cc7e24928563b51b033b21221f36c4517267929e842352ec92f721888"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/core/src/mcp_tool_call.rs",
+    "sha256": "8971564fc9aaa3e087097f98d629ed731beb490cdc88fea8362ce5cbf65ffca2"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/core/src/agents_md_manager.rs",
+    "sha256": "5e3301c7c8763092748d86f6f92c441c2ffd5050c36ee489b609018803de1591"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/core/src/compact_remote.rs",
+    "sha256": "f309fd541d8399696c6f75bb40d9f76a8be6d0b49a12630efadf8d07352f71c5"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/core/src/thread_rollout_truncation.rs",
+    "sha256": "4ae0c7d8e6b89924ca6a7035230b5d6fe7b47b58e3eeed28f443eeef68895088"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/core/src/image_preparation.rs",
+    "sha256": "e73920c547d10787ccb2b84512deada2d5bd50322da315df7367ea0d3a08d8d4"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/core/src/responses_retry.rs",
+    "sha256": "29dc6a5f6df9784e79c39e1b455eadfc63b44d9ce7f51309c278cf6a52f397d0"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/core/src/stream_events_utils.rs",
+    "sha256": "9b51fca33a4e7a9f9e6de0b55e3fc695ec26248980bcde040f125a9408dc8abe"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/core/src/rollout.rs",
+    "sha256": "1aa136709f80968ee68f4430efcffd6442a2837c34c7c7c78cc43bd83e738bf3"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/core/src/agents_md.rs",
+    "sha256": "8bbaf068c099fdeeaf4fe49076d398da7671f20c9a962fde5c4eb7653008fed4"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/core/src/mcp.rs",
+    "sha256": "a36c5fc575dcd32f8035a26550ad6540301aa927b51ecdf7f58a604e721f13b9"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/core/src/tools/router.rs",
+    "sha256": "466ee7a51fd9e6b741653b50313a2567bb08ce55a32af815a619a07cc38bafef"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/core/src/tools/parallel.rs",
+    "sha256": "e01b784d80793d2af6d1e00a377ea618d5022b3f6d241ce3423778e866b784b3"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/core/src/tools/orchestrator.rs",
+    "sha256": "0926333b469d44f0367879410ab8b33fe88ed0f424c3f5a082ce8871b605bab0"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/core/src/tools/handlers/view_image.rs",
+    "sha256": "59ece659997e5db883d08ef2175f4273d0f78dd91710e3ad9d1e6e62e8ea128f"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/core/src/tools/handlers/apply_patch.rs",
+    "sha256": "c9a18003221446628bae2c7bc9ba3a302ac239e86474e0a932a2344b20855035"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/core/src/tools/handlers/plan.rs",
+    "sha256": "f1e0acbe71dc6160ade7f4751f00c98f2d5e999d6c0954d015bf7709c382ce50"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/core/src/tools/handlers/unified_exec.rs",
+    "sha256": "8adbc4d775079d82065e37b74f26a37a770ab2cb0f02290a488580996fa5c33b"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/core/src/tools/handlers/request_user_input.rs",
+    "sha256": "8d8ccc07e621ddbd2b99c388dc6d86ba2caeb079fbb5b68ca6cf43536e475bf3"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/core/src/tools/handlers/plan_spec.rs",
+    "sha256": "ecbd36a78158967384269e1fb50f19991fd8f76c8d880cae536b5da105e0b197"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/core/src/tools/handlers/multi_agents.rs",
+    "sha256": "1f1e4e6d4d075d3387e1b63237730c7e48326ced095fef30a548482ecebb3b04"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/core/src/tools/handlers/multi_agents/wait.rs",
+    "sha256": "b6488dcb36c98f604e56fb56da11c0fbdaf26604a8b4f0f9e51786cfa5841b00"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/core/src/tools/handlers/multi_agents/spawn.rs",
+    "sha256": "9edcfc832ca1466dd28e2e2eea9fc78def64df568cde88ac9b2e5d1b2ae1a1f3"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/core/src/context/mod.rs",
+    "sha256": "90d019e5a2986b0c90e6d31d94286e6209841920179bbda893f3f53343a8be94"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/core/src/agent/control.rs",
+    "sha256": "06fa53e7b587945b23bb178252566101ca3a8b30ea5d4809d56decbed10f81bb"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/core/src/guardian/review.rs",
+    "sha256": "e251fe4763fe796b11e3e98e21317409e715e4bf22d9ae4a82e61174344d28d2"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/core/src/guardian/mod.rs",
+    "sha256": "9fa146181a43b44564b9ed99f106978625863ac64a1e64c28e8c9c270444d7f0"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/core/src/unified_exec/process_manager.rs",
+    "sha256": "369ae860f62967ba8d1b3b6f2c80952a2e625019e5abfb168a19b0d0f2fbf53c"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/core/src/session/handlers.rs",
+    "sha256": "97ef06c7183ea5ace9833752bf4534821cbdec7005335638b2d878daa691e702"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/core/src/session/turn_input.rs",
+    "sha256": "44c3b354a763fa150aeb0dab6b5636fc7c3ffde5bc4df7910935c63167fe1dae"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/core/src/session/turn.rs",
+    "sha256": "9f9f1bd23950f8745a68a78fec742dbd98c0c9ab1f853a3f72a91828e625d3fd"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/core/src/session/mod.rs",
+    "sha256": "0bbe413f8e5e5cf6a2dd741d676b78e70745d03d2dbd3eb013124899d736edc9"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/tui/src/slash_command.rs",
+    "sha256": "fb451b239e2b426498665491cc46fe0406553310c6cbf3e790689866959078e1"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/tui/src/bottom_pane/chat_composer.rs",
+    "sha256": "6f9d2dccdca4822cb4586e726442f6ecba004dda547c0348638dfe3100b54504"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/tui/src/chatwidget/slash_dispatch.rs",
+    "sha256": "795f6fe86162088914de82a139331330369bc2670f1477f89322d1d7d2edfee0"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/tui/src/chatwidget/streaming.rs",
+    "sha256": "e5d9d7bb761a12a61c7f008ee9930056ddd7069c685927190d84aa52fefaf700"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/ext/guardian-v2/src/lib.rs",
+    "sha256": "6659bde61beb96e0aaf3c803a1894398f9d38a55cdc42f766fcf8efdb39862df"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/ext/memories/src/lib.rs",
+    "sha256": "a6c7915326ad8420a70ec838d7cd40184967505734e2179923deb13b43c5b653"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/protocol/src/user_input.rs",
+    "sha256": "b2b00c71bd5e36ba242c87d0c224a478badf2e25441f98f13dc1cb489743add4"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/protocol/src/request_user_input.rs",
+    "sha256": "616c81d35b96785aa30766bedb50d4597aae219879b237b4a2ebbe8315242591"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/cli/src/main.rs",
+    "sha256": "f0e8acde897400a65fd7904b15cf54088b0981a44126b05cb2a95b5700b2ab6b"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/rollout/src/recorder.rs",
+    "sha256": "79e0e5d04fc13f3895c670ce0dbce0542ca1ac6538cdb8b50bb3d0b3c3d67e87"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/apply-patch/src/lib.rs",
+    "sha256": "5e6f736f3a4b66c1d651baa9b85ce6e6921de170faf901e6c2f78ad9a383eaf9"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/apply-patch/src/seek_sequence.rs",
+    "sha256": "5eced89191977d6b53b1b770ccaad6cafa2fb3ecbcd4839a88318f75e4a620e4"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/memories/write/src/start.rs",
+    "sha256": "63224a4415f95e69666245702818118abf6833f53814117c43d5342cccf8585c"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/memories/write/src/phase1.rs",
+    "sha256": "3f3a3aa4a5d4cbfa7c0fd146ff7f33fc304cf52c8cfbd21111ed8487a4ee88c7"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/memories/write/src/phase2.rs",
+    "sha256": "fb32a892b5d705adeb360c621e52f8a912e492eb4a5a11be2843deee446b94db"
+  },
+  {
+    "project": "claude-agent-sdk-python",
+    "commit": "efd4d865ef1795daffee3cd24cce45307aed8a51",
+    "file": "claude-agent-sdk-python/LICENSE",
+    "sha256": "cebdde8a8fb9ee59e5eaaed19578bf8085aa7047562259c31f38f225c26f6812"
+  },
+  {
+    "project": "claude-agent-sdk-python",
+    "commit": "efd4d865ef1795daffee3cd24cce45307aed8a51",
+    "file": "claude-agent-sdk-python/tests/test_sdk_mcp_integration.py",
+    "sha256": "36212bbe7851835133b09dd01e4a24c11f52c9595ed4bc766857f96ba58012eb"
+  },
+  {
+    "project": "claude-agent-sdk-python",
+    "commit": "efd4d865ef1795daffee3cd24cce45307aed8a51",
+    "file": "claude-agent-sdk-python/tests/test_option_warnings.py",
+    "sha256": "b187f45c9bc017dfd141097cda7290e9ece1535c099f5457b0917bba3ccbfdae"
+  },
+  {
+    "project": "claude-agent-sdk-python",
+    "commit": "efd4d865ef1795daffee3cd24cce45307aed8a51",
+    "file": "claude-agent-sdk-python/tests/test_tool_callbacks.py",
+    "sha256": "13fbe491655501a4026723be3f74c90d7007dcf6143fa2d9c7bce7ee5a47db74"
+  },
+  {
+    "project": "claude-agent-sdk-python",
+    "commit": "efd4d865ef1795daffee3cd24cce45307aed8a51",
+    "file": "claude-agent-sdk-python/examples/setting_sources.py",
+    "sha256": "c984b5f56db821f798cd45f296e258881673dd3b089bc9dbc95b603619fdbbae"
+  },
+  {
+    "project": "claude-agent-sdk-python",
+    "commit": "efd4d865ef1795daffee3cd24cce45307aed8a51",
+    "file": "claude-agent-sdk-python/examples/hooks.py",
+    "sha256": "de7d454a698d4f1e59e01ff13bfb18625e16091e3a639066e35ee5bbd7caa5d5"
+  },
+  {
+    "project": "claude-agent-sdk-python",
+    "commit": "efd4d865ef1795daffee3cd24cce45307aed8a51",
+    "file": "claude-agent-sdk-python/examples/agents.py",
+    "sha256": "e6f026be8c386f86eee740d23ae27e86851d872de09b27c1fce14ccff685668e"
+  },
+  {
+    "project": "claude-agent-sdk-python",
+    "commit": "efd4d865ef1795daffee3cd24cce45307aed8a51",
+    "file": "claude-agent-sdk-python/examples/filesystem_agents.py",
+    "sha256": "397d54b1ec275fad06df3cee718bbb1b74698b819907fa46abce1c61bfc3f135"
+  },
+  {
+    "project": "claude-agent-sdk-python",
+    "commit": "efd4d865ef1795daffee3cd24cce45307aed8a51",
+    "file": "claude-agent-sdk-python/src/claude_agent_sdk/query.py",
+    "sha256": "50c3b1eb3539fd828d7ada4b7c37fa8e23f7520007f7578b16de8b47e7758553"
+  },
+  {
+    "project": "claude-agent-sdk-python",
+    "commit": "efd4d865ef1795daffee3cd24cce45307aed8a51",
+    "file": "claude-agent-sdk-python/src/claude_agent_sdk/_errors.py",
+    "sha256": "3ea0d39326f9cd3b4789e4fcebb2573a55ee2c403d0dac9bfe1a4d06c9bd7a4b"
+  },
+  {
+    "project": "claude-agent-sdk-python",
+    "commit": "efd4d865ef1795daffee3cd24cce45307aed8a51",
+    "file": "claude-agent-sdk-python/src/claude_agent_sdk/client.py",
+    "sha256": "70740865b70711cdd6b9b06ef5553a6b0026f020aea5ed38a75bdf9d547331ea"
+  },
+  {
+    "project": "claude-agent-sdk-python",
+    "commit": "efd4d865ef1795daffee3cd24cce45307aed8a51",
+    "file": "claude-agent-sdk-python/src/claude_agent_sdk/__init__.py",
+    "sha256": "0d18689948f2d14523898369c5283daaf1c2ce9a5cb492960717083ce3e742ee"
+  },
+  {
+    "project": "claude-agent-sdk-python",
+    "commit": "efd4d865ef1795daffee3cd24cce45307aed8a51",
+    "file": "claude-agent-sdk-python/src/claude_agent_sdk/types.py",
+    "sha256": "49e6a4ca6155ad9b245133d138516d9269bbb3aad2eb21311d02d77d75bca86a"
+  },
+  {
+    "project": "claude-agent-sdk-python",
+    "commit": "efd4d865ef1795daffee3cd24cce45307aed8a51",
+    "file": "claude-agent-sdk-python/src/claude_agent_sdk/_internal/session_resume.py",
+    "sha256": "0dd9ab8d14b7641a46d166423844cf11adbfa7b8e1f1bf63c696f581f91e8726"
+  },
+  {
+    "project": "claude-agent-sdk-python",
+    "commit": "efd4d865ef1795daffee3cd24cce45307aed8a51",
+    "file": "claude-agent-sdk-python/src/claude_agent_sdk/_internal/query.py",
+    "sha256": "c24f24ac2cb45a7debd3ba8fb945c65ffca7f1414ee0fb37a49fc500e1afcb8c"
+  },
+  {
+    "project": "claude-agent-sdk-python",
+    "commit": "efd4d865ef1795daffee3cd24cce45307aed8a51",
+    "file": "claude-agent-sdk-python/src/claude_agent_sdk/_internal/client.py",
+    "sha256": "27a06fe35943a02816342f5bc57d8b16cb4397f9b8e305843741403892eaf1e1"
+  },
+  {
+    "project": "claude-agent-sdk-python",
+    "commit": "efd4d865ef1795daffee3cd24cce45307aed8a51",
+    "file": "claude-agent-sdk-python/src/claude_agent_sdk/_internal/message_parser.py",
+    "sha256": "febb1aee19e47e03433d89cd4b1f8c5636950e206df77e4f4ca2738b0c900393"
+  },
+  {
+    "project": "claude-agent-sdk-python",
+    "commit": "efd4d865ef1795daffee3cd24cce45307aed8a51",
+    "file": "claude-agent-sdk-python/src/claude_agent_sdk/_internal/session_store.py",
+    "sha256": "7c65f885209a5abc5c9d07d0a2fb5be3189fdd0c9207782f7b5ed46ddd1931a1"
+  },
+  {
+    "project": "claude-agent-sdk-python",
+    "commit": "efd4d865ef1795daffee3cd24cce45307aed8a51",
+    "file": "claude-agent-sdk-python/src/claude_agent_sdk/_internal/transport/subprocess_cli.py",
+    "sha256": "748227e42cb9802d7316fabc836428d69bd219b63ef1b2f9f8f7a86a72a03e45"
+  }
+]

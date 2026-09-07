@@ -1,244 +1,325 @@
 # Codex 源码解析
 
-**GitHub：** [OpenAI Codex 官方源码](https://github.com/openai/codex) · [本章固定版本](codex-source-analysis.md)
+**GitHub 源码：** [openai/codex](https://github.com/openai/codex) · [本章固定提交](codex-source-analysis.md)
 
-> 本章为独立中文源码讲解，核对日期为 2026-09-07，固定提交 `121f91fd5d9dc66017866ce9bdc49f1e182721df`。仓库采用 Apache-2.0 许可。我们研究公开客户端与运行时，不由此推断模型权重、训练过程或全部桌面与云端服务。机制可能受配置、功能开关及宿主影响，下文讲解的是指定版本的具体路径。
+本章依据完整仓库快照 `121f91fd5d9dc66017866ce9bdc49f1e182721df`，讲解公开 Rust 实现。代码采用 Apache-2.0 许可。阅读所需的关键文件附有离线副本；[下载与版本说明](../source-snapshots/source-reading-method.md)记录完整源码的获取方法。本章没有运行付费模型请求，下面的任务是贯穿讲解的假设案例，流程图和伪代码都是为阅读而简化的。
 
-离线对照：[源码文件索引与许可](../source-snapshots/README.md)。
+## 01. 从一个具体需求开始：这次我们要追踪什么
 
-## 导读：先看一次任务怎样走完
+假设你在待办应用的项目目录里打开 Codex，输入：“给列表增加已完成筛选，按截图调整按钮，最后运行测试。”你看到的是一个聊天框，但这句话要经过好几个程序部件才会变成代码修改。
 
-用“给待办应用增加状态筛选，完成后运行测试”贯穿本章：终端接收请求，核心层准备上下文，模型决定读哪些文件或调用哪些工具，运行时执行并记录结果，结果再进入下一次模型请求。用户看到的流式文字、审批弹窗和任务进度，是这条执行链向外发送的事件。
+先给它们分工。**模型**根据已有信息提出下一步；**工具**是真正读文件、改代码、运行命令的程序；**运行时**负责把模型与工具接起来，记录结果并决定是否继续；**界面**接收你的输入，把运行过程显示给你。源码中这些部件并不总是一一对应一个文件，不过这四个职责足以帮助我们找到主线。
+
+还要分清两个时间范围。**会话（session）**是一段可以继续多次的对话；**一轮任务（turn）**从接收这次用户要求开始，直到这轮处理结束。一次用户任务可能向模型发送多次请求。例如第一次决定读代码，第二次决定改代码，第三次根据测试结果决定继续修复。代码中的模型请求次数，不能直接当成用户发消息的次数。
+
+```mermaid
+flowchart TD
+  A[用户提交任务] --> B[准备本轮可用的信息与工具]
+  B --> C[请求模型]
+  C --> D{模型输出什么}
+  D -->|工具调用| E[校验参数和权限]
+  E --> F[执行并记录结果]
+  F --> C
+  D -->|文字与结束信号| G{还有待处理工作吗}
+  G -->|有| B
+  G -->|无| H[结束本轮并保留会话]
+```
+
+先把图读成一句话：**拿到信息，请模型决定下一步，把执行结果交回去，直到本轮无需继续。** 接下来每节都只追这句话中的一段。文件名用于定位证据，不要求你先背下整个仓库。
+
+## 02. 输入进入系统：命令与普通任务在这里分开
+
+在终端输入 `codex` 时，程序先处理启动参数。进入聊天界面后输入 `/status`，则是在操作已经运行的程序。这两种“命令”有不同入口：前者看 `cli/src/main.rs`，后者看 `tui/src/slash_command.rs` 与 `chatwidget/slash_dispatch.rs`。TUI 是 Terminal User Interface 的缩写，意思就是终端界面。
+
+在 `SlashCommand` 中先找 `Status` 与 `Compact`，再到 `dispatch_command()` 看对应分支。你会发现命令名称只是入口，真正行为由分支决定：展示状态可以在程序内部完成，压缩上下文则需要把请求交给核心逻辑。由此能解释一个日常现象：不是每一次键盘输入都会消耗一次模型请求。
+
+我们的“增加筛选”属于普通任务，接下来要由核心层处理。此时先记下一个调试问题：如果点击发送后没有任何反应，应该先确认界面是否提交了任务，而不是立即怀疑模型接口。界面接收到文字与核心开始处理，是两个可以分别观察的步骤。
+
+**顺着源码读：** 先看枚举中的两个命令，再看分发函数对应分支；不用把所有命令逐个读完。下一节开始，我们跟着普通任务离开界面。
+
+<details markdown="1">
+<summary>打开本节源码入口</summary>
+
+- [命令枚举](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/tui/src/slash_command.rs) · [离线文件](../source-snapshots/codex/codex-rs/tui/src/slash_command.rs)
+- [命令分发](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/tui/src/chatwidget/slash_dispatch.rs) · [离线文件](../source-snapshots/codex/codex-rs/tui/src/chatwidget/slash_dispatch.rs)
+- [启动参数入口](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/cli/src/main.rs) · [离线文件](../source-snapshots/codex/codex-rs/cli/src/main.rs)
+
+</details>
+
+## 03. 模型第一次看到什么：上下文、文件引用与图片
+
+模型不能凭空看见你的硬盘。程序必须把任务所需的信息组织进请求，或者让模型通过工具读取。**上下文（context）**就是本次请求提供给模型的信息，包括对话历史、项目说明、当前任务以及已经获得的工具结果。
+
+打开 `core/src/session/turn.rs`，在 `run_turn()` 的前半段找 `capture_step_context_with_required_mcp_servers`、`record_context_updates_and_set_reference_context_item` 与 `build_skills_and_plugins`。名字很长，但依次回答的是：“这一步有哪些环境和能力”“哪些环境信息需要记入历史”“这次任务额外需要哪些说明”。这里的 step 是一次推进所使用的工作信息，先把它理解为本次模型请求前的准备即可。
+
+`AGENTS.md` 等项目说明提供项目约定；技能与插件可能补充当前任务相关的说明。**注入**只是源码讨论中对“由程序加入这些信息”的简称，不意味着它们一定来自用户刚输入的文字。查问题时需要问清楚这段话来自用户、项目文件还是工具结果，不能只看它们最后都变成了文本。
+
+我们输入 `@src/App.tsx`，是帮助程序定位文件。引用路径、加载全文、把全文送进请求是不同步骤：需要继续追输入处理和后续读取工具，不能看到路径就认定模型已读完文件。截图同理，文本路径不能替代图像数据。图片内容需要以支持的输入形式进入系统；源码中的 `view_image` 又提供了通过工具查看图片的另一条路径。
+
+回到案例：第一次请求至少需要知道“要增加筛选”，随后可能读取组件文件和截图。如果答案无视现有代码，优先检查这些资料是否真正进入了请求，而不是只加强提示词语气。信息准备好后，才轮到模型作决定。
+
+<details markdown="1">
+<summary>打开本节源码入口</summary>
+
+- [文件补全及测试](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/tui/src/bottom_pane/chat_composer.rs) · [离线文件](../source-snapshots/codex/codex-rs/tui/src/bottom_pane/chat_composer.rs)
+- [结构化输入类型](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/protocol/src/user_input.rs) · [离线文件](../source-snapshots/codex/codex-rs/protocol/src/user_input.rs)
+- [项目说明加载](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/agents_md.rs) · [离线文件](../source-snapshots/codex/codex-rs/core/src/agents_md.rs)
+- [上下文片段](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/context/mod.rs) · [离线文件](../source-snapshots/codex/codex-rs/core/src/context/mod.rs)
+- [项目说明管理](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/agents_md_manager.rs) · [离线文件](../source-snapshots/codex/codex-rs/core/src/agents_md_manager.rs)
+- [查看图片工具](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/tools/handlers/view_image.rs) · [离线文件](../source-snapshots/codex/codex-rs/core/src/tools/handlers/view_image.rs)
+- [图片准备](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/image_preparation.rs) · [离线文件](../source-snapshots/codex/codex-rs/core/src/image_preparation.rs)
+
+</details>
+
+## 04. 沿 run_turn 读主循环：一次回答为什么会请求模型多次
+
+继续往下找到 `run_turn()` 中的 `loop`。Rust 的 `loop` 表示反复执行这段代码，直到分支明确退出；`await` 表示等待一个尚未完成的操作，并不意味着程序只能停在那里什么也不做。
+
+循环中一个关键片段是 `sess.clone_history().await.for_prompt(...)`：先取出会话历史，再整理成这次模型可用的输入。随后调用 `run_sampling_request(...)`。这里 sampling 指模型生成输出，不需要先学习概率采样公式才能读懂本段，它在主线中就是“一次模型请求”。
+
+请求结束后，函数取出 `model_needs_follow_up`，还会检查 `has_pending_input`，最后合成 `needs_follow_up`。这些字段分别表达“模型处理链还需要继续”和“用户运行中又补充了内容”。因此一次流结束后，循环可能继续准备新请求。
+
+对应判断在源码中直接体现为下面这一行。两边用 `||` 连接，意思是任意一个条件成立就继续处理：
+
+```rust
+let needs_follow_up = model_needs_follow_up || has_pending_input;
+```
 
 ```text
-TUI 输入 / 其他宿主输入
-  → 命令分发或会话输入
-  → run_turn：准备上下文并请求模型
-  → 解析响应项，形成工具调用
-  → 工具调度 → 权限与环境检查 → 实际执行
-  → 工具结果、进度事件、持久化记录
-  → 需要后续处理则继续，否则结束本轮
+教学伪代码，省略了错误、取消和压缩分支：
+重复：
+    接收本轮允许处理的新输入
+    准备当前环境与会话历史
+    请求模型，并处理本次返回的工具调用
+    把新的输出和工具结果记入会话
+    如果仍需后续处理或存在待处理输入：继续
+    否则：结束这一轮
 ```
 
-阅读时抓住四个对象：**输入是什么、状态存在哪、由谁改变状态、结果如何回到模型或用户。** 不必从仓库第一行读到最后一行。每节给出可跳转的 GitHub 文件和离线源码，文中的简化流程与练习是教学说明，不是从其他教程复制的实现，也不代表本次实际运行过模型或项目测试。
+在案例里，模型第一次提出读取 `App.tsx`。文件内容成为历史的一部分，下一次请求才有依据生成修改。工具执行结果如何回到循环，正是下一节要补上的连接。
 
-## 01. Coding Agent 的命令系统
+<details markdown="1">
+<summary>打开本节源码入口</summary>
 
-**先理解：`/status` 这类命令不必经过模型才能生效。** TUI 的 `SlashCommand` 枚举统一列出命令、显示顺序和说明；`chatwidget/slash_dispatch.rs` 的 `dispatch_command()` 再根据命令分支执行本地操作或向核心层提交请求。CLI 启动时的子命令则在 `cli/src/main.rs`，与对话框中的斜杠命令属于不同层次。
+- [run_turn 主循环](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/session/turn.rs) · [离线文件](../source-snapshots/codex/codex-rs/core/src/session/turn.rs)
+- [响应项与工具执行](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/stream_events_utils.rs) · [离线文件](../source-snapshots/codex/codex-rs/core/src/stream_events_utils.rs)
+- [终端流式呈现](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/tui/src/chatwidget/streaming.rs) · [离线文件](../source-snapshots/codex/codex-rs/tui/src/chatwidget/streaming.rs)
 
-例如 `/new` 走新会话相关的应用事件；`/compact` 会进入压缩请求路径；`/mention` 操作文件引用输入；`/status` 展示状态。枚举描述不等于完整行为，还要继续看分发函数：是否允许在任务进行中使用、是否接收参数、是否需要排队，都是交互契约的一部分。
+</details>
 
-这个拆分的好处是，界面命令可以快速且确定地响应，模型不会把“退出”误读成写一段退出说明。不同 UI 又可以通过核心协议复用任务能力，而不必模拟终端文字。
+## 05. 模型提出读文件：工具调用如何变成真实动作
 
-**动手观察：** 从 `SlashCommand::Compact` 追到分发分支，再追到核心请求；从 `SlashCommand::Status` 做同样追踪，比较哪里只更新界面，哪里改变会话。扩展命令时至少考虑名称、参数、运行中行为和错误反馈。[命令枚举](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/tui/src/slash_command.rs)（[离线源码](../source-snapshots/codex/codex-rs/tui/src/slash_command.rs)） · [命令分发](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/tui/src/chatwidget/slash_dispatch.rs)（[离线源码](../source-snapshots/codex/codex-rs/tui/src/chatwidget/slash_dispatch.rs)） · [启动参数入口](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/cli/src/main.rs)（[离线源码](../source-snapshots/codex/codex-rs/cli/src/main.rs)）
+**工具调用（tool call）**是一份结构化请求，通常包含工具名、参数和调用编号。结构化是指这些信息分开存放，程序可以逐项读取，而不是从“我想读一下 App.tsx”这句话中猜路径。
 
-## 02. Agent 循环的逐步输出
+响应处理代码 `stream_events_utils.rs` 识别模型返回的响应项，将工具调用交给工具执行路径。`ToolRouter` 可以理解为工具分发表：用工具身份找到相应处理程序。`call_id` 是调用编号，用来把某个结果对应回原来的请求；没有这层关联，同时读两个文件时就容易把结果接错。
 
-**模型流结束不等于任务已经完成。** `core/src/session/turn.rs` 的 `run_turn()` 负责一轮任务内的推进；`stream_events_utils.rs` 从响应项中识别工具调用，形成执行 future，并标记需要后续处理。工具返回的新证据会参与下一次请求，所以“读文件 → 修改 → 运行测试 → 根据失败继续修复”可以在一轮用户任务里发生多次。
+对于本例，数据流是：读文件请求 → 读取工具 → 文件内容或错误 → 带关联信息的工具结果 → 会话历史 → 下一次模型请求。**模型说“我要读取”和程序确实读到了内容，必须分成两个状态。** 日志里只有前者，不能证明读取已经成功。
 
-界面更新走事件，而不是核心库随处 `println!`。`core/src/lib.rs` 甚至禁止直接打印到 stdout/stderr。TUI 的 streaming 代码消费流式信息，再转换成终端呈现。这样模型文字、工具开始、工具结果和任务结束可以各有事件，不必从一整段日志里猜发生了什么。
+源码中还会遇到 future，可以先理解为“一个将来完成的操作”。创建这样的对象不等于动作已经完成，调用方还要等待它的结果。工具的并发执行也不是随意同时开跑：某些动作可以并行，某些动作依赖前一步结果。例如必须先读到当前文件，才能合理地基于它生成修改。
 
-要分清增量和完成两种信号：文字 delta 适合及时显示；一个完整工具调用必须有可解析的参数后才能按其契约执行；任务完成还要看后续工具与待处理输入。展示层如果把增量和完整消息重复拼接，就会出现重复答案。
+追到这里，我们已经能执行读文件，但修改和命令可能带来实际影响。执行路径还需要回答一个更早的问题：这个动作被允许吗？
 
-**动手观察：** 记录一次“先读文件再回答”的事件顺序，给事件带上 turn ID、调用 ID 与时间。检查 UI 在工具运行时是否仍能显示进展，而不是等整个函数返回才更新。[run_turn 主循环](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/session/turn.rs)（[离线源码](../source-snapshots/codex/codex-rs/core/src/session/turn.rs)） · [响应项与工具执行](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/stream_events_utils.rs)（[离线源码](../source-snapshots/codex/codex-rs/core/src/stream_events_utils.rs)） · [终端流式呈现](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/tui/src/chatwidget/streaming.rs)（[离线源码](../source-snapshots/codex/codex-rs/tui/src/chatwidget/streaming.rs)）
+<details markdown="1">
+<summary>打开本节源码入口</summary>
 
-## 03. Agent 的错误处理与重试
+- [run_turn 主循环](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/session/turn.rs) · [离线文件](../source-snapshots/codex/codex-rs/core/src/session/turn.rs)
+- [响应项与工具执行](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/stream_events_utils.rs) · [离线文件](../source-snapshots/codex/codex-rs/core/src/stream_events_utils.rs)
+- [终端流式呈现](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/tui/src/chatwidget/streaming.rs) · [离线文件](../source-snapshots/codex/codex-rs/tui/src/chatwidget/streaming.rs)
+- [重试、退避与传输回退](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/responses_retry.rs) · [离线文件](../source-snapshots/codex/codex-rs/core/src/responses_retry.rs)
+- [工具生命周期与取消](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/tools/parallel.rs) · [离线文件](../source-snapshots/codex/codex-rs/core/src/tools/parallel.rs)
 
-错误处理的第一步是分类：参数错误应回给模型修正；命令非零退出通常是工具结果；连接故障可能值得重试；权限拒绝需要解释约束。把这几种失败都包装成“再试一次”，会掩盖真正的问题。
+</details>
 
-`responses_retry.rs` 集中处理 Responses 流的重试与传输回退：常规路径读取重试次数和延迟，必要时尝试从 WebSocket 回退到 HTTPS，并发送重连提示。这个版本还存在由 `UnboundedConnectionRetries` 控制的特定连接失败路径，延迟逐步增加并封顶。因此不能概括成“所有错误固定重试三次”，也不能说“一律无限重试”。
+分发入口补充：[ToolRouter 离线源码](../source-snapshots/codex/codex-rs/core/src/tools/router.rs)。
 
-工具调度层还有自己的取消与完成时序。取消发生在执行前与发生在执行后是两种事实：前者不应显示动作已经成功，后者也不能把已完成的外部副作用当作从未发生。重试模型请求尤其不能直接等同于安全地重放所有工具。
+## 06. 写文件之前：权限审批与沙箱各自负责什么
 
-**动手观察：** 对比可重试连接错误、语法错误和权限拒绝的路径；再用测试工具模拟“已写入但响应丢失”，先验证状态再决定是否重做。源码中的测试可以帮助找边界，但本章没有执行它们。[重试、退避与传输回退](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/responses_retry.rs)（[离线源码](../source-snapshots/codex/codex-rs/core/src/responses_retry.rs)） · [工具生命周期与取消](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/tools/parallel.rs)（[离线源码](../source-snapshots/codex/codex-rs/core/src/tools/parallel.rs)）
+假设模型准备修改 `src/App.tsx`。**权限审批**判断这个具体动作是否获得允许；**沙箱（sandbox）**是执行环境施加的访问限制，例如只能写入某些目录。允许一次工具调用，并不自动解除环境的所有限制。
 
-## 04. 持久化聊天记录
+在 `tools/orchestrator.rs` 的 `run()` 中，先关注标着 Approval 的部分。它读取当前审批策略，计算工具需要什么批准，再安排执行环境。Orchestrator 直译容易让人困惑，这里把它理解为“统一安排审批与执行顺序的代码”就够了。不同工具仍有各自参数和执行实现。
 
-**内存历史、磁盘日志和 UI 展示不是同一份数据。** 模型下一次请求使用的历史可能已截断或压缩；界面只展示其中一部分；持久化记录则必须支持恢复和重建。只保存最终回答，下一次就难以知道工具结果、会话配置和回退发生在哪里。
+把路径想具体：读取项目文件可能直接允许；写到另一个目录可能需要额外权限；用户拒绝后，应把拒绝作为这次调用的结果处理。不能把拒绝简单转换成“换个命令再做同一件事”。下一次模型请求需要知道真实约束，才能提出可行方案。
 
-这个版本把日志实现放在独立的 `codex-rs/rollout` crate，`core/src/rollout.rs` 主要负责重导出与配置适配。`RolloutRecorder` 接收事件项，后台写入器序列化 JSONL，并提供 flush 路径。会话初始化的恢复分支读取 rollout，再调用历史重建逻辑，而不是把屏幕文字原样塞回模型。
+**auto 审批**改变的是某些批准决定如何作出。固定版本中能看到自动审查相关路径，但它仍然需要结合工具要求、配置和环境理解，不能归纳为“完全不检查”。阅读时沿同一个动作追踪：要求由谁计算、决定由谁返回、执行端还限制什么。这样不会把界面上的一个模式名称当成完整权限模型。
 
-为什么单独看 flush？事件已经入队，不代表已经写到存储；写到系统缓冲，也不能随意宣称满足任意断电耐久性。需要沿确认返回与错误路径理解实际保证。恢复时还要正确解释压缩和回退标记，否则旧消息可能重新出现。
+经过这一关，我们才可以讨论编辑工具究竟怎样改文件。
 
-**动手观察：** 在测试会话完成一轮后关闭并恢复，检查工具关联和后续推理是否连续；模拟持久化失败时，应准确报告失败，而不是仅看 UI 里有消息就声称已保存。[RolloutRecorder 与 JSONL 写入](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/rollout/src/recorder.rs)（[离线源码](../source-snapshots/codex/codex-rs/rollout/src/recorder.rs)） · [恢复与历史重建](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/session/mod.rs)（[离线源码](../source-snapshots/codex/codex-rs/core/src/session/mod.rs)） · [核心层适配](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/rollout.rs)（[离线源码](../source-snapshots/codex/codex-rs/core/src/rollout.rs)）
+<details markdown="1">
+<summary>打开本节源码入口</summary>
 
-## 05. 工具调用的权限检查
+- [工具审批与执行编排](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/tools/orchestrator.rs) · [离线文件](../source-snapshots/codex/codex-rs/core/src/tools/orchestrator.rs)
+- [文件编辑的权限路径](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/tools/handlers/apply_patch.rs) · [离线文件](../source-snapshots/codex/codex-rs/core/src/tools/handlers/apply_patch.rs)
+- [自动审查总览](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/guardian/mod.rs) · [离线文件](../source-snapshots/codex/codex-rs/core/src/guardian/mod.rs)
+- [具体审查路径](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/guardian/review.rs) · [离线文件](../source-snapshots/codex/codex-rs/core/src/guardian/review.rs)
+- [另一代扩展入口](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/ext/guardian-v2/src/lib.rs) · [离线文件](../source-snapshots/codex/codex-rs/ext/guardian-v2/src/lib.rs)
 
-**“模型想做什么”与“环境允许做什么”是两个决策。** `ToolOrchestrator` 把审批需求、沙箱选择、实际执行和某些失败后的处理放在一起。工具 handler 负责自己的业务输入，编排层负责把它放到当前权限与环境下执行。
+</details>
 
-概念上可以这样追踪：解析工具参数 → 判断是否需要审批 → 确定当前环境和沙箱 → 执行动作 → 对明确的失败类型决定是否还能采取后续路径。具体顺序与分支应以所读函数为准，并非所有工具都走完全相同的一条线。
+## 07. 真正修改代码：为什么要验证补丁，再运行测试
 
-源码中能看到环境级网络策略、是否支持升级、当前审批策略等限制。它们说明审批不是一句“允许”就自动覆盖整台机器的约束。某些动作得到工具层允许后，仍可能被执行环境拒绝；反过来，已经在现有权限范围内的动作未必需要重复询问。
+Codex 的 `apply_patch` 接收的是描述变化的文本。**补丁（patch）**写明增加、删除或修改哪些内容；修改片段附近的旧代码帮助程序找到位置。它比一句“把筛选功能加上”具体得多，执行端可以检查格式和目标是否匹配。
 
-**动手观察：** 在独立测试目录中比较普通读取、允许范围内写入和范围外写入，记录决策原因、请求的能力与实际执行结果。不要用文本提示词代替真实执行入口的政策判断。[工具审批与执行编排](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/tools/orchestrator.rs)（[离线源码](../source-snapshots/codex/codex-rs/core/src/tools/orchestrator.rs)） · [文件编辑的权限路径](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/tools/handlers/apply_patch.rs)（[离线源码](../source-snapshots/codex/codex-rs/core/src/tools/handlers/apply_patch.rs)）
+从工具处理入口继续读 `apply-patch` 的解析和应用逻辑：先解析修改请求，定位文件与片段，再尝试将变更应用到当前内容。这里“当前”很重要。模型生成修改时看到的是先前读取的内容，如果你刚好也在编辑，目标内容可能已变化。找不到预期位置应返回失败，让模型重新读取并调整方案。
 
-## 06. auto 模式自动进行权限审批
+本例的正常链条因此是：读取组件 → 生成变更 → 检查权限 → 应用补丁 → 查看结果 → 运行测试。前四步成功，只证明文本已按请求修改，并不证明筛选逻辑正确。测试失败的输出需要进入历史，让模型修正条件判断或补齐测试。
 
-本节借用“auto”作为功能主题，讲的是源码里的自动审查路径，不把它当成一个在所有宿主中名称与行为都相同的开关。`core/src/guardian` 的模块说明明确描述了：提取与授权有关的会话内容，交给专用审查会话评估具体动作，解析严格结果，并在超时、运行失败或格式错误时拒绝放行。
+**幂等**是源码讨论中常见的术语，意思是重复执行是否仍得到相同结果。读文件往往容易重复，给文件追加一段代码则可能重复追加。因此网络中断后不能不分青红皂白重做写入；要先看动作是否已完成。这也把我们带到失败处理与实时反馈。
 
-这是一条“有判断的自动审批”路径，和关闭沙箱、从不询问的完全访问配置不同。审查对象应是准备执行的具体动作，而不是只审一句泛化的任务描述。模型计划变了、动作路径变了，原结论不能不加区分地套用。
+<details markdown="1">
+<summary>打开本节源码入口</summary>
 
-这个提交还包含 `ext/guardian-v2` 扩展，说明审批机制有不同实现路径和安装入口。本节选取 core guardian 作为阅读起点，不声称所有运行环境都只使用它。真正采用哪条路径，还需结合 feature 和宿主配置追踪。
+- [编辑工具入口](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/tools/handlers/apply_patch.rs) · [离线文件](../source-snapshots/codex/codex-rs/core/src/tools/handlers/apply_patch.rs)
+- [补丁执行](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/apply-patch/src/lib.rs) · [离线文件](../source-snapshots/codex/codex-rs/apply-patch/src/lib.rs)
+- [上下文匹配](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/apply-patch/src/seek_sequence.rs) · [离线文件](../source-snapshots/codex/codex-rs/apply-patch/src/seek_sequence.rs)
 
-**工程收益与代价：** 自动审查能减少低风险动作的人工等待，但增加一次审查的成本与失败面。超时、无效结果、重复拒绝和解释原因都要有明确处理；它也不能替代底层环境约束。**动手观察：** 阅读 guardian 的 review 与 review_session，找到结果解析、取消和拒绝的出口。[自动审查总览](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/guardian/mod.rs)（[离线源码](../source-snapshots/codex/codex-rs/core/src/guardian/mod.rs)） · [具体审查路径](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/guardian/review.rs)（[离线源码](../source-snapshots/codex/codex-rs/core/src/guardian/review.rs)） · [另一代扩展入口](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/ext/guardian-v2/src/lib.rs)（[离线源码](../source-snapshots/codex/codex-rs/ext/guardian-v2/src/lib.rs)）
+</details>
 
-## 07. 可靠的文件编辑工具
+## 08. 边执行边显示：流式输出与错误分别怎样返回
 
-编辑不是让模型重新生成整个项目，而是把一个明确的变更应用到现有文件。`ApplyPatchHandler` 负责调用边界、环境和事件；`codex-rs/apply-patch` 负责解析及应用补丁。补丁可以表达新增、删除和带上下文的更新，模型不必每次重发整份文件。
+用户不想等整个任务结束才知道它在做什么。**流式输出（streaming）**是结果分批到达就分批处理；**增量（delta）**是本次新增加的一小段，例如几个新字符。它与已经拼好的完整消息并不相同。
 
-```diff
-# 补丁形状示意，不是本次实际执行的修改。
-*** Begin Patch
-*** Update File: src/filter.ts
-@@
--return tasks;
-+return tasks.filter(task => task.status === selectedStatus);
-*** End Patch
-```
+核心向外发送事件，TUI 的 streaming 代码把事件转换成终端显示。这样“模型开始解释”“工具开始运行”“工具结束”能分别呈现。前端应按事件类型与编号更新对应位置，如果把完整消息再次接到增量后面，屏幕就会出现重复文本。
 
-读源码时重点看：上下文怎样匹配、找不到匹配时如何报错、重命名和删除如何处理、权限如何计算、执行结果怎样关联回调用 ID。`seek_sequence` 和更新逻辑能帮助理解“为什么旧内容不匹配时需要重新读取”，而不是靠盲目重试碰碰运气。
+测试失败与网络失败也要分开。测试进程返回非零退出码，通常是可供模型分析的工具结果；模型连接断开，则进入通信恢复相关逻辑。`responses_retry.rs` 包含重试等待与传输回退路径。**退避**就是连续失败时延长两次尝试之间的等待，避免立即重复请求。具体次数和分支受配置与错误类型影响。
 
-这里不能凭“先验证补丁”就承诺跨多个文件的数据库式事务，也不能把语法上能应用等同于代码正确。读文件、改文件、检查 diff、运行验证构成不同步骤，缺哪一步都可能漏掉问题。
+如果我们的测试因为断言错误而失败，正确下一步是把错误交给模型修代码；如果因为连接中断没有拿到模型回复，应处理连接。把这两种情况都显示成“正在重试”，会让用户和开发者都无法判断系统到底卡在哪里。
 
-**动手观察：** 在临时文件中放两个相似片段，构造带上下文的补丁；再改变原文，观察匹配失败如何回给模型。[编辑工具入口](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/tools/handlers/apply_patch.rs)（[离线源码](../source-snapshots/codex/codex-rs/core/src/tools/handlers/apply_patch.rs)） · [补丁执行](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/apply-patch/src/lib.rs)（[离线源码](../source-snapshots/codex/codex-rs/apply-patch/src/lib.rs)） · [上下文匹配](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/apply-patch/src/seek_sequence.rs)（[离线源码](../source-snapshots/codex/codex-rs/apply-patch/src/seek_sequence.rs)）
+至此已经有一个能读、改、测的最小闭环。下一节处理一种不能靠测试解决的阻碍：需求本身不明确。
 
-## 08. 用 @ 引用文件
+<details markdown="1">
+<summary>打开本节源码入口</summary>
 
-**文件引用首先解决“把目标路径准确带进输入”这一交互问题。** TUI 的 `ChatComposer` 接收异步文件搜索结果，再由 `insert_selected_file_path()` 等方法把选中的路径放入编辑区。源码特别处理相邻 token、空格和路径边界，相关测试说明这些细节会影响最终提交给 Agent 的输入。
+- [run_turn 主循环](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/session/turn.rs) · [离线文件](../source-snapshots/codex/codex-rs/core/src/session/turn.rs)
+- [响应项与工具执行](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/stream_events_utils.rs) · [离线文件](../source-snapshots/codex/codex-rs/core/src/stream_events_utils.rs)
+- [终端流式呈现](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/tui/src/chatwidget/streaming.rs) · [离线文件](../source-snapshots/codex/codex-rs/tui/src/chatwidget/streaming.rs)
+- [重试、退避与传输回退](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/responses_retry.rs) · [离线文件](../source-snapshots/codex/codex-rs/core/src/responses_retry.rs)
+- [工具生命周期与取消](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/tools/parallel.rs) · [离线文件](../source-snapshots/codex/codex-rs/core/src/tools/parallel.rs)
 
-例如用户输入 `@fil` 后选中 `src/filter.ts`，需要保证替换的是当前 token，不是另一段同名文字；用户已经移到下一个输入位置时，旧的搜索结果也不能覆盖新的内容。这个机制和“模型现在已经读过文件全文”不是一回事。
+</details>
 
-协议的 `UserInput` 有文本、图片、Skill 和结构化 Mention 等类型，但普通文件补全不能一概解释成“每个 @ 都变成同一种 Mention 对象”。当前版本还存在 mention 功能开关和不同目标类型，要沿实际提交路径判断。
+## 09. 不知道筛选规则怎么办：澄清问题与任务计划
 
-**动手观察：** 从 `on_file_search_result()` 追到路径插入，再到输入提交；测试含空格路径、相邻两个 @ 和过期搜索结果。随后查看 Agent 是否又调用读取工具，区分“引用路径”和“获得文件内容”。[文件补全及测试](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/tui/src/bottom_pane/chat_composer.rs)（[离线源码](../source-snapshots/codex/codex-rs/tui/src/bottom_pane/chat_composer.rs)） · [结构化输入类型](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/protocol/src/user_input.rs)（[离线源码](../source-snapshots/codex/codex-rs/protocol/src/user_input.rs)）
+“已完成筛选”可能指只看已完成，也可能指提供“全部、未完成、已完成”三个选项。这里缺的是用户意图，不能靠重试网络或多读几次代码补出来。请求用户输入的工具把问题送到界面，等待答案，再让结果回到任务。
 
-## 09. 更灵活的上下文注入机制
+这种等待与权限审批的区别是：澄清问“应该做什么”，审批问“已经明确的动作能不能做”。即使界面都用了弹窗，也应在内部保留不同含义。用户尚未回答时，系统可以继续已确定的独立工作，但不能把等待超时解释成用户选中了某个选项。
 
-一个真实编程请求的上下文通常不只有用户刚输入的一句话，还包括项目说明、工作目录、环境权限、工具信息和运行时事件。Codex 将许多这类内容建模为 context fragment，而不是把所有字符串随意塞进一个大变量。
+另一种工具维护任务计划，例如“了解现有组件 → 修改筛选 → 运行测试”。计划是让用户和 Agent 看见进度的数据，不是自动执行这些步骤的程序。把状态改为完成并不会自动运行测试，是否完成还要由真正的执行结果支持。
 
-`agents_md.rs` 的 `load_project_instructions()` 加载项目说明与宿主提供的用户指令；它检查项目是否受信任，并维护项目文档的字节预算。`context/mod.rs` 列出环境说明、用户指令、hook 补充、子 Agent 消息等不同片段。再沿会话与 prompt 构建路径看它们何时进入当前请求。
+在我们的主线里，澄清答案补充到下一次请求，计划则帮助跟踪剩余工作。任务变复杂后，一个模型可能需要别人帮忙调查，测试也可能运行很久；下一节再引入这些扩展。
 
-这种拆分使来源和用途更明确：项目约束解释“这个仓库怎么做事”，工具结果解释“刚才实际发生了什么”，环境约束解释“这次能访问哪里”。这些内容不应在展示、缓存或重建时被混成来源不明的文字。
+<details markdown="1">
+<summary>打开本节源码入口</summary>
 
-**动手观察：** 在测试项目中改变 `AGENTS.md` 的一条明确规则，比较实际加载内容；再给一份普通资料文件写上冲突指令，确认资料不会自动获得同等权限。项目文档的加载策略还受信任状态和配置影响，不能简单承诺所有目录文件都会被无限递归读取。[项目说明加载](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/agents_md.rs)（[离线源码](../source-snapshots/codex/codex-rs/core/src/agents_md.rs)） · [上下文片段](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/context/mod.rs)（[离线源码](../source-snapshots/codex/codex-rs/core/src/context/mod.rs)） · [项目说明管理](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/agents_md_manager.rs)（[离线源码](../source-snapshots/codex/codex-rs/core/src/agents_md_manager.rs)）
+- [问题工具处理器](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/tools/handlers/request_user_input.rs) · [离线文件](../source-snapshots/codex/codex-rs/core/src/tools/handlers/request_user_input.rs)
+- [问题与回答协议](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/protocol/src/request_user_input.rs) · [离线文件](../source-snapshots/codex/codex-rs/protocol/src/request_user_input.rs)
+- [计划 schema](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/tools/handlers/plan_spec.rs) · [离线文件](../source-snapshots/codex/codex-rs/core/src/tools/handlers/plan_spec.rs)
+- [计划事件处理](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/tools/handlers/plan.rs) · [离线文件](../source-snapshots/codex/codex-rs/core/src/tools/handlers/plan.rs)
 
-## 10. 让 Agent 主动向你提问
+</details>
 
-`request_user_input` 把澄清问题表示为结构化工具调用：模型提供问题，运行时发给宿主，宿主收集回答，再把结果送回等待中的调用。这比模型输出一句问号更明确，因为界面知道当前存在一个待回答请求。
+## 10. 工作变多以后：MCP、后台命令与子 Agent
 
-`RequestUserInputHandler` 会验证调用来源与可用模式、解析并归一化参数，再调用 `session.request_user_input()`。这个版本明确拒绝非 root agent 直接使用该入口；`is_blocking` 根据是否处于 Plan mode 设置。由此可见“所有模式永远阻塞”或“所有子 Agent 都能弹问题”都不是这段源码的行为。
+如果任务需要查外部接口，首先需要一种把外部能力交给 Agent 的方式。**MCP（Model Context Protocol）**是一套工具连接协议：服务器说明自己提供哪些工具，客户端发现并调用它们。注册 MCP 服务器之后，工具结果仍然要回到前面已经读过的工具循环。连接成功、工具可见、动作获准、动作成功，是四件不同的事。
 
-拿“筛选功能按状态还是按标签”举例，回答应按 question ID 回传，而不是靠文本顺序猜匹配。取消时 handler 返回取消结果；在相应 feature 开启时，回答还会进入授权证据或保留上下文路径。用户明确回答的约束因此可以被后续处理引用。
+如果测试很久才结束，不必一直占着一次前台等待。后台命令保留进程或会话标识，后续用标识继续获取输出和退出状态。`session_id` 在这里可能指命令会话，不要因为它也叫 session 就与聊天会话混淆。关键是知道这个 ID 由哪个模块创建、后续交给哪个接口。
 
-**动手观察：** 追踪同一个调用 ID 从工具请求到宿主回答的往返，再测试取消与无效模式。没有回答和回答了默认选项必须是两个不同状态。[问题工具处理器](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/tools/handlers/request_user_input.rs)（[离线源码](../source-snapshots/codex/codex-rs/core/src/tools/handlers/request_user_input.rs)） · [问题与回答协议](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/protocol/src/request_user_input.rs)（[离线源码](../source-snapshots/codex/codex-rs/protocol/src/request_user_input.rs)）
+**子 Agent**则是带着单独任务与上下文工作的另一段 Agent 执行。例如让它只调查测试入口，主任务继续检查界面。它与后台 shell 的区别在于，它还会调用模型并使用工具，而不是只运行一个固定命令。子任务需要返回结论和依据，主任务再决定如何使用。
 
-## 11. 让 Agent 跟踪多步任务
+不同上下文不自动意味着不同磁盘目录。如果父子任务同时编辑同一个文件，仍可能冲突。因此本例更适合分开做调查，再由一个执行者统一修改。源码中要追踪的是创建、消息传递、等待、结束与清理，不能只看到 spawn 这个“启动”动作就算读完子 Agent。
 
-`update_plan` 管理的是可展示的工作清单。工具 schema 为每一步定义 `step` 与 `status`，状态包括 `pending`、`in_progress`、`completed`。模型负责提出和更新步骤，handler 解析参数后发出 `EventMsg::PlanUpdate`，再返回结果。
+<details markdown="1">
+<summary>打开本节源码入口</summary>
 
-对于“读取筛选组件 → 修改 → 运行测试”，用户因此能看出 Agent 自报的进展，并及时纠正范围。但 `PlanHandler` 不会自动执行测试，也不会看到 `completed` 就核验 Git diff。schema 或工具说明中的约束，同样不能自动当作 handler 已实现完整状态机校验。
+- [McpManager](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/mcp.rs) · [离线文件](../source-snapshots/codex/codex-rs/core/src/mcp.rs)
+- [MCP 运行时模块](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/codex-mcp/src/lib.rs) · [离线文件](../source-snapshots/codex/codex-rs/codex-mcp/src/lib.rs)
+- [MCP 调用路径](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/mcp_tool_call.rs) · [离线文件](../source-snapshots/codex/codex-rs/core/src/mcp_tool_call.rs)
+- [命令与 stdin 工具](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/tools/handlers/unified_exec.rs) · [离线文件](../source-snapshots/codex/codex-rs/core/src/tools/handlers/unified_exec.rs)
+- [进程和输出管理](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/unified_exec/process_manager.rs) · [离线文件](../source-snapshots/codex/codex-rs/core/src/unified_exec/process_manager.rs)
+- [协作工具总览](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/tools/handlers/multi_agents.rs) · [离线文件](../source-snapshots/codex/codex-rs/core/src/tools/handlers/multi_agents.rs)
+- [创建子任务](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/tools/handlers/multi_agents/spawn.rs) · [离线文件](../source-snapshots/codex/codex-rs/core/src/tools/handlers/multi_agents/spawn.rs)
+- [等待子任务](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/tools/handlers/multi_agents/wait.rs) · [离线文件](../source-snapshots/codex/codex-rs/core/src/tools/handlers/multi_agents/wait.rs)
+- [AgentControl](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/agent/control.rs) · [离线文件](../source-snapshots/codex/codex-rs/core/src/agent/control.rs)
 
-还有一个重要区别：任务清单不等于产品的 Plan mode。这个固定版本的 handler 会拒绝在 `ModeKind::Plan` 下使用该 TODO 工具。前者是执行进度数据，后者是协作行为模式，不宜只因名字相似就合并理解。
+</details>
 
-**动手观察：** 先更新清单，再检查是否真正启动了任何工具；给自己的 Agent 面板加入“完成证据”，例如测试命令、退出码和变更文件。这属于面板或业务层增强，不能说原 handler 已替你做了验收。[计划 schema](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/tools/handlers/plan_spec.rs)（[离线源码](../source-snapshots/codex/codex-rs/core/src/tools/handlers/plan_spec.rs)） · [计划事件处理](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/tools/handlers/plan.rs)（[离线源码](../source-snapshots/codex/codex-rs/core/src/tools/handlers/plan.rs)）
+## 11. 运行中又收到消息：外部事件如何重新接回循环
 
-## 12. 给 Agent 加上长期记忆
+用户可能在测试时补一句“不要改按钮颜色”，后台任务也可能返回结果。主循环因此不仅等待模型，还要处理新输入。前面见过的 `has_pending_input` 就在这里派上用场：**pending input** 是已到达、尚待处理的输入。
 
-**长期记忆是从历史提取可复用信息，而不只是恢复原会话。** 这个版本把读取和写入分别放在 `memories/read`、`memories/write`，还有 `ext/memories` 提供工具入口。读取目录与离线生成流水线分开，有助于在当前会话使用记忆时不依赖整个生成过程。
+更一般的外部事件可以是构建完成、文件变化或监控工具发现状态变化。事件必须经过系统提供的输入或通知路径，才能参与后续处理，文件发生变化并不自动等于模型知道变化。
 
-可以沿 `start_memories_startup_task()` → Phase 1 → Phase 2 阅读。第一阶段处理符合条件的历史、生成结构化记忆材料；第二阶段整合这些材料与工作区状态。源码中能看到作业认领、并发限制、失败结果和租约等工程设施：后台任务可能重入或中断，因此不能只写一个“循环读日志然后保存摘要”的脚本就宣称等价。
+阅读监控相关工具时，要把“启动监听”“发现事件”“投递给会话”“模型处理”画成四步。重复事件可能造成重复工作，永远没有新变化的监听则不应被误认为当前任务永远无法结束。取消时还需要处理正在等待的监听与命令。
 
-目录辅助函数包含 `raw_memories.md`、`rollout_summaries` 等产物；扩展还暴露 list、read、search 和临时记事入口。哪些能力实际启用，要结合当前配置和扩展安装，不能把源码里存在某个文件等同于所有会话都已开启。
+这也解释了为什么事件文本不能自动获得更高权限：它描述外部发生了什么，不能自行批准新的动作。输入会影响接下来模型的决定，但真实执行仍走第 6 节的检查。事件越多，历史越长，我们接下来必须解决信息容量问题。
 
-**动手观察：** 选择一条稳定的项目事实和一条短期运行状态，比较它们是否适合跨任务复用；查阅 Phase 1 的过滤与测试，再看 Phase 2 如何整合旧材料。新代码与旧记忆冲突时，仍应回到文件和运行结果核对。[记忆启动流程](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/memories/write/src/start.rs)（[离线源码](../source-snapshots/codex/codex-rs/memories/write/src/start.rs)） · [第一阶段提取](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/memories/write/src/phase1.rs)（[离线源码](../source-snapshots/codex/codex-rs/memories/write/src/phase1.rs)） · [第二阶段整合](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/memories/write/src/phase2.rs)（[离线源码](../source-snapshots/codex/codex-rs/memories/write/src/phase2.rs)） · [记忆工具入口](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/ext/memories/src/lib.rs)（[离线源码](../source-snapshots/codex/codex-rs/ext/memories/src/lib.rs)）
+<details markdown="1">
+<summary>打开本节源码入口</summary>
 
-## 13. 支持 rewind 回退对话和代码
+- [启动、steer 与待处理输入](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/session/turn_input.rs) · [离线文件](../source-snapshots/codex/codex-rs/core/src/session/turn_input.rs)
+- [后续输入的循环条件](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/session/turn.rs) · [离线文件](../source-snapshots/codex/codex-rs/core/src/session/turn.rs)
+- [带来源的消息片段](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/context/mod.rs) · [离线文件](../source-snapshots/codex/codex-rs/core/src/context/mod.rs)
 
-先把“回退”拆成两个坐标：模型会话走到哪一轮，以及工作目录里的文件处于哪个版本。用户常想同时回退两者，但一段会话回退代码不一定负责修改磁盘文件。
+</details>
 
-`session/handlers.rs` 的 `thread_rollback()` 是直接可读的会话路径：它拒绝在当前轮进行中回退，要求存在持久化历史，先 flush 并读取记录，再加入 `ThreadRolledBack` 事件进行重建，最后持久化回退标记。`thread_rollout_truncation.rs` 则解释怎样按有效历史计算回退后的消息位置。
+## 12. 历史太长怎么办：上下文压缩与长期记忆
 
-**这一实现不能当作“自动恢复任意文件”的证据。** 文件版本应通过独立的检查点、工作区快照或 Git 机制研究；本节没有把早期版本的 ghost snapshot 说成当前调用链的一部分。已经发送的网络请求和外部系统变更更不会因聊天记录回退而自动撤销。
+模型一次能处理的信息量有限，通常用 **token** 计量，它是模型处理文本的单位，不严格等于一个汉字或一个英文词。文件内容、测试日志和来回对话都会占用空间。
 
-**动手观察：** 先在临时项目中记录 diff，再回退会话，分别检查消息与文件。若自己实现“一键回退”，应明确让用户选择回退范围，并在数据模型中把会话位置和文件检查点关联起来；这是一项额外设计，不是该 handler 的隐含能力。[thread_rollback](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/session/handlers.rs)（[离线源码](../source-snapshots/codex/codex-rs/core/src/session/handlers.rs)） · [回退后的有效历史](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/thread_rollout_truncation.rs)（[离线源码](../source-snapshots/codex/codex-rs/core/src/thread_rollout_truncation.rs)）
+**compact（压缩上下文）**把近期任务仍需要的信息整理成更短的表示，为后续请求腾出空间。回到 `run_turn()`，会发现首次请求前以及请求完成后的容量检查。压缩参与循环的推进，而不是只在用户手动输入命令时才相关。压缩后的历史与用户界面显示的全部历史也不必完全相同。
 
-## 14. 支持 compact 压缩上下文
+在案例里，需要保留“用户要三个筛选项、相关文件在哪里、测试失败的原因”，而大量重复日志可以减少。压缩不是无损归档：摘要漏掉关键条件，后续行为就可能偏离任务。排查长任务失忆，应看压缩前后哪些事实被留下，而不是只看摘要有没有生成。
 
-上下文窗口有限，而源码读取和测试日志会持续增长。压缩会用更短的表示替换模型当前需要携带的一部分历史，使任务继续推进。它和删除持久化日志、清空会话、生成长期记忆是不同操作。
+**长期记忆**解决另一个时间尺度的问题：新任务开始时，能否复用过往的稳定经验。源码中的记忆流程有自己的生成、整理和使用路径，它不等于模型权重被修改，也不等于复制所有旧消息。项目约定可能长期有用，某次临时测试结果则可能很快过期。
 
-`compact.rs` 的本地路径会收集用户消息与压缩结果，构建替换历史，并根据策略恢复初始上下文，再更新历史和 token 使用情况；`run_turn()` 中包含自动压缩相关调用。仓库还存在远端压缩实现，所以本地路径只是一个明确的阅读入口，不是所有模型与运行方式的唯一算法。
+当前任务被压缩后仍可继续，但关掉程序后怎么接着做？这需要下一节的磁盘记录。
 
-```text
-本地压缩的概念流程：
-当前历史 + 压缩请求 → 获得摘要
-  → 结合保留的用户信息重建历史
-  → 按策略补回初始上下文
-  → 更新会话与用量 → 继续任务
-```
+<details markdown="1">
+<summary>打开本节源码入口</summary>
 
-压缩是有损过程。好摘要需要保留任务目标、后续纠正、已改文件、验证结果与未解决问题；仅写“正在开发筛选功能”不足以保证连续性。**动手观察：** 在压缩前提出一个明确限制，压缩后继续任务，检查限制是否保留，同时确认磁盘日志与当前模型输入不是同一份长度。[本地压缩与历史重建](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/compact.rs)（[离线源码](../source-snapshots/codex/codex-rs/core/src/compact.rs)） · [运行中的压缩触发](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/session/turn.rs)（[离线源码](../source-snapshots/codex/codex-rs/core/src/session/turn.rs)） · [远端压缩入口](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/compact_remote.rs)（[离线源码](../source-snapshots/codex/codex-rs/core/src/compact_remote.rs)）
+- [记忆启动流程](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/memories/write/src/start.rs) · [离线文件](../source-snapshots/codex/codex-rs/memories/write/src/start.rs)
+- [第一阶段提取](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/memories/write/src/phase1.rs) · [离线文件](../source-snapshots/codex/codex-rs/memories/write/src/phase1.rs)
+- [第二阶段整合](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/memories/write/src/phase2.rs) · [离线文件](../source-snapshots/codex/codex-rs/memories/write/src/phase2.rs)
+- [记忆工具入口](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/ext/memories/src/lib.rs) · [离线文件](../source-snapshots/codex/codex-rs/ext/memories/src/lib.rs)
+- [本地压缩与历史重建](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/compact.rs) · [离线文件](../source-snapshots/codex/codex-rs/core/src/compact.rs)
+- [运行中的压缩触发](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/session/turn.rs) · [离线文件](../source-snapshots/codex/codex-rs/core/src/session/turn.rs)
+- [远端压缩入口](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/compact_remote.rs) · [离线文件](../source-snapshots/codex/codex-rs/core/src/compact_remote.rs)
 
-## 15. 给 Agent 注册 MCP 服务器
+</details>
 
-注册 MCP 不只是把一个 URL 写进工具列表。配置要先转换成有效服务器集合，运行时建立连接并获得能力，再把工具暴露给模型；调用时还要带上服务器身份、工具名、参数和权限上下文。
+## 13. 结束、恢复与回退：三种状态不要混在一起
 
-`core/src/mcp.rs` 的 `McpManager` 负责配置与有效服务器相关的组织；独立的 `codex-mcp` crate 承担运行时能力。实际工具调用可从 `mcp_tool_call.rs` 继续跟踪，观察请求如何到达服务器、结果如何变成 Agent 可处理的内容。把配置发现、连接状态和工具执行拆开，可以避免“配置文件里有名字，所以它一定能用”的误判。
+**持久化**就是把内存中的信息保存到程序结束后仍能读取的存储。Codex 的 `RolloutRecorder` 负责写入会话记录，JSONL 表示“每行一条 JSON 记录”。写入器收到记录、记录写到文件、数据满足某种断电保存保证，是不同阶段，源码里的 flush 要结合具体调用路径理解。
 
-这里还有两个常见边界：工具同名不意味着来自同一服务器；服务器返回的内容也不等于用户授权。调用结果要保留来源，并继续服从权限检查。大量工具还会带来上下文与发现成本，不能无限堆进一个静态提示词。
+**resume（恢复会话）**读取已有记录并重建历史，使下一次任务能够接着此前的信息继续。它并非把终端屏幕截图重新给模型：工具调用与结果的关系、压缩记录、回退记录都可能影响重建。
 
-**动手观察：** 接入一个只读测试 server，记录启动、发现工具、一次调用和断开后的失败；核对界面状态是否反映连接结果，而不是只反映配置存在。[McpManager](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/mcp.rs)（[离线源码](../source-snapshots/codex/codex-rs/core/src/mcp.rs)） · [MCP 运行时模块](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/codex-mcp/src/lib.rs)（[离线源码](../source-snapshots/codex/codex-rs/codex-mcp/src/lib.rs)） · [MCP 调用路径](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/mcp_tool_call.rs)（[离线源码](../source-snapshots/codex/codex-rs/core/src/mcp_tool_call.rs)）
+**rewind（回退）**改变的是你希望保留到哪个位置。对话回退、工作区代码恢复和外部世界回滚必须分开看。撤掉某轮对话，不会天然撤回已经发送的外部请求；恢复文件也不意味着把所有外部服务回到之前状态。固定版本中的回退与文件快照相关路径应分别追踪，不能从一个按钮名称推断全部保证。
 
-## 16. 让 Agent 在后台运行命令
+最终，我们的测试通过，Agent 给出修改说明，本轮结束。会话仍可恢复，代码仍在工作区；如果发现需求理解错误，应先明确是要继续修正、回到旧对话，还是还原文件。到这里，一次用户任务才算从输入走到了可继续工作的状态。
 
-长命令不一定在一次工具等待期间结束。`exec_command` 接受 `yield_time_ms`，等待一段时间后可以交还控制；尚未结束的执行保留会话标识，后续 `write_stdin` 用来读取新输出或发送输入。**让出工具调用与停止进程不是一回事。**
+<details markdown="1">
+<summary>打开本节源码入口</summary>
 
-`UnifiedExecHandler` 解析命令、工作目录、环境和权限参数，再交给统一执行管理；`unified_exec/process_manager.rs` 管理进程与输出生命周期。输出的退出码、会话标识和新增内容决定调用者下一步该等待、继续交互还是处理完成。
+- [RolloutRecorder 与 JSONL 写入](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/rollout/src/recorder.rs) · [离线文件](../source-snapshots/codex/codex-rs/rollout/src/recorder.rs)
+- [恢复与历史重建](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/session/mod.rs) · [离线文件](../source-snapshots/codex/codex-rs/core/src/session/mod.rs)
+- [核心层适配](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/rollout.rs) · [离线文件](../source-snapshots/codex/codex-rs/core/src/rollout.rs)
+- [thread_rollback](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/session/handlers.rs) · [离线文件](../source-snapshots/codex/codex-rs/core/src/session/handlers.rs)
+- [回退后的有效历史](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/thread_rollout_truncation.rs) · [离线文件](../source-snapshots/codex/codex-rs/core/src/thread_rollout_truncation.rs)
 
-例如测试需要一分钟，Agent 可以先拿到正在运行的状态，再做独立的只读工作，最后读取测试结果。不能仅因为超出了第一次等待时间就重新启动同一个测试，更不能把“正在运行”显示成“验证成功”。输出限制与截断也意味着空白或短输出并不一定等价于进程结束。
+</details>
 
-**动手观察：** 在独立目录运行一个先打印、短暂停顿、再退出的测试命令，区分第一次返回的会话 ID 与最终退出码；再检查取消后的资源清理。[命令与 stdin 工具](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/tools/handlers/unified_exec.rs)（[离线源码](../source-snapshots/codex/codex-rs/core/src/tools/handlers/unified_exec.rs)） · [进程和输出管理](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/unified_exec/process_manager.rs)（[离线源码](../source-snapshots/codex/codex-rs/core/src/unified_exec/process_manager.rs)）
+## 14. 第二遍怎样读源码：把主线变成自己的调试地图
 
-## 17. 实现 Sub Agent 机制
+第一次只沿本文读懂数据如何移动；第二次打开源码，给案例记录下面这张表。它不是实际运行日志，而是建议你亲手补全的观察记录。
 
-子 Agent 需要自己的任务、上下文和状态，还需要父任务能够识别它的结果。`multi_agents` 工具处理器把 spawn、send input、wait、close 等调用转换成 `AgentControl` 操作；子任务从当前有效配置出发，继承环境、目录和权限等状态，并可能叠加角色配置。
+| 观察位置 | 你要记下的证据 | 它回答什么 |
+|---|---|---|
+| 输入分发 | 普通输入还是本地命令 | 任务是否进入核心 |
+| 请求准备 | 历史与文件来源 | 模型是否有足够依据 |
+| 工具请求 | 工具名、参数、调用编号 | 模型想做什么 |
+| 审批与执行 | 允许/拒绝、结果或退出码 | 实际做了什么 |
+| 后续判断 | 是否还有工具或新输入 | 为什么继续或结束 |
+| 会话记录 | 会话标识、保存与恢复位置 | 重启后能否接着工作 |
 
-读取 `spawn.rs` 时看参数如何变成子线程，读 `wait.rs` 时看怎样按线程 ID 等待状态；再进入 `agent/control.rs` 追到实际生命周期。不要把“收到子线程 ID”当成子任务完成，也不要把等待某个子任务的状态当成主任务已经通过验收。
+不熟悉 Rust 时，先认出 `struct` 是一组数据字段，`enum` 是几种可能情况，`match` 是按情况分支，`Result` 是成功或错误的返回值，再看业务调用顺序。暂时跳过泛型、所有权细节和性能优化，也能追完整条执行链；遇到读不懂的类型时，先问它承载的是任务、结果还是控制信号。
 
-子 Agent 并行和工具并行也不同。`tools/parallel.rs` 用共享或独占闸门调度单次工具调用；子 Agent 是另一条能继续调用模型和工具的任务。两者都不自动解决业务依赖。共享目录里同时修改同一文件依然可能冲突，角色不同不等于文件系统隔离。
-
-**动手观察：** 给子任务一个独立的只读问题，例如定位测试入口，要求返回路径和依据；主任务随后使用结论并自己验证。再模拟子任务失败，确认父任务能区分失败、等待和成功，而不是只拿一句总结继续。[协作工具总览](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/tools/handlers/multi_agents.rs)（[离线源码](../source-snapshots/codex/codex-rs/core/src/tools/handlers/multi_agents.rs)） · [创建子任务](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/tools/handlers/multi_agents/spawn.rs)（[离线源码](../source-snapshots/codex/codex-rs/core/src/tools/handlers/multi_agents/spawn.rs)） · [等待子任务](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/tools/handlers/multi_agents/wait.rs)（[离线源码](../source-snapshots/codex/codex-rs/core/src/tools/handlers/multi_agents/wait.rs)） · [AgentControl](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/agent/control.rs)（[离线源码](../source-snapshots/codex/codex-rs/core/src/agent/control.rs)）
-
-## 18. 让 Agent 监听外部事件
-
-持续工作的 Agent 需要在模型调用之外接收新信息：用户补充、子任务结果、环境状态变化等。核心难点是如何把信息注入正在进行的任务，而不是让多个来源同时直接修改历史数组。
-
-`session/turn_input.rs` 明确区分启动和 steer 路径：有的输入可以启动空闲任务，有的输入需要匹配正在运行的轮次，并通过待处理输入机制进入后续步骤。`run_turn()` 的继续条件也会考虑待处理输入。上下文模块还为 Agent 间消息保留单独的类型，帮助区分来源。
-
-这能解释运行时如何接纳新事件，但**不能由此宣称当前 TUI 内置了用户参考教程中的同名 `monitor` 工具或任意 webhook 服务。** 文件监听、CI webhook、定时器等事件源可以由宿主实现，再通过受控输入接口投递；事件鉴权、去重和持续保存是这层集成的职责。
-
-**动手观察：** 在一个受控任务执行过程中提交补充限制，追踪它是被接纳为 steer、排队还是拒绝。设计外部事件时保留事件 ID、来源和时间，只在相关变化出现时触发任务，并把外部文字当作资料处理。[启动、steer 与待处理输入](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/session/turn_input.rs)（[离线源码](../source-snapshots/codex/codex-rs/core/src/session/turn_input.rs)） · [后续输入的循环条件](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/session/turn.rs)（[离线源码](../source-snapshots/codex/codex-rs/core/src/session/turn.rs)） · [带来源的消息片段](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/context/mod.rs)（[离线源码](../source-snapshots/codex/codex-rs/core/src/context/mod.rs)）
-
-## 19. 支持图片输入
-
-图片有两条常见入口：用户直接附加图片，或者 Agent 通过工具读取一张本地图片。`protocol/src/user_input.rs` 区分 `Image` 与 `LocalImage`，本地路径会在后续准备中变成模型可接收的内容；不能只把路径写进普通文本就当作已经把像素交给模型。
-
-`ViewImageHandler` 则检查模型是否支持图片输入，解析路径与环境，读取图像并形成图片工具结果。`image_preparation.rs` 集中处理输入图片的准备。沿这几处可以看清“选文件 → 读取与编码 → 进入请求”的客户端链路，但不能据此推断模型内部如何识别图片。
-
-工程上要同时看有效性、体积和用途：格式损坏应清楚报错；超大图片需要遵守预算；缩放可能影响小字识别；读取成功也不代表模型判断必然正确。对于“按钮被遮挡”这样的 UI 问题，图片应与组件源码和实际尺寸信息相互印证。
-
-**动手观察：** 用一张含已知文字的小图分别走附件与 `view_image` 路径，比较消息结构；再测试不存在的路径和无效图片，检查错误是否作为可理解的工具结果返回。[图片输入类型](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/protocol/src/user_input.rs)（[离线源码](../source-snapshots/codex/codex-rs/protocol/src/user_input.rs)） · [查看图片工具](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/tools/handlers/view_image.rs)（[离线源码](../source-snapshots/codex/codex-rs/core/src/tools/handlers/view_image.rs)） · [图片准备](https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/image_preparation.rs)（[离线源码](../source-snapshots/codex/codex-rs/core/src/image_preparation.rs)）
-
-## 阅读路线与自测
-
-第一遍读 1、2、5、7 节，建立“输入—模型—工具—执行结果”的主干；第二遍读 4、9、12、13、14 节，理解不同状态怎样保存和重建；最后读 6、10、11、15、16、17、18、19 节，补齐交互、扩展和多任务能力。
-
-| 要回答的问题 | 需要拿出的源码证据 |
-| --- | --- |
-| 工具执行后为什么会再请求模型？ | 后续处理标记与 run_turn 的继续条件 |
-| 为什么清单写 completed 不等于通过测试？ | PlanHandler 的实际职责 |
-| 为什么权限允许后仍可能执行失败？ | 审批与环境执行是不同层次 |
-| 为什么回退聊天不代表文件恢复？ | thread_rollback 修改的状态范围 |
-| 为什么后台命令第一次返回不是结束？ | 会话标识、让出等待与退出码 |
-| 为什么另一个子 Agent 不能天然避免冲突？ | 配置继承与共享执行环境 |
-
-以上“动手观察”帮助形成自己的验证方法。本章执行的是文档构建与引用检查，不是对整个 Codex 仓库的编译、性能评测或安全审计。对照阅读：[Claude Code 源码解析](claude-code-source-analysis.md)。两章按相同的 19 个主题组织，方便快速定位差异。
+现在再读[Claude Code 与官方 SDK 源码解析](claude-code-source-analysis.md)，重点对比同一条主线在哪里跨过了进程边界，而不是机械寻找同名函数。两份源码的公开范围不同，下一章会把这个区别画出来。

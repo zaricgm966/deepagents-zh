@@ -12,7 +12,7 @@ TITLES={'overview':'Deep Agents 概览','quickstart':'快速入门','models':'�
 TITLES.update({'codex-source-analysis': 'Codex 源码解析', 'claude-code-source-analysis': 'Claude Code 源码解析：公开 SDK 与运行时边界'})
 GROUPS=[('入门与选型','overview quickstart models comparison code-link'),('配置与核心能力','customization tools profiles backends interpreters sandboxes memory skills permissions human-in-the-loop multimodal'),('任务与上下文管理','context-engineering subagents dynamic-subagents async-subagents streaming event-streaming fault-tolerance retrieval rubric'),('应用教程','data-analysis content-builder deep-research rag'),('协议与集成','mcp acp a2a'),('前端开发','frontend--overview frontend--sandbox frontend--subagent-streaming frontend--todo-list'),('生产环境与知识库','going-to-production openwiki'),('Coding Agent 源码解析','codex-source-analysis claude-code-source-analysis'),('版本更新','changelog-py changelog-js')]
 lookup={r['file'][:-3]:r for r in rows};assert set(lookup)==set(' '.join(s for _,s in GROUPS).split())
-urlmap={r['url'].rstrip('/'):r['file'][:-3] for r in rows}
+urlmap={r['url'].rstrip('/'):r['file'][:-3] for r in rows if r.get('kind') != 'source-analysis'}
 for r in rows:
  if r.get('kind') == 'source-analysis':continue
  urlmap['https://docs.langchain.com/oss/python/deepagents/'+r['file'][:-3].replace('--','/')]=r['file'][:-3]
@@ -44,12 +44,12 @@ for slug,r in lookup.items():
   blocks[i]=re.sub(r'(!?\[[^\]]*\]\()([^\s)]+)',lambda m:m[1]+rewrite(m[2],'.md'),blocks[i])
   blocks[i]=re.sub(r'((?:src|href)=")([^"]+)',lambda m:m[1]+rewrite(m[2],'.md'),blocks[i])
  s=''.join(blocks);p.write_text(s)
- engine=markdown.Markdown(extensions=['fenced_code','tables','toc','sane_lists'])
+ engine=markdown.Markdown(extensions=['fenced_code','tables','toc','sane_lists','md_in_html'])
  soup=BeautifulSoup(engine.convert(s),'html.parser')
  # Retain English section IDs so existing inbound fragment links still work.
  authored=r.get('kind')=='source-analysis'
  original_text=s if authored else (R/'normalized-english'/r['file']).read_text()
- original=BeautifulSoup(markdown.markdown(original_text,extensions=['fenced_code','tables','toc']),'html.parser')
+ original=BeautifulSoup(markdown.markdown(original_text,extensions=['fenced_code','tables','toc','md_in_html']),'html.parser')
  eh=original.find_all(re.compile('^h[1-6]$'));zh=soup.find_all(re.compile('^h[1-6]$'))
  if len(eh)==len(zh):
   for a,b in zip(eh,zh):

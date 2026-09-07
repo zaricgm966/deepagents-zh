@@ -1,0 +1,16 @@
+[
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex-121f91fd5d9d.tar.gz",
+    "files": 7302,
+    "sha256": "a83bb404507bd48c775635abcea3721ee898b7e9c799c588f1b84a971ac7e333"
+  },
+  {
+    "project": "claude-agent-sdk-python",
+    "commit": "efd4d865ef1795daffee3cd24cce45307aed8a51",
+    "file": "claude-agent-sdk-python-efd4d865ef17.tar.gz",
+    "files": 144,
+    "sha256": "7f212b47ea3d8c02b86ca45af5dbf5c81c9af48d11293cfbfc0a7b99cc5da4f8"
+  }
+]
