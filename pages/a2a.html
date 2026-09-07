@@ -1,0 +1,645 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>A2A 服务器 · Deep Agents</title><link rel="stylesheet" href="../style.css"><aside><a class="brand" href="../index.html">Deep Agents<span>中文离线文档</span></a><h3>入门与选型</h3><a href="overview.html">Deep Agents 概览</a><a href="quickstart.html">快速入门</a><a href="models.html">模型选择</a><a href="comparison.html">与 Claude Agent SDK 的对比</a><a href="code-link.html">Deep Agents Code 简介</a><h3>配置与核心能力</h3><a href="customization.html">自定义 Deep Agents</a><a href="tools.html">工具</a><a href="profiles.html">配置档案</a><a href="backends.html">文件系统后端</a><a href="interpreters.html">代码解释器</a><a href="sandboxes.html">沙箱</a><a href="memory.html">记忆</a><a href="skills.html">技能</a><a href="permissions.html">权限</a><a href="human-in-the-loop.html">人工介入</a><a href="multimodal.html">多模态输入与输出</a><h3>任务与上下文管理</h3><a href="context-engineering.html">上下文工程</a><a href="subagents.html">子智能体</a><a href="dynamic-subagents.html">动态子智能体</a><a href="async-subagents.html">异步子智能体</a><a href="streaming.html">流式输出</a><a href="event-streaming.html">事件流</a><a href="fault-tolerance.html">容错</a><a href="retrieval.html">检索</a><a href="rubric.html">评分标准</a><h3>应用教程</h3><a href="data-analysis.html">构建数据分析智能体</a><a href="content-builder.html">构建内容创作智能体</a><a href="deep-research.html">构建深度研究智能体</a><a href="rag.html">构建检索增强生成（RAG）智能体</a><h3>协议与集成</h3><a href="mcp.html">模型上下文协议（MCP）</a><a href="acp.html">智能体客户端协议（ACP）</a><a href="a2a.html">A2A 服务器</a><h3>前端开发</h3><a href="frontend--overview.html">前端集成概览</a><a href="frontend--sandbox.html">前端沙箱</a><a href="frontend--subagent-streaming.html">前端子智能体流式输出</a><a href="frontend--todo-list.html">前端待办事项列表</a><h3>生产环境与知识库</h3><a href="going-to-production.html">部署到生产环境</a><a href="openwiki.html">OpenWiki</a><h3>Coding Agent 源码解析</h3><a href="codex-source-analysis.html">Codex 源码解析</a><a href="claude-code-source-analysis.html">Claude Code 源码解析：公开 SDK 与运行时边界</a><h3>版本更新</h3><a href="changelog-py.html">Python 更新日志</a><a href="changelog-js.html">JavaScript / TypeScript 更新日志</a></aside><script src="../sidebar.js"></script><div class="reading-layout"><main><div class="meta">中文机器翻译 · 文档快照 2026-09-07 · <a href="https://docs.langchain.com/oss/python/deepagents/a2a">在线原文</a> · <a href="../markdown/a2a.md">编辑中文 Markdown</a> · <a href="../original-markdown/a2a.md">英文原稿</a></div><h1 id="a2a-endpoint-in-agent-server">A2A 服务器</h1>
+<blockquote>
+<p>使用 A2A 协议通过 LangSmith 中的分布式跟踪启用代理间通信。</p>
+</blockquote>
+<p><a href="https://a2a-protocol.org/latest/">Agent2Agent (A2A)</a> 是 Google 的协议，用于实现对话式 AI 代理之间的通信。 <a href="https://docs.langchain.com/langsmith/server-api-ref#tag/a2a/post/a2a/{assistant_id}">LangSmith 实现了 A2A 支持</a>，允许您的代理通过标准化协议与其他 A2A 兼容代理进行通信。</p>
+<p>A2A 端点可在位于 <code>/a2a/{assistant_id}</code> 的 <a href="https://docs.langchain.com/langsmith/agent-server">代理服务器</a> 中使用。</p>
+<h2 id="protocol-version">协议版本</h2>
+<p>代理服务器采用 A2A <strong id="v10">v1.0</strong> JSON-RPC 绑定，并且还接受 v0.3 方法名称，因此现有 v0.3 客户端可以继续工作。代理卡声明一个接口：</p>
+<pre><code class="language-json">"supportedInterfaces": [
+  {
+    "url": "https://your-deployment/a2a/{assistant_id}",
+    "protocolBinding": "JSONRPC",
+    "protocolVersion": "1.0"
+  }
+]
+</code></pre>
+<p>您发送的方法名称还会选择响应中的枚举大小写。 v1.0 名称返回 SCREAMING_SNAKE_CASE (<code>TASK_STATE_WORKING</code>, <code>ROLE_AGENT</code>)； v0.3 名称返回小写字母（<code>working</code>、<code>agent</code>）。为每个客户选择一个家庭并坚持下去。</p>
+<p>信封因方法而异，而不是因系列而异：<code>SendMessage</code> 将任务包装在 <code>result.task</code> 中，而 <code>GetTask</code> 和所有 v0.3 方法直接在 <code>result</code> 上返回它。 <code>ListTasks</code> 返回 <code>result.tasks</code>。</p>
+<h2 id="supported-methods">支持的方法</h2>
+<table>
+<thead>
+<tr>
+<th>v1.0名称</th>
+<th>v0.3名称</th>
+<th>支持</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SendMessage</code></td>
+<td><code>message/send</code></td>
+<td>是的</td>
+</tr>
+<tr>
+<td><code>SendStreamingMessage</code></td>
+<td><code>message/stream</code></td>
+<td>是 - 服务器发送的事件</td>
+</tr>
+<tr>
+<td><code>GetTask</code></td>
+<td><code>tasks/get</code></td>
+<td>是的</td>
+</tr>
+<tr>
+<td><code>CancelTask</code></td>
+<td><code>tasks/cancel</code></td>
+<td>是的</td>
+</tr>
+<tr>
+<td><code>ListTasks</code></td>
+<td>—</td>
+<td>是的</td>
+</tr>
+<tr>
+<td><code>GetExtendedAgentCard</code></td>
+<td>—</td>
+<td>是的，仅在 v1.0 名称下</td>
+</tr>
+<tr>
+<td><code>SubscribeToTask</code></td>
+<td>—</td>
+<td>还没有 — 返回 <code>-32601</code></td>
+</tr>
+<tr>
+<td><code>*TaskPushNotificationConfig</code></td>
+<td>—</td>
+<td>还没有 — 返回 <code>-32601</code></td>
+</tr>
+</tbody>
+</table>
+<p>只接受四个 v0.3 名称：<code>message/send</code>、<code>message/stream</code>、<code>tasks/get</code> 和 <code>tasks/cancel</code>。其他任何内容（包括 <code>agent/getAuthenticatedExtendedCard</code> 和 <code>tasks/resubscribe</code>）都会返回 <code>-32601 Method not found</code>。</p>
+<p>仅 JSON-RPC 绑定可用。 gRPC 和 HTTP+JSON 未实现。</p>
+<h3 id="task-history-in-responses">回复中的任务历史记录</h3>
+<p>上下文包含许多任务。默认情况下，<code>SendMessage</code>、<code>GetTask</code> 和 <code>ListTasks</code> 返回<strong id="whole-context">整个上下文</strong>的历史记录，而不仅仅是您询问的任务。上下文中的第二个任务会重播第一个任务的消息，因此呈现每个历史条目的客户端会再次显示较早的轮次 - 包括较早的工具结果和 A2UI 有效负载。</p>
+<p>将 <code>historyScope</code> 设置为 <code>task</code> 以仅取回属于您询问的任务的消息。默认值保持 <code>context</code>，因此现有集成不受影响。</p>
+<p>选项的去向取决于方法。 <code>SendMessage</code> 从 <code>configuration</code> 读取：</p>
+<pre><code class="language-json">{
+  "jsonrpc": "2.0",
+  "id": "1",
+  "method": "SendMessage",
+  "params": {
+    "message": {
+      "role": "ROLE_USER",
+      "parts": [{"text": "Second request"}],
+      "messageId": "message-2",
+      "contextId": "8b1f0e5c-9a3d-4f27-b0c8-2e6a5d4c1b7a"
+    },
+    "configuration": {"historyScope": "task"}
+  }
+}
+</code></pre>
+<p><code>GetTask</code>和<code>ListTasks</code>直接从<code>params</code>读取：</p>
+<pre><code class="language-json">{"jsonrpc": "2.0", "id": "2", "method": "GetTask",
+ "params": {"id": "&lt;taskId&gt;", "historyScope": "task"}}
+</code></pre>
+<p>如果您的客户端无法将字段添加到请求正文，请改为发送标头。请求中的显式值胜过标头。</p>
+<pre><code>LangGraph-A2A-History-Scope: task
+</code></pre>
+<p>代理卡在 <code>capabilities.extensions</code> 下宣传这一点，因此您可以检测支持而不是假设它：</p>
+<pre><code class="language-json">{
+  "uri": "https://langchain.com/a2a/extensions/history-scope/v1",
+  "description": "Choose task-only or full-context response history",
+  "required": false,
+  "params": {
+    "header": "LangGraph-A2A-History-Scope",
+    "values": ["context", "task"],
+    "default": "context",
+    "methods": ["SendMessage", "GetTask", "ListTasks"]
+  }
+}
+</code></pre>
+<p>值得了解的三个限制：</p>
+<ul>
+<li>流式传输会忽略这两个历史选项。 <code>SendStreamingMessage</code> 既不读取 <code>historyScope</code> 也不读取 <code>historyLength</code>，并且如果您发送它们，也不会返回错误 - 因此不要通过 SSE 依赖任何一个。</li>
+<li><code>historyLength</code> 上限为 10。较大的值将返回 <code>-32602</code> 和 <code>historyLength cannot exceed 10</code>。</li>
+<li>范围在 <code>historyLength</code> 之前应用，因此您可以获得<em>该任务</em>的最后 N 条消息。</li>
+</ul>
+<p>无法识别的值将返回 <code>-32602</code> 和 <code>historyScope must be 'context' or 'task'</code>。像 <code>historyscope</code> 这样大小写错误的键并不是一个错误——它会被忽略，并且您会默默地获得完整的上下文历史记录，因此如果过滤似乎不起作用，请检查拼写。</p>
+<p>请勿从已完成的任务中重新发送 <code>taskId</code>。每个新回合都会在同一上下文中启动一个新任务 - 单独发送 <code>contextId</code>。命名终端任务的消息将被拒绝，并显示为 <code>-32004</code>，并且由另一个代理创建的 <code>taskId</code> 将被拒绝，并显示为 <code>-32001</code>。</p>
+<h2 id="agent-card-discovery">代理卡发现</h2>
+<p>每个助手都会自动公开一个 A2A 代理卡，该卡描述其功能并提供其他代理连接所需的信息。您可以使用以下方式检索任何助理的代理卡：</p>
+<pre><code>GET /.well-known/agent-card.json?assistant_id={assistant_id}
+</code></pre>
+<p>座席卡包含助理的姓名、描述、可用技能、支持的输入/输出模式以及用于通信的 A2A 端点 URL。</p>
+<h2 id="optional-capabilities">可选功能</h2>
+<p>这些是通过助手 API 上的 <code>metadata.a2a</code> 对每个助手进行配置的。 <code>langgraph.json</code> 无法设置助手元数据，因此请在部署后修补助手。</p>
+<h3 id="declare-input-and-output-modes">声明输入和输出模式</h3>
+<pre><code class="language-json">{
+  "metadata": {
+    "a2a": {
+      "input_modes": ["text/plain", "application/pdf"],
+      "output_modes": ["text/plain", "application/pdf"]
+    }
+  }
+}
+</code></pre>
+<p>这些值同时提供给卡牌的 <code>defaultInputModes</code>/<code>defaultOutputModes</code> 和生成的技能模式。它们只是广告——仍然接受未声明的模式。替换是按字段进行的，因此如果您希望两者都被覆盖，请发送两者，并注意空列表将被拒绝。</p>
+<h3 id="file-parts">文件零件</h3>
+<p><code>FilePart</code> 双向工作。传入的文件、图像、音频和视频部分成为LangChain内容块。出站内容块映射回任务历史记录和最终流式工件中的 <code>FilePart</code>。 MIME 类型、URI 和文件名不变地传递；内联数据被重新编码为标准 base64。</p>
+<h3 id="a2ui-v09">A2UI v0.9</h3>
+<p>选择每个助理：</p>
+<pre><code class="language-json">{ "metadata": { "a2a": { "a2ui": true } } }
+</code></pre>
+<p>然后，该卡会通告扩展名并将规范的 MIME 类型附加到两个模式列表中：</p>
+<pre><code class="language-json">"capabilities": {
+  "extensions": [
+    {
+      "uri": "https://a2ui.org/a2a-extension/a2ui/v0.9",
+      "description": "Ability to render A2UI v0.9",
+      "required": false,
+      "params": {
+        "v0.9": {
+          "supportedCatalogIds": [],
+          "acceptsInlineCatalogs": false
+        }
+      }
+    }
+  ]
+}
+</code></pre>
+<p>客户端通过在 <code>message.extensions</code> 中列出 URI 来激活它。有效负载根据 v0.9 模式进行双向验证，A2UI 部分保留在 <code>message/send</code>、<code>tasks/get</code> 和最终的 <code>message/stream</code> 工件中。响应携带<code>metadata.mimeType: "application/a2ui+json"</code>。 <code>application/json+a2ui</code> 被接受作为输入的别名。</p>
+<h3 id="filter-tool-results">过滤工具结果</h3>
+<p>默认情况下，每个相关工具结果都会发布为 <code>DataPart</code>。要仅发布某些工具，请在部署中设置工具名称的允许列表：</p>
+<pre><code class="language-bash">A2A_ALLOWED_TOOL_CALL_RESULTS=generative_ui_tool,another_tool
+</code></pre>
+<p>取消设置意味着发布所有工具结果。该过滤器适用于任务历史记录和流式传输。</p>
+<h2 id="requirements">要求</h2>
+<table>
+<thead>
+<tr>
+<th>特征</th>
+<th>最低版本</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A2A端点</td>
+<td><code>langgraph-api &gt;= 0.4.21</code></td>
+</tr>
+<tr>
+<td>入站 <code>FilePart</code></td>
+<td><code>0.12.0</code></td>
+</tr>
+<tr>
+<td>工具结果 <code>DataPart</code>s</td>
+<td><code>0.12.2</code></td>
+</tr>
+<tr>
+<td><code>A2A_ALLOWED_TOOL_CALL_RESULTS</code></td>
+<td><code>0.12.4</code></td>
+</tr>
+<tr>
+<td>出站 <code>FilePart</code>，可配置卡模式</td>
+<td><code>0.13.0</code></td>
+</tr>
+<tr>
+<td>A2UI v0.9</td>
+<td><code>0.15.0</code></td>
+</tr>
+<tr>
+<td><code>historyScope</code></td>
+<td><code>0.15.0</code></td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-bash">pip install "langgraph-api&gt;=0.13.0"
+</code></pre>
+<p>A2UI v0.9 和 <code>historyScope</code> 在 <code>0.14.0</code> 候选版本被削减后登陆，因此它们到达了 <code>0.15.0</code>。该版本尚未作为稳定版本发布 - 在依赖 <code>historyScope</code> 之前检查代理卡上的 <code>capabilities.extensions</code>。</p>
+<p>您的图表状态必须包含 <code>messages</code> 键才能接受 A2A 文本和文件部分。输入架构没有 <code>messages</code> 字段的助手将被拒绝并出现解释性错误。</p>
+<h2 id="creating-an-a2a-compatible-agent">创建 A2A 兼容代理</h2>
+<p>此示例创建一个与 A2A 兼容的代理，该代理使用 OpenAI 的 API 处理传入消息并维护对话状态。代理定义基于消息的状态结构并处理 A2A 协议的消息格式。</p>
+<p>为了与 <a href="https://a2a-protocol.org/dev/specification/#651-textpart-object">A2A“文本”部分</a> 兼容，代理必须具有处于状态的 <code>messages</code> 密钥。</p>
+<p>A2A 协议使用两个标识符来保持会话的连续性：</p>
+<ul>
+<li><code>contextId</code>：将消息分组到对话线程中（如会话 ID）</li>
+<li><code>taskId</code>：标识该对话中的每个单独请求</li>
+</ul>
+<p>在第一条消息中，省略两者 - 代理生成并返回它们。对于对话中的所有后续消息，从先前的响应中发回 <code>contextId</code> 并省略 <code>taskId</code>，因此每个回合都会在同一对话中打开一个新任务。发送 <code>taskId</code> 仅用于添加到仍在运行的任务，例如等待输入的任务。</p>
+<p><strong id="langsmith-tracing">LangSmith 跟踪：</strong> Langsmith 部署 A2A 端点会自动将 A2A <code>contextId</code> 转换为 <code>thread_id</code> 以进行 LangSmith 跟踪，从而将对话中的所有消息分组到单个线程下。</p>
+<p>例如：</p>
+<pre><code class="language-python">"""LangGraph A2A conversational agent.
+
+Supports the A2A protocol with messages input for conversational interactions.
+"""
+
+from __future__ import annotations
+
+import os
+from dataclasses import dataclass
+from typing import Any, Dict, List, TypedDict
+
+from langgraph.graph import StateGraph
+from langgraph.runtime import Runtime
+from openai import AsyncOpenAI
+
+
+class Context(TypedDict):
+    """Context parameters for the agent."""
+    my_configurable_param: str
+
+
+@dataclass
+class State:
+    """Input state for the agent.
+
+    Defines the initial structure for A2A conversational messages.
+    """
+    messages: List[Dict[str, Any]]
+
+
+async def call_model(state: State, runtime: Runtime[Context]) -&gt; Dict[str, Any]:
+    """Process conversational messages and returns output using OpenAI."""
+    # Initialize OpenAI client
+    client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+    # Process the incoming messages
+    latest_message = state.messages[-1] if state.messages else {}
+    user_content = latest_message.get("content", "No message content")
+
+    # Create messages for OpenAI API
+    openai_messages = [
+        {
+            "role": "system",
+            "content": "You are a helpful conversational agent. Keep responses brief and engaging."
+        },
+        {
+            "role": "user",
+            "content": user_content
+        }
+    ]
+
+    try:
+        # Make OpenAI API call
+        response = await client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=openai_messages,
+            max_tokens=100,
+            temperature=0.7
+        )
+
+        ai_response = response.choices[0].message.content
+
+    except Exception as e:
+        ai_response = f"I received your message but had trouble processing it. Error: {str(e)[:50]}..."
+
+    # Create a response message
+    response_message = {
+        "role": "assistant",
+        "content": ai_response
+    }
+
+    return {
+        "messages": state.messages + [response_message]
+    }
+
+
+# Define the graph
+graph = (
+    StateGraph(State, context_schema=Context)
+    .add_node(call_model)
+    .add_edge("__start__", "call_model")
+    .compile()
+)
+</code></pre>
+<h2 id="agent-to-agent-communication">代理间通信</h2>
+<p>一旦您的代理通过 <code>langgraph dev</code> 或<a href="https://docs.langchain.com/langsmith/deployment">部署到生产</a> 在本地运行，您就可以使用 A2A 协议促进它们之间的通信。</p>
+<p>此示例演示了两个代理如何通过向彼此的 A2A 端点发送 JSON-RPC 消息来进行通信。该脚本模拟多轮对话，其中每个代理处理对方的响应并继续对话。</p>
+<pre><code class="language-python">#!/usr/bin/env python3
+"""Agent-to-Agent conversation simulation using the LangGraph A2A endpoint."""
+
+import asyncio
+import aiohttp
+import os
+import uuid
+
+
+def extract_text(result: dict) -&gt; str:
+    """Best-effort extraction of response text from an A2A result."""
+    if "error" in result:
+        raise RuntimeError(f"A2A error {result['error']['code']}: {result['error']['message']}")
+
+    for art in result.get("result", {}).get("artifacts", []) or []:
+        for part in art.get("parts", []) or []:
+            if part.get("kind") == "text" and part.get("text"):
+                return part["text"]
+
+    msg = (result.get("result", {}).get("status", {}) or {}).get("message", {}) or {}
+    for part in msg.get("parts", []) or []:
+        if part.get("kind") == "text" and part.get("text"):
+            return part["text"]
+
+    return "(no text found)"
+
+
+async def send_message(session, port, assistant_id, text, context_id=None):
+    """Send an A2A message. Returns (response_text, returned_context_id)."""
+    url = f"http://127.0.0.1:{port}/a2a/{assistant_id}"
+
+    message = {
+        "role": "user",
+        "parts": [{"kind": "text", "text": text}],
+        "messageId": str(uuid.uuid4()),
+    }
+
+    # A2A multi-turn continuity: reuse contextId across turns and agents.
+    # Do not reuse taskId — each turn starts a new task within the same context.
+    if context_id:
+        message["contextId"] = context_id
+
+    payload = {
+        "jsonrpc": "2.0",
+        "id": str(uuid.uuid4()),
+        "method": "message/send",
+        "params": {"message": message},
+    }
+
+    headers = {"Accept": "application/json"}
+    async with session.post(url, json=payload, headers=headers) as response:
+        result = await response.json()
+
+    text = extract_text(result)
+    returned_context_id = result.get("result", {}).get("contextId") or context_id
+    return text, returned_context_id
+
+
+async def simulate_conversation():
+    """Simulate a conversation between two agents."""
+
+    #Assistant IDs
+    agent_a_id = os.getenv("AGENT_A_ID")
+    agent_b_id = os.getenv("AGENT_B_ID")
+
+    if not agent_a_id or not agent_b_id:
+        print("Set AGENT_A_ID and AGENT_B_ID environment variables")
+        return
+
+    message = "Hello! Let's have a conversation."
+    context_id = None
+
+    async with aiohttp.ClientSession() as session:
+        for i in range(3):
+            print(f"--- Round {i + 1} ---")
+
+            message, context_id = await send_message(
+                session, 2024, agent_a_id, message, context_id=context_id
+            )
+            print(f"🔵 Agent A: {message}")
+
+            message, context_id = await send_message(
+                session, 2025, agent_b_id, message, context_id=context_id
+            )
+            print(f"🔴 Agent B: {message}\n")
+
+
+if __name__ == "__main__":
+    asyncio.run(simulate_conversation())
+</code></pre>
+<p>有关完整的工作示例，请参阅：</p>
+<ul>
+<li><a href="https://github.com/langchain-samples/A2A-langgraph">两个 LangGraph 代理进行通信</a> - 使用 A2A 协议的两个 LangGraph 代理示例</li>
+<li><a href="https://github.com/langchain-samples/A2A-google-adk">Google ADK 代理与 LangChain 代理</a> - Google ADK 代理使用 A2A 协议与 LangChain 代理交互的示例</li>
+</ul>
+<h2 id="distributed-tracing">分布式追踪</h2>
+<p>当多个代理通过 A2A 进行通信时，LangSmith 可以将其所有<a href="https://docs.langchain.com/langsmith/observability-concepts#traces">痕迹</a> 分组到单个<a href="https://docs.langchain.com/langsmith/observability-concepts#threads">线程</a> 中，从而为您提供整个多代理对话的统一视图。</p>
+<h3 id="how-contextid-maps-to-thread_id">contextId 如何映射到 thread_id</h3>
+<p>代理服务器 A2A 端点会自动将 A2A <code>contextId</code> 转换为 <code>thread_id</code> 以进行 LangSmith 跟踪。这意味着对话中所有参与代理的每条消息都被分组在 LangSmith 中的同一线程下，而无需您进行任何额外的配置。</p>
+<p>该流程的工作原理如下：</p>
+<ol>
+<li>在第一条消息中，客户端省略了 <code>contextId</code>。服务器生成一个并在响应中返回它。</li>
+<li>客户端在所有后续消息中传递 <code>contextId</code> 以保持会话连续性。</li>
+<li>代理服务器将<code>contextId</code>映射到LangSmith <a href="https://docs.langchain.com/langsmith/add-metadata-tags">元数据</a>中的<code>thread_id</code>，因此所有回合都出现在同一线程中。</li>
+</ol>
+<p><code>contextId</code> 直接用作 LangGraph <code>thread_id</code>，因此它必须是 UUID。回显服务器返回的标识符，而不是创建您自己的标识符。 <code>contextId</code>（例如 <code>session-42</code>）会被拒绝，并显示 <code>-32602</code> 和消息 <code>Failed to create run: Invalid thread ID</code>。</p>
+<h3 id="tracing-across-multiple-agents">跨多个代理进行追踪</h3>
+<p>当来自不同框架的代理通过 A2A 进行通信时，<code>contextId</code> 可以统一它们的踪迹。将第一个代理在以后的每个请求中返回的 <code>contextId</code> 重复使用给该代理和其他代理。</p>
+<p>代理服务器不会读取 JSON-RPC 负载上的顶级 <code>metadata</code> 字段。客户端无法直接设置 LangGraph <code>thread_id</code> — 它始终是 <code>contextId</code>。将 <code>metadata.thread_id</code> 发送到代理服务器部署没有任何效果。</p>
+<p>以下代码片段演示了关键概念。有关两个代理的完整可运行实现，请参阅<a href="https://github.com/langchain-samples/A2A-google-adk/blob/main/test_agent_conversation.py">Google ADK + LangChain 示例</a>。</p>
+<pre><code class="language-python">import asyncio
+import aiohttp
+import uuid
+
+
+async def send_message(session, url, text, context_id=None):
+    """Send an A2A message and return (response_text, context_id)."""
+
+    # --- 1. Build the message ---
+    # On follow-up turns, include contextId inside the message object so the server
+    # associates them with the ongoing conversation. Do not resend taskId: each turn
+    # opens a new task within that conversation.
+    message = {
+        "role": "user",
+        "parts": [{"kind": "text", "text": text}],
+        "messageId": str(uuid.uuid4()),
+    }
+    if context_id:
+        message["contextId"] = context_id
+
+    # --- 2. Send it ---
+    # contextId travels inside the message. Agent Server turns it into the
+    # LangGraph thread_id, so no separate tracing field is needed.
+    payload = {
+        "jsonrpc": "2.0",
+        "id": str(uuid.uuid4()),
+        "method": "message/send",
+        "params": {"message": message},
+    }
+
+    async with session.post(url, json=payload, headers={"Accept": "application/json"}) as response:
+        if response.status != 200:
+            raise RuntimeError(f"HTTP {response.status}: {await response.text()}")
+        result = await response.json()
+
+    if "error" in result:
+        raise RuntimeError(result["error"].get("message", "Unknown error"))
+
+    result_obj = result.get("result", {})
+    returned_context_id = result_obj.get("contextId") or context_id
+    text_out = next(
+        (
+            part.get("text", "")
+            for art in result_obj.get("artifacts", []) or []
+            for part in art.get("parts", []) or []
+            if part.get("kind") == "text"
+        ),
+        "(no text)",
+    )
+    return text_out, returned_context_id
+
+
+async def run_conversation(agent_a_url, agent_b_url):
+    # --- 3. Share the context across agents ---
+    # The first response carries a contextId. Pass it to every agent from then
+    # on, and all their traces land in one LangSmith thread.
+    context_id = None
+    message = "Hello! Let's collaborate."
+
+    async with aiohttp.ClientSession() as session:
+        for _ in range(3):
+            message, context_id = await send_message(
+                session, agent_a_url, message, context_id=context_id
+            )
+
+            message, context_id = await send_message(
+                session, agent_b_url, message, context_id=context_id
+            )
+
+
+asyncio.run(run_conversation(
+    "http://localhost:2024/a2a/&lt;agent_a_assistant_id&gt;",
+    "http://localhost:2025/a2a/&lt;agent_b_assistant_id&gt;",
+))
+</code></pre>
+<p><strong id="1-build-the-message">1.构建消息</strong>：在后续轮次中将 <code>contextId</code> 包含在 <code>message</code> 对象内，以便服务器可以将它们与正在进行的对话关联起来。在第一条消息中省略它，因为服务器会生成 <code>contextId</code> 并在响应中返回它。请勿在完成回合后重新发送 <code>taskId</code>。</p>
+<p><strong id="2-send-it">2.发送</strong>：<code>contextId</code> 在 <code>params.message</code> 内运行。代理服务器将其用作 LangGraph <code>thread_id</code>，因此无需设置单独的跟踪字段。</p>
+<p><strong id="3-share-the-context-across-agents">3.跨代理共享上下文</strong>：让第一个代理创建 <code>contextId</code>，然后将相同的值传递给对话其余部分的每个代理。这就是将他们的踪迹分组到一个线程中的原因。</p>
+<h3 id="receive-thread_id-in-non-langgraph-agents">在非 LangGraph 代理中接收 thread_id</h3>
+<p><a href="#tracing-across-multiple-agents">上一节</a>涵盖了客户端——发送消息时传播<code>contextId</code>。如果您的代理之一不是基于 LangGraph 构建的，它还需要在接收端读取 <code>contextId</code> 并将其附加为线程标识符，以便其跟踪落在同一个 LangSmith 线程中。使用 <code>langsmith.integrations.otel.configure()</code> 设置自动跟踪，并从传入的 A2A 请求中读取 <code>params.message.contextId</code>。</p>
+<pre><code class="language-python">from fastapi import FastAPI, Request
+from langsmith.integrations.otel import configure as configure_otel
+from opentelemetry import trace
+import json
+
+# --- 1. Configure OTel ---
+# Set up automatic tracing to LangSmith for your non-LangGraph agent.
+configure_otel(project_name="my-a2a-project")
+tracer = trace.get_tracer(__name__)
+
+app = FastAPI()
+
+@app.middleware("http")
+async def set_thread_id_middleware(request: Request, call_next):
+    thread_id = None
+    if request.method == "POST":
+        body_bytes = await request.body()
+        if body_bytes:
+            # --- 2. Extract contextId from the incoming A2A message ---
+            try:
+                body = json.loads(body_bytes)
+                thread_id = body["params"]["message"].get("contextId")
+            except (ValueError, KeyError, TypeError):
+                pass
+            # Re-inject the body so downstream handlers can still read it
+            async def receive():
+                return {"type": "http.request", "body": body_bytes}
+            request._receive = receive
+
+    # --- 3. Attach thread_id to the trace ---
+    # langsmith.metadata.thread_id groups this trace with others in the same thread.
+    with tracer.start_as_current_span("agent") as span:
+        if thread_id:
+            span.set_attribute("langsmith.metadata.thread_id", thread_id)
+        return await call_next(request)
+</code></pre>
+<p>在此中间件之后，在 <code>app</code> 上注册您的代理路由。</p>
+<p>在您的环境中设置 <code>LANGSMITH_API_KEY</code> 和可选的 <code>LANGSMITH_PROJECT</code> 以启用跟踪。对话中的所有代理应使用同一项目，以便他们的痕迹一起可见。</p>
+<h3 id="view-traces-in-langsmith">在 LangSmith 中查看痕迹</h3>
+<p>运行多代理对话后，打开 <a href="https://smith.langchain.com?utm_source=docs\&amp;utm_medium=cta\&amp;utm_campaign=langsmith-signup\&amp;utm_content=langsmith-server-a2a">LangSmith UI</a> 并导航到 <strong id="threads">Threads</strong>。所有参与代理的所有回合都将出现在单个线程下，由共享 <code>thread_id</code> 标识。</p>
+<h2 id="test-your-integration">测试您的集成</h2>
+<h3 id="against-your-own-deployment">针对您自己的部署</h3>
+<p>获取卡，然后发送消息：</p>
+<pre><code class="language-bash">curl "https://your-deployment/a2a/{assistant_id}/.well-known/agent-card.json"
+</code></pre>
+<pre><code class="language-bash">curl -X POST "https://your-deployment/a2a/{assistant_id}" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "SendMessage",
+    "params": {
+      "message": {
+        "role": "ROLE_USER",
+        "parts": [{"text": "hello"}],
+        "messageId": "test-1"
+      }
+    }
+  }'
+</code></pre>
+<p>响应包含<code>result.task.id</code>和<code>result.task.contextId</code>。在下一条消息中重复使用 <code>contextId</code> 以继续对话。</p>
+<p>对于流式传输，发送 <code>Accept: text/event-stream</code> 并使用 <code>SendStreamingMessage</code>。第一个事件是 <code>Task</code>；状态和工件更新如下。</p>
+<h3 id="against-the-official-conformance-suite">针对官方一致性套件</h3>
+<p>A2A 在 <a href="https://github.com/a2aproject/a2a-tck">a2aproject/a2a-tck</a> 上发布了技术兼容性套件。它按 RFC 2119 级别对实施进行分级，并适用于任何 A2A 端点（包括您的端点）。</p>
+<pre><code class="language-bash">./run_tck.py --sut-host https://your-deployment/a2a/{assistant_id} --transport jsonrpc
+</code></pre>
+<p>TCK 通过 <code>messageId</code> 前缀驱动某些场景，例如 <code>tck-input-required</code>，如 <code>docs/SUT_REQUIREMENTS.md</code> 中所述。未实现这些前缀的图表会将这些要求报告为已跳过而不是失败。</p>
+<h3 id="what-agent-server-currently-fails">哪些代理服务器当前出现故障</h3>
+<p>代理服务器在每个 CI 构建上运行 TCK 作为必需检查，并针对已签入的已知故障列表进行门控。如果出现新的故障，或者列出的要求开始通过，则 CI 会失败，因此列表不会偏离服务器实际执行的操作。</p>
+<p>在构建功能之前请阅读以下内容：</p>
+<table>
+<thead>
+<tr>
+<th>差距</th>
+<th>你观察到什么</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>响应线形状仍然是v0.3</td>
+<td>任务、消息和部件带有 <code>kind</code> 和 <code>mimeType</code>，而不是 v1.0 成员存在歧视</td>
+</tr>
+<tr>
+<td>流媒体事件表现平平</td>
+<td>SSE 发出带有 <code>final</code> 的 v0.3 对象，而不是 <code>statusUpdate</code> / <code>artifactUpdate</code> 包装器</td>
+</tr>
+<tr>
+<td><code>tool_results</code> 是蛇_case</td>
+<td>v1.0 预计为 <code>toolResults</code>。故意保留，因为实时 A2UI 客户端会读取此密钥</td>
+</tr>
+<tr>
+<td>时间戳</td>
+<td>序列化为 <code>+00:00</code> 而不是 ISO 8601 <code>Z</code> 后缀</td>
+</tr>
+<tr>
+<td><code>SubscribeToTask</code></td>
+<td>返回 <code>-32601</code>，其中规范要求 <code>-32001</code></td>
+</tr>
+<tr>
+<td>推送通知配置</td>
+<td>返回 <code>-32601</code>，其中规范要求 <code>-32003</code></td>
+</tr>
+<tr>
+<td>错误不包含 <code>data</code></td>
+<td>未附加 <code>google.rpc.ErrorInfo</code> 原因或域</td>
+</tr>
+<tr>
+<td><code>A2A-Version</code> 请求头</td>
+<td>未读取，因此处理不受支持的版本而不是返回 <code>-32009</code></td>
+</tr>
+<tr>
+<td>座席卡缓存</td>
+<td>无 <code>Cache-Control</code>、<code>ETag</code> 或 <code>Last-Modified</code> 标头</td>
+</tr>
+<tr>
+<td><code>GetExtendedAgentCard</code></td>
+<td>已提供服务，但从未通过 <code>capabilities.extendedAgentCard</code> 进行广告</td>
+</tr>
+</tbody>
+</table>
+<h2 id="disable-a2a">禁用 A2A</h2>
+<p>要禁用 A2A 端点，请在 <code>langgraph.json</code> 配置文件中将 <code>disable_a2a</code> 设置为 <code>true</code>：</p>
+<pre><code class="language-json">{
+  "$schema": "https://langgra.ph/schema.json",
+  "http": {
+    "disable_a2a": true
+  }
+}
+</code></pre>
+<hr/>
+<div classname="source-links">
+
+
+
+
+[将这些文档](https://docs.langchain.com/use-these-docs) 通过 MCP 连接到 Claude、VSCode 等以获得实时答案。
+
+
+
+
+
+
+[在 GitHub 上编辑此页面](https://github.com/langchain-ai/docs/edit/main/src/langsmith/server-a2a.mdx) 或 [提交问题](https://github.com/langchain-ai/docs/issues/new/choose)。
+
+
+
+</div><footer>非官方中文离线整理版。代码与原图保留；在线演示需要联网。© LangChain · <a href="../LICENSE">MIT 许可</a></footer></main><nav class="page-toc" aria-label="本页目录"><h2>本页目录</h2><ul><li><a href="#protocol-version">协议版本</a></li><li><a href="#supported-methods">支持的方法</a></li><li><a href="#agent-card-discovery">代理卡发现</a></li><li><a href="#optional-capabilities">可选功能</a></li><li><a href="#requirements">要求</a></li><li><a href="#creating-an-a2a-compatible-agent">创建 A2A 兼容代理</a></li><li><a href="#agent-to-agent-communication">代理间通信</a></li><li><a href="#distributed-tracing">分布式追踪</a></li><li><a href="#test-your-integration">测试您的集成</a></li><li><a href="#disable-a2a">禁用 A2A</a></li></ul></nav></div></html>

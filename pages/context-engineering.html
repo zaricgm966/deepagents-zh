@@ -1,0 +1,1064 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>上下文工程 · Deep Agents</title><link rel="stylesheet" href="../style.css"><aside><a class="brand" href="../index.html">Deep Agents<span>中文离线文档</span></a><h3>入门与选型</h3><a href="overview.html">Deep Agents 概览</a><a href="quickstart.html">快速入门</a><a href="models.html">模型选择</a><a href="comparison.html">与 Claude Agent SDK 的对比</a><a href="code-link.html">Deep Agents Code 简介</a><h3>配置与核心能力</h3><a href="customization.html">自定义 Deep Agents</a><a href="tools.html">工具</a><a href="profiles.html">配置档案</a><a href="backends.html">文件系统后端</a><a href="interpreters.html">代码解释器</a><a href="sandboxes.html">沙箱</a><a href="memory.html">记忆</a><a href="skills.html">技能</a><a href="permissions.html">权限</a><a href="human-in-the-loop.html">人工介入</a><a href="multimodal.html">多模态输入与输出</a><h3>任务与上下文管理</h3><a href="context-engineering.html">上下文工程</a><a href="subagents.html">子智能体</a><a href="dynamic-subagents.html">动态子智能体</a><a href="async-subagents.html">异步子智能体</a><a href="streaming.html">流式输出</a><a href="event-streaming.html">事件流</a><a href="fault-tolerance.html">容错</a><a href="retrieval.html">检索</a><a href="rubric.html">评分标准</a><h3>应用教程</h3><a href="data-analysis.html">构建数据分析智能体</a><a href="content-builder.html">构建内容创作智能体</a><a href="deep-research.html">构建深度研究智能体</a><a href="rag.html">构建检索增强生成（RAG）智能体</a><h3>协议与集成</h3><a href="mcp.html">模型上下文协议（MCP）</a><a href="acp.html">智能体客户端协议（ACP）</a><a href="a2a.html">A2A 服务器</a><h3>前端开发</h3><a href="frontend--overview.html">前端集成概览</a><a href="frontend--sandbox.html">前端沙箱</a><a href="frontend--subagent-streaming.html">前端子智能体流式输出</a><a href="frontend--todo-list.html">前端待办事项列表</a><h3>生产环境与知识库</h3><a href="going-to-production.html">部署到生产环境</a><a href="openwiki.html">OpenWiki</a><h3>Coding Agent 源码解析</h3><a href="codex-source-analysis.html">Codex 源码解析</a><a href="claude-code-source-analysis.html">Claude Code 源码解析：公开 SDK 与运行时边界</a><h3>版本更新</h3><a href="changelog-py.html">Python 更新日志</a><a href="changelog-js.html">JavaScript / TypeScript 更新日志</a></aside><script src="../sidebar.js"></script><div class="reading-layout"><main><div class="meta">中文机器翻译 · 文档快照 2026-09-07 · <a href="https://docs.langchain.com/oss/python/deepagents/context-engineering">在线原文</a> · <a href="../markdown/context-engineering.md">编辑中文 Markdown</a> · <a href="../original-markdown/context-engineering.md">英文原稿</a></div><h1 id="context-engineering-in-deep-agents">上下文工程</h1>
+<blockquote>
+<p>控制深度智能体可以访问的上下文以及如何在长时间运行的任务中管理它</p>
+</blockquote>
+<p>上下文工程以正确的格式提供正确的信息和工具，以便您的深度智能体能够可靠地完成任务。</p>
+<p>深度智能体可以访问多种上下文。一些资源在启动时提供给代理；其他的在运行时变得可用，例如用户输入。深度智能体包括用于管理长时间运行的会话中的上下文的内置机制。</p>
+<p>此页面概述了您的深度智能体可以访问和管理的不同类型的上下文。</p>
+<p>环境工程新手？有关不同类型的上下文以及何时使用它们，请参阅<a href="https://docs.langchain.com/oss/python/concepts/context">概念概述</a>。</p>
+<h2 id="types-of-context">上下文类型</h2>
+<table>
+<thead>
+<tr>
+<th>上下文类型</th>
+<th>你控制什么</th>
+<th>范围</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><a href="#input-context">输入上下文</a></strong></td>
+<td>代理启动时的提示内容（系统提示、内存、技能）</td>
+<td>静态，每次运行应用</td>
+</tr>
+<tr>
+<td><strong><a href="#runtime-context">运行时上下文</a></strong></td>
+<td>调用时传递的静态配置（用户元数据、API 密钥、连接）</td>
+<td>每次运行，传播到子智能体</td>
+</tr>
+<tr>
+<td><strong><a href="#context-compression">上下文压缩</a></strong></td>
+<td>内置卸载和汇总，将上下文保持在窗口限制内</td>
+<td>当接近极限时自动</td>
+</tr>
+<tr>
+<td><strong id="context-isolation"><a href="#context-isolation-with-subagents">上下文隔离</a></strong></td>
+<td>使用子智能体隔离繁重的工作，仅将结果返回给主代理</td>
+<td>每个子智能体，当被委托时</td>
+</tr>
+<tr>
+<td><strong><a href="#long-term-memory">长期记忆</a></strong></td>
+<td>使用虚拟文件系统跨线程持久存储</td>
+<td>对话中持续存在</td>
+</tr>
+</tbody>
+</table>
+<h2 id="input-context">输入上下文</h2>
+<p>输入上下文是在启动时提供给深度智能体的信息，该信息成为其系统提示的一部分。最终的提示由几个来源组成：</p>
+<p><strong>系统提示</strong></p>
+<p><a href="#system-prompt">查看相关页面</a></p>
+<p>您提供的自定义说明以及内置代理指导。</p>
+<p><strong>记忆</strong></p>
+<p><a href="#memory">查看相关页面</a></p>
+<p>配置时始终加载持久 <code>AGENTS.md</code> 文件。</p>
+<p><strong>技能</strong></p>
+<p><a href="#skills">查看相关页面</a></p>
+<p>相关时加载按需功能（渐进式披露）。</p>
+<p><strong>工具提示</strong></p>
+<p><a href="#tool-prompts">查看相关页面</a></p>
+<p>使用内置工具或自定义工具的说明。</p>
+<h3 id="system-prompt">系统提示</h3>
+<p>您的自定义系统提示符位于内置系统提示符之前，其中包括文件系统工具和子智能体的指南。用它来定义代理的角色、行为和知识：</p>
+<pre><code class="language-python">from deepagents import create_deep_agent
+
+agent = create_deep_agent(
+    model="google_genai:gemini-3.6-flash",
+    system_prompt=(
+        "You are a research assistant specializing in scientific literature. "
+        "Always cite sources. Use subagents for parallel research on different topics."
+    ),
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+
+agent = create_deep_agent(
+    model="openai:gpt-5.5",
+    system_prompt=(
+        "You are a research assistant specializing in scientific literature. "
+        "Always cite sources. Use subagents for parallel research on different topics."
+    ),
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+
+agent = create_deep_agent(
+    model="anthropic:claude-sonnet-4-6",
+    system_prompt=(
+        "You are a research assistant specializing in scientific literature. "
+        "Always cite sources. Use subagents for parallel research on different topics."
+    ),
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+
+agent = create_deep_agent(
+    model="openrouter:z-ai/glm-5.2",
+    system_prompt=(
+        "You are a research assistant specializing in scientific literature. "
+        "Always cite sources. Use subagents for parallel research on different topics."
+    ),
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+
+agent = create_deep_agent(
+    model="fireworks:accounts/fireworks/models/glm-5p2",
+    system_prompt=(
+        "You are a research assistant specializing in scientific literature. "
+        "Always cite sources. Use subagents for parallel research on different topics."
+    ),
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+
+agent = create_deep_agent(
+    model="baseten:zai-org/GLM-5.2",
+    system_prompt=(
+        "You are a research assistant specializing in scientific literature. "
+        "Always cite sources. Use subagents for parallel research on different topics."
+    ),
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+
+agent = create_deep_agent(
+    model="ollama:north-mini-code-1.0",
+    system_prompt=(
+        "You are a research assistant specializing in scientific literature. "
+        "Always cite sources. Use subagents for parallel research on different topics."
+    ),
+)
+</code></pre>
+<p><code>system_prompt</code> 参数是静态的，这意味着它不会在每次调用时发生更改。对于某些用例，您可能需要动态提示：例如，告诉模型“您具有管理员访问权限”与“您具有只读访问权限”，或者从<a href="#long-term-memory">长期记忆</a>注入用户首选项，例如“用户更喜欢简洁的响应”。如果您的提示取决于上下文或 <code>runtime.store</code>，请使用 <code>@dynamic_prompt</code> 构建上下文感知指令。您的中间件可以读取 <code>request.runtime.context</code> 和 <code>request.runtime.store</code>。请参阅<a href="customization.html#middleware">自定义</a>了解<a href="customization.html#deep-agents-stack">深度智能体堆栈</a>以及添加<a href="https://docs.langchain.com/oss/python/langchain/middleware">自定义中间件</a>。有关示例，请参阅<a href="https://docs.langchain.com/oss/python/langchain/context-engineering#system-prompt">LangChain 上下文工程</a> 指南。</p>
+<p>当工具单独使用上下文或 <code>runtime.store</code> 时，您<strong id="not">不需要</strong>需要中间件；工具直接接收<a href="https://reference.langchain.com/python/langchain/tools/#langchain.tools.ToolRuntime">ToolRuntime</a>对象（包括<code>runtime.context</code>和<code>runtime.store</code>）。仅当工具应与系统提示符更新一起打包时才添加中间件。</p>
+<p>要调整特定提供商或型号的组装系统提示，请使用 <a href="profiles.html#harness-profiles">harness profile</a>：<code>base_system_prompt</code> 完全替换基本提示，并附加 <code>system_prompt_suffix</code>。</p>
+<h3 id="memory">记忆</h3>
+<p>内存文件 (<a href="https://agents.md/"><code>AGENTS.md</code></a>) 提供持久上下文，<strong id="always-loaded">始终加载</strong>到系统提示符中。记住项目约定、用户偏好和适用于每次对话的关键准则：</p>
+<pre><code class="language-python">agent = create_deep_agent(
+    model="google_genai:gemini-3.6-flash",
+    memory=["/project/AGENTS.md", "~/.deepagents/preferences.md"],
+)
+</code></pre>
+<pre><code class="language-python">agent = create_deep_agent(
+    model="openai:gpt-5.5",
+    memory=["/project/AGENTS.md", "~/.deepagents/preferences.md"],
+)
+</code></pre>
+<pre><code class="language-python">agent = create_deep_agent(
+    model="anthropic:claude-sonnet-4-6",
+    memory=["/project/AGENTS.md", "~/.deepagents/preferences.md"],
+)
+</code></pre>
+<pre><code class="language-python">agent = create_deep_agent(
+    model="openrouter:z-ai/glm-5.2",
+    memory=["/project/AGENTS.md", "~/.deepagents/preferences.md"],
+)
+</code></pre>
+<pre><code class="language-python">agent = create_deep_agent(
+    model="fireworks:accounts/fireworks/models/glm-5p2",
+    memory=["/project/AGENTS.md", "~/.deepagents/preferences.md"],
+)
+</code></pre>
+<pre><code class="language-python">agent = create_deep_agent(
+    model="baseten:zai-org/GLM-5.2",
+    memory=["/project/AGENTS.md", "~/.deepagents/preferences.md"],
+)
+</code></pre>
+<pre><code class="language-python">agent = create_deep_agent(
+    model="ollama:north-mini-code-1.0",
+    memory=["/project/AGENTS.md", "~/.deepagents/preferences.md"],
+)
+</code></pre>
+<p>与技能不同，记忆总是被注入的——没有渐进的披露。保持最小内存以避免上下文过载；使用<a href="skills.html">技能</a> 获取详细的工作流程和特定领域的内容。配置详情请参见<a href="customization.html#memory">内存</a>。</p>
+<p>要生成编程智能体通过 <code>AGENTS.md</code> 发现的存储库 wiki，请参阅 <a href="https://docs.langchain.com/oss/openwiki/overview">OpenWiki</a>。</p>
+<h3 id="skills">技能</h3>
+<p>技能提供<strong id="on-demand">按需</strong>功能。代理在启动时从每个 <code>SKILL.md</code> 读取 frontmatter，然后仅在确定技能相关时加载完整的技能内容。这减少了令牌的使用，同时仍然提供专门的工作流程：</p>
+<pre><code class="language-python">agent = create_deep_agent(
+    model="google_genai:gemini-3.6-flash",
+    skills=["/skills/"],
+)
+</code></pre>
+<pre><code class="language-python">agent = create_deep_agent(
+    model="openai:gpt-5.5",
+    skills=["/skills/"],
+)
+</code></pre>
+<pre><code class="language-python">agent = create_deep_agent(
+    model="anthropic:claude-sonnet-4-6",
+    skills=["/skills/"],
+)
+</code></pre>
+<pre><code class="language-python">agent = create_deep_agent(
+    model="openrouter:z-ai/glm-5.2",
+    skills=["/skills/"],
+)
+</code></pre>
+<pre><code class="language-python">agent = create_deep_agent(
+    model="fireworks:accounts/fireworks/models/glm-5p2",
+    skills=["/skills/"],
+)
+</code></pre>
+<pre><code class="language-python">agent = create_deep_agent(
+    model="baseten:zai-org/GLM-5.2",
+    skills=["/skills/"],
+)
+</code></pre>
+<pre><code class="language-python">agent = create_deep_agent(
+    model="ollama:north-mini-code-1.0",
+    skills=["/skills/"],
+)
+</code></pre>
+<p>让每项技能专注于单一工作流程或领域；广泛或重叠的技能会削弱相关性，并在加载时使上下文变得臃肿。在技​​能中，保持主要内容简洁，并将详细的参考材料移至技能文件中引用的单独文件中。将始终相关的约定放入<a href="#memory">内存</a>中。请参阅<a href="skills.html">技能</a> 以了解创作和配置。</p>
+<h3 id="tool-prompts">工具提示</h3>
+<p><a href="https://docs.langchain.com/oss/python/langchain/tools">工具</a> 提示是决定模型如何使用工具的说明。所有工具都会公开模型在提示中看到的元数据 - 通常是模式和描述。您通过 <code>tools</code> 参数传递的工具将工具元数据（架构和描述）传递给模型。深度智能体的内置工具打包在<a href="customization.html#deep-agents-stack">深度智能体堆栈</a> 中，通常还会更新系统提示，为这些工具提供更多指导。</p>
+<p><strong id="built-in-tools">内置工具</strong>：添加利用功能（文件系统、子智能体和可选规划）的中间件会自动将特定于工具的指令附加到系统提示符中，从而创建解释如何有效使用这些工具的工具提示。完整列表请参见<a href="customization.html#middleware">自定义</a>：</p>
+<ul>
+<li>
+<p>文件系统提示：<code>ls</code>、<code>read_file</code>、<code>write_file</code>、<code>edit_file</code>、<code>delete</code>、<code>glob</code>、<code>grep</code>（以及使用沙箱后端时的 <code>execute</code>）的文档</p>
+</li>
+<li>
+<p>子智能体提示：使用 <code>task</code> 工具委派工作的指南</p>
+</li>
+<li>
+<p>人机交互提示：用于在指定工具调用时暂停（当设置 <code>interrupt_on</code> 时）</p>
+</li>
+<li>
+<p>本地上下文提示：当前目录和项目信息（仅限 CLI）</p>
+</li>
+</ul>
+<p><strong id="tools-you-provide">您提供的工具</strong>：通过 <code>tools</code> 参数传递的工具将其描述（来自工具架构）发送到模型。您还可以添加<a href="https://docs.langchain.com/oss/python/langchain/middleware">自定义中间件</a>，该中间件添加工具并附加其自己的系统提示指令。</p>
+<p>对于您提供的工具，请确保提供清晰的名称、描述和参数描述。这些指导模型关于何时以及如何使用该工具的推理。在描述中包含<em>何时</em>使用该工具并描述每个参数的作用。</p>
+<pre><code class="language-python">from langchain.tools import tool
+
+
+@tool(parse_docstring=True)
+def search_orders(
+    user_id: str,
+    status: str,
+    limit: int = 10,
+) -&gt; str:
+    """Search for user orders by status.
+
+    Use this when the user asks about order history or wants to check
+    order status. Always filter by the provided status.
+
+    Args:
+        user_id: Unique identifier for the user
+        status: Order status: 'pending', 'shipped', or 'delivered'
+        limit: Maximum number of results to return
+    """
+    # Implementation here
+    return f"orders for {user_id} with status {status} (limit {limit})"
+</code></pre>
+<p>要覆盖特定提供程序或模型的内置或用户提供的工具的描述，请使用按工具名称键入的 <a href="profiles.html#harness-profiles">harness profile</a> 的 <code>tool_description_overrides</code>。</p>
+<p>未使用的内置工具仍然每次都会发送其完整模式。使用 <code>excluded_tools</code> 删除代理不应调用的工具（例如只读代理上的 <code>write_file</code> 或 <code>execute</code>）。这会缩小整个运行的基线提示大小。这是配置，而不是<a href="#context-compression">上下文压缩</a>中的自动卸载或汇总。</p>
+<p>请参阅<a href="profiles.html#harness-profiles">利用配置文件</a> 和<a href="overview.html#virtual-filesystem-access">在不使用默认文件系统工具的情况下运行</a>。</p>
+<p>有关内置功能，请参阅<a href="overview.html#execution-environment">概述</a>；有关直接传递工具的信息，请参阅<a href="customization.html#tools">自定义</a>。</p>
+<h3 id="complete-system-prompt">完整的系统提示</h3>
+<p>深度智能体的系统消息（模型在运行开始时收到的组装系统提示）由以下部分组成：</p>
+<ol>
+<li>定制 <code>system_prompt</code>（如果提供）</li>
+<li><a href="https://github.com/langchain-ai/deepagents/blob/e18e9dcd0e6edc72c0a4a5b76ae752c4bc539752/libs/deepagents/deepagents/graph.py#L37">基地代理提示</a></li>
+<li>内存提示：<code>AGENTS.md</code> + 内存使用指南（仅当提供<code>memory</code>时）</li>
+<li>技能提示：技能位置+技能列表及前置信息+用法（仅当提供技能时）</li>
+<li>虚拟文件系统提示（文件系统+执行工具文档，如果适用）</li>
+<li>子智能体提示：任务工具使用</li>
+<li>用户提供的中间件提示（如果提供了自定义中间件）</li>
+<li>人机交互提示（当设置<code>interrupt_on</code>时）</li>
+</ol>
+<h2 id="runtime-context">运行时上下文</h2>
+<p>运行时上下文是您调用代理时传递的每次运行配置。它不会自动包含在模型提示中；仅当工具、中间件或其他逻辑读取它并将其添加到消息或系统提示中时，模型才会看到它。使用用户元数据（ID、首选项、角色）、API 密钥、数据库连接、功能标志或工具和工具所需的其他值的运行时上下文。</p>
+<p>使用 <code>context_schema</code> 定义该数据的形状：使用 <code>dataclasses.dataclass</code> 或 <code>typing.TypedDict</code> 类。将带有 <strong id="context"><code>context</code></strong> 参数的值传递给 <code>invoke</code> / <code>ainvoke</code>。有关完整详细信息，请参阅<a href="https://docs.langchain.com/oss/python/langchain/runtime">运行时</a> 和 <a href="https://docs.langchain.com/oss/python/langgraph/graph-api#runtime-context">LangGraph 运行时上下文</a>。</p>
+<p>在工具内部，从注入的 <a href="https://reference.langchain.com/python/langchain/tools/#langchain.tools.ToolRuntime">ToolRuntime</a> 读取上下文：</p>
+<pre><code class="language-python">from dataclasses import dataclass
+
+from deepagents import create_deep_agent
+from langchain.tools import ToolRuntime, tool
+
+
+@dataclass
+class Context:
+    user_id: str
+    api_key: str
+
+
+@tool
+def fetch_user_data(query: str, runtime: ToolRuntime[Context]) -&gt; str:
+    """Fetch data for the current user."""
+    user_id = runtime.context.user_id
+    return f"Data for user {user_id}: {query}"
+
+
+agent = create_deep_agent(
+    model="google_genai:gemini-3.6-flash",
+    tools=[fetch_user_data],
+    context_schema=Context,
+)
+
+result = agent.invoke(
+    {"messages": [{"role": "user", "content": "Get my recent activity"}]},
+    context=Context(user_id="user-123", api_key="sk-..."),
+)
+</code></pre>
+<pre><code class="language-python">from dataclasses import dataclass
+
+from deepagents import create_deep_agent
+from langchain.tools import ToolRuntime, tool
+
+
+@dataclass
+class Context:
+    user_id: str
+    api_key: str
+
+
+@tool
+def fetch_user_data(query: str, runtime: ToolRuntime[Context]) -&gt; str:
+    """Fetch data for the current user."""
+    user_id = runtime.context.user_id
+    return f"Data for user {user_id}: {query}"
+
+
+agent = create_deep_agent(
+    model="openai:gpt-5.5",
+    tools=[fetch_user_data],
+    context_schema=Context,
+)
+
+result = agent.invoke(
+    {"messages": [{"role": "user", "content": "Get my recent activity"}]},
+    context=Context(user_id="user-123", api_key="sk-..."),
+)
+</code></pre>
+<pre><code class="language-python">from dataclasses import dataclass
+
+from deepagents import create_deep_agent
+from langchain.tools import ToolRuntime, tool
+
+
+@dataclass
+class Context:
+    user_id: str
+    api_key: str
+
+
+@tool
+def fetch_user_data(query: str, runtime: ToolRuntime[Context]) -&gt; str:
+    """Fetch data for the current user."""
+    user_id = runtime.context.user_id
+    return f"Data for user {user_id}: {query}"
+
+
+agent = create_deep_agent(
+    model="anthropic:claude-sonnet-4-6",
+    tools=[fetch_user_data],
+    context_schema=Context,
+)
+
+result = agent.invoke(
+    {"messages": [{"role": "user", "content": "Get my recent activity"}]},
+    context=Context(user_id="user-123", api_key="sk-..."),
+)
+</code></pre>
+<pre><code class="language-python">from dataclasses import dataclass
+
+from deepagents import create_deep_agent
+from langchain.tools import ToolRuntime, tool
+
+
+@dataclass
+class Context:
+    user_id: str
+    api_key: str
+
+
+@tool
+def fetch_user_data(query: str, runtime: ToolRuntime[Context]) -&gt; str:
+    """Fetch data for the current user."""
+    user_id = runtime.context.user_id
+    return f"Data for user {user_id}: {query}"
+
+
+agent = create_deep_agent(
+    model="openrouter:z-ai/glm-5.2",
+    tools=[fetch_user_data],
+    context_schema=Context,
+)
+
+result = agent.invoke(
+    {"messages": [{"role": "user", "content": "Get my recent activity"}]},
+    context=Context(user_id="user-123", api_key="sk-..."),
+)
+</code></pre>
+<pre><code class="language-python">from dataclasses import dataclass
+
+from deepagents import create_deep_agent
+from langchain.tools import ToolRuntime, tool
+
+
+@dataclass
+class Context:
+    user_id: str
+    api_key: str
+
+
+@tool
+def fetch_user_data(query: str, runtime: ToolRuntime[Context]) -&gt; str:
+    """Fetch data for the current user."""
+    user_id = runtime.context.user_id
+    return f"Data for user {user_id}: {query}"
+
+
+agent = create_deep_agent(
+    model="fireworks:accounts/fireworks/models/glm-5p2",
+    tools=[fetch_user_data],
+    context_schema=Context,
+)
+
+result = agent.invoke(
+    {"messages": [{"role": "user", "content": "Get my recent activity"}]},
+    context=Context(user_id="user-123", api_key="sk-..."),
+)
+</code></pre>
+<pre><code class="language-python">from dataclasses import dataclass
+
+from deepagents import create_deep_agent
+from langchain.tools import ToolRuntime, tool
+
+
+@dataclass
+class Context:
+    user_id: str
+    api_key: str
+
+
+@tool
+def fetch_user_data(query: str, runtime: ToolRuntime[Context]) -&gt; str:
+    """Fetch data for the current user."""
+    user_id = runtime.context.user_id
+    return f"Data for user {user_id}: {query}"
+
+
+agent = create_deep_agent(
+    model="baseten:zai-org/GLM-5.2",
+    tools=[fetch_user_data],
+    context_schema=Context,
+)
+
+result = agent.invoke(
+    {"messages": [{"role": "user", "content": "Get my recent activity"}]},
+    context=Context(user_id="user-123", api_key="sk-..."),
+)
+</code></pre>
+<pre><code class="language-python">from dataclasses import dataclass
+
+from deepagents import create_deep_agent
+from langchain.tools import ToolRuntime, tool
+
+
+@dataclass
+class Context:
+    user_id: str
+    api_key: str
+
+
+@tool
+def fetch_user_data(query: str, runtime: ToolRuntime[Context]) -&gt; str:
+    """Fetch data for the current user."""
+    user_id = runtime.context.user_id
+    return f"Data for user {user_id}: {query}"
+
+
+agent = create_deep_agent(
+    model="ollama:north-mini-code-1.0",
+    tools=[fetch_user_data],
+    context_schema=Context,
+)
+
+result = agent.invoke(
+    {"messages": [{"role": "user", "content": "Get my recent activity"}]},
+    context=Context(user_id="user-123", api_key="sk-..."),
+)
+</code></pre>
+<p>运行时上下文<strong id="propagates-to-all-subagents">传播到所有子智能体</strong>。当子智能体运行时，它会接收与父代理相同的运行时上下文。有关每个子智能体上下文（命名空间键），请参阅<a href="subagents.html#context-management">子智能体</a>。</p>
+<h2 id="custom-state-schema">自定义状态模式</h2>
+<p>自定义状态模式需要 <code>deepagents&gt;=0.6.6</code>。</p>
+<p>当您的代理或中间件需要跟踪必须在整个代理生命周期中持续存在并在检查点中幸存的数据时，请使用自定义状态架构。自定义状态可以让您：</p>
+<ul>
+<li><strong id="track-state-across-the-full-run">跟踪整个运行过程中的状态</strong>：维护在模型调用和工具调用中存活的计数器、标志或累积值</li>
+<li><strong id="share-data-between-tools-and-middleware">在工具和中间件之间共享数据</strong>：工具可以将值写入状态，中间件挂钩可以读取它，反之亦然</li>
+<li><strong id="implement-cross-cutting-concerns">实现横切关注点</strong>：添加速率限制、使用跟踪或审核日志记录等功能，而无需修改核心代理逻辑</li>
+<li><strong id="pass-initial-values-at-invoke-time">在调用时传递初始值</strong>：每次运行开始时种子状态字段，然后让代理在执行期间更新它们</li>
+</ul>
+<p>当数据必须是代理可变图状态的一部分、通过线程设置检查点或通过 <code>runtime.state</code> 提供时，请使用 <code>state_schema</code>。对于不可变的每次运行输入（例如用户 ID、凭据或功能标志），首选 <a href="#runtime-context">运行时上下文</a>。</p>
+<p>自定义状态模式必须子类化 <a href="https://reference.langchain.com/python/deepagents/graph/DeepAgentState">DeepAgentState</a>。这保留了 <code>messages</code> 上的内置 <code>DeltaChannel</code> 减速器，随着对话时间的延长，检查点的增长保持线性。</p>
+<pre><code class="language-python">from deepagents import DeepAgentState, create_deep_agent
+from langchain.tools import ToolRuntime, tool
+
+
+class ResearchState(DeepAgentState):
+    page_url: str
+    file_urls: list[str]
+
+
+@tool
+def cite_page(runtime: ToolRuntime) -&gt; str:
+    """Return the current page URL."""
+    return runtime.state["page_url"]
+
+
+agent = create_deep_agent(
+    model="google_genai:gemini-3.6-flash",
+    tools=[cite_page],
+    state_schema=ResearchState,
+)
+
+result = agent.invoke(
+    {
+        "messages": [{"role": "user", "content": "Cite the current page"}],
+        "page_url": "https://example.com/report",
+        "file_urls": [],
+    },
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import DeepAgentState, create_deep_agent
+from langchain.tools import ToolRuntime, tool
+
+
+class ResearchState(DeepAgentState):
+    page_url: str
+    file_urls: list[str]
+
+
+@tool
+def cite_page(runtime: ToolRuntime) -&gt; str:
+    """Return the current page URL."""
+    return runtime.state["page_url"]
+
+
+agent = create_deep_agent(
+    model="openai:gpt-5.5",
+    tools=[cite_page],
+    state_schema=ResearchState,
+)
+
+result = agent.invoke(
+    {
+        "messages": [{"role": "user", "content": "Cite the current page"}],
+        "page_url": "https://example.com/report",
+        "file_urls": [],
+    },
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import DeepAgentState, create_deep_agent
+from langchain.tools import ToolRuntime, tool
+
+
+class ResearchState(DeepAgentState):
+    page_url: str
+    file_urls: list[str]
+
+
+@tool
+def cite_page(runtime: ToolRuntime) -&gt; str:
+    """Return the current page URL."""
+    return runtime.state["page_url"]
+
+
+agent = create_deep_agent(
+    model="anthropic:claude-sonnet-4-6",
+    tools=[cite_page],
+    state_schema=ResearchState,
+)
+
+result = agent.invoke(
+    {
+        "messages": [{"role": "user", "content": "Cite the current page"}],
+        "page_url": "https://example.com/report",
+        "file_urls": [],
+    },
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import DeepAgentState, create_deep_agent
+from langchain.tools import ToolRuntime, tool
+
+
+class ResearchState(DeepAgentState):
+    page_url: str
+    file_urls: list[str]
+
+
+@tool
+def cite_page(runtime: ToolRuntime) -&gt; str:
+    """Return the current page URL."""
+    return runtime.state["page_url"]
+
+
+agent = create_deep_agent(
+    model="openrouter:z-ai/glm-5.2",
+    tools=[cite_page],
+    state_schema=ResearchState,
+)
+
+result = agent.invoke(
+    {
+        "messages": [{"role": "user", "content": "Cite the current page"}],
+        "page_url": "https://example.com/report",
+        "file_urls": [],
+    },
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import DeepAgentState, create_deep_agent
+from langchain.tools import ToolRuntime, tool
+
+
+class ResearchState(DeepAgentState):
+    page_url: str
+    file_urls: list[str]
+
+
+@tool
+def cite_page(runtime: ToolRuntime) -&gt; str:
+    """Return the current page URL."""
+    return runtime.state["page_url"]
+
+
+agent = create_deep_agent(
+    model="fireworks:accounts/fireworks/models/glm-5p2",
+    tools=[cite_page],
+    state_schema=ResearchState,
+)
+
+result = agent.invoke(
+    {
+        "messages": [{"role": "user", "content": "Cite the current page"}],
+        "page_url": "https://example.com/report",
+        "file_urls": [],
+    },
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import DeepAgentState, create_deep_agent
+from langchain.tools import ToolRuntime, tool
+
+
+class ResearchState(DeepAgentState):
+    page_url: str
+    file_urls: list[str]
+
+
+@tool
+def cite_page(runtime: ToolRuntime) -&gt; str:
+    """Return the current page URL."""
+    return runtime.state["page_url"]
+
+
+agent = create_deep_agent(
+    model="baseten:zai-org/GLM-5.2",
+    tools=[cite_page],
+    state_schema=ResearchState,
+)
+
+result = agent.invoke(
+    {
+        "messages": [{"role": "user", "content": "Cite the current page"}],
+        "page_url": "https://example.com/report",
+        "file_urls": [],
+    },
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import DeepAgentState, create_deep_agent
+from langchain.tools import ToolRuntime, tool
+
+
+class ResearchState(DeepAgentState):
+    page_url: str
+    file_urls: list[str]
+
+
+@tool
+def cite_page(runtime: ToolRuntime) -&gt; str:
+    """Return the current page URL."""
+    return runtime.state["page_url"]
+
+
+agent = create_deep_agent(
+    model="ollama:north-mini-code-1.0",
+    tools=[cite_page],
+    state_schema=ResearchState,
+)
+
+result = agent.invoke(
+    {
+        "messages": [{"role": "user", "content": "Cite the current page"}],
+        "page_url": "https://example.com/report",
+        "file_urls": [],
+    },
+)
+</code></pre>
+<p>该模式与中间件贡献的状态模式合并。当 Deep Agents 为 <code>task</code> 工具编译它们时，传递给 <code>subagents=</code> 的声明性 <a href="https://reference.langchain.com/python/deepagents/middleware/subagents/SubAgent">SubAgent</a> 规范继承父级 <code>state_schema</code>。 <a href="https://reference.langchain.com/python/deepagents/middleware/subagents/CompiledSubAgent">CompiledSubAgent</a> 可运行对象和远程 <a href="https://reference.langchain.com/python/deepagents/middleware/async_subagents/AsyncSubAgent">AsyncSubAgent</a> 规范不会继承它，因为它们的图形已单独编译或托管。如果这些图需要相同的状态字段，请使用兼容的模式编译这些图。</p>
+<h2 id="context-compression">上下文压缩</h2>
+<p>每个 <code>create_deep_agent</code> 调用都包含内置上下文压缩。您无需添加中间件即可进行卸载或汇总工作。</p>
+<p>长时间运行的任务会产生大量的工具输出和较长的对话历史记录。上下文压缩可以减少代理工作记忆中的信息大小，同时保留与任务相关的细节。以下技术是确保传递给 LLM 的上下文保持在其上下文窗口限制内的内置机制：</p>
+<p><strong>卸载</strong></p>
+<p><a href="#offloading">查看相关页面</a></p>
+<p>大型工具输入和结果存储在文件系统中并替换为引用。</p>
+<p><strong>总结</strong></p>
+<p><a href="#summarization">查看相关页面</a></p>
+<p>当接近限制时，旧消息会被压缩到 LLM 生成的摘要中。</p>
+<p>要在压缩运行之前缩小每次发送的工具架构，请通过 <a href="profiles.html#harness-profiles">harness profile</a> (<code>excluded_tools</code>) 排除未使用的内置工具。参见【工具提示】(#tool-prompts)。</p>
+<h3 id="offloading">卸载</h3>
+<p>Deep Agent 使用<a href="overview.html#virtual-filesystem-access">内置文件系统工具</a> 自动卸载内容并根据需要搜索和检索卸载的内容。当工具调用输入或结果超过令牌阈值（默认 20,000）时，就会发生内容卸载：</p>
+<ol>
+<li><strong id="tool-call-inputs-exceed-20000-tokens">工具调用输入超过 20,000 个令牌</strong>：文件写入和编辑操作会在代理的对话历史记录中留下包含完整文件内容的工具调用。
+由于此内容已持久保存到文件系统中，因此通常是多余的。当会话上下文跨越模型可用窗口的 85% 时，深度智能体会截断旧的工具调用，将其替换为指向磁盘上文件的指针，并减小活动上下文的大小。</li>
+</ol>
+<p><img alt="卸载示例显示保存到磁盘的大输入以及截断版本用于工具调用" data-path="oss/images/deepagents/offloading-inputs.png" height="814" src="../assets/75c7005b4b8b2d5f.png" width="1091"/></p>
+<ol start="2">
+<li><strong id="tool-call-results-exceed-20000-tokens">工具调用结果超过 20,000 个令牌</strong>：当发生这种情况时，深度智能体会将响应卸载到配置的后端，并用文件路径引用和前 10 行的预览替换它。然后，代理可以根据需要重新阅读或搜索内容。</li>
+</ol>
+<p><img alt="显示大型工具响应的卸载示例，该响应被替换为有关卸载结果位置和结果前 10 行的消息" data-path="oss/images/deepagents/offloading-results.png" height="922" src="../assets/291ff09333a2163c.png" width="1360"/></p>
+<p>内置上下文压缩不会调整图像大小、降低图像分辨率或生成视觉嵌入。有关多模式输入、工具输出以及压缩如何与媒体交互，请参阅<a href="multimodal.html">多模式</a>。</p>
+<h3 id="summarization">总结</h3>
+<p>每个 <code>create_deep_agent</code> 调用都包含 <a href="customization.html#bare-stack">裸堆栈</a> 中的 <a href="https://reference.langchain.com/python/langchain/agents/middleware/summarization/SummarizationMiddleware"><code>SummarizationMiddleware</code></a>。当上下文大小超过模型的上下文窗口限制（例如 <code>max_input_tokens</code> 的 85%），并且没有更多上下文符合卸载条件时，深度智能体会自动汇总消息历史记录。</p>
+<p>这个过程有两个组成部分：</p>
+<ul>
+<li><strong id="in-context-summary">上下文摘要</strong>：LLM 生成对话的结构化摘要，包括会话意图、创建的工件和后续步骤，这会替换座席工作记忆中的完整对话历史记录。</li>
+<li><strong id="filesystem-preservation">文件系统保存</strong>：原始对话消息的文本呈现作为规范记录写入文件系统。</li>
+</ul>
+<p>这种双重方法确保代理保持对其目标和进度的了解（通过摘要），同时保留在需要时恢复文本详细信息的能力（通过文件系统搜索）。</p>
+<p><img alt="显示客服人员对话历史记录的摘要示例，其中压缩了多个步骤" data-path="oss/images/deepagents/summarization.png" height="587" src="../assets/1ae48e89f0207117.png" width="1000"/></p>
+<p><strong id="configuration">配置：</strong></p>
+<ul>
+<li>在<a href="https://docs.langchain.com/oss/python/langchain/models#model-profiles">模型配置文件</a> 中模型 <code>max_input_tokens</code> 的 85% 处触发</li>
+<li>保留 10% 的令牌作为最近的上下文</li>
+<li>如果模型配置文件不可用，则回落至 170,000 个令牌触发/保留 6 条消息</li>
+<li>如果任何模型调用引发标准 <a href="https://reference.langchain.com/python/langchain-core/exceptions/ContextOverflowError">ContextOverflowError</a>，深度智能体会立即回退到摘要并使用摘要 + 最近保留的消息重试</li>
+<li>较旧的消息由模型进行总结</li>
+</ul>
+<p>来自代理的<a href="streaming.html#llm-tokens">流令牌</a>通常包括汇总步骤生成的令牌。您可以使用相关元数据过滤掉这些令牌：</p>
+<pre><code class="language-python">for chunk in agent.stream(
+    {"messages": [...]},
+    stream_mode="messages",
+    version="v2",
+):
+    token, metadata = chunk["data"]
+    if metadata.get("lc_source") == "summarization":  # [!code highlight]
+        continue
+    else:
+        ...
+</code></pre>
+<h5 id="on-demand-compaction-tool">按需压缩工具</h5>
+<p>默认情况下，自动摘要会在达到上下文阈值时运行。另外，您可以为代理提供 <code>compact_conversation</code> <a href="https://docs.langchain.com/oss/python/langchain/tools">工具</a>，以便它可以按需触发压缩（例如在任务之间），而不是等待 85% 阈值。</p>
+<p>通过使用 <code>create_deep_agent</code> 上的 <code>middleware</code> 参数传递 <a href="https://reference.langchain.com/python/deepagents/middleware/summarization/create_summarization_tool_middleware"><code>create_summarization_tool_middleware</code></a> 来启用该工具。自定义中间件插入到<a href="customization.html#deep-agents-stack">深度智能体堆栈</a>中的<a href="https://reference.langchain.com/python/deepagents/middleware/patch_tool_calls/PatchToolCallsMiddleware"><code>PatchToolCallsMiddleware</code></a>之后：</p>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from deepagents.backends import StateBackend
+from deepagents.middleware.summarization import create_summarization_tool_middleware
+
+backend = StateBackend  # if using default backend
+
+model = "google_genai:gemini-3.6-flash"
+agent = create_deep_agent(
+    model=model,
+    middleware=[  # [!code highlight]
+        create_summarization_tool_middleware(model, backend),  # [!code highlight]
+    ],  # [!code highlight]
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from deepagents.backends import StateBackend
+from deepagents.middleware.summarization import create_summarization_tool_middleware
+
+backend = StateBackend  # if using default backend
+
+model = "openai:gpt-5.5"
+agent = create_deep_agent(
+    model=model,
+    middleware=[  # [!code highlight]
+        create_summarization_tool_middleware(model, backend),  # [!code highlight]
+    ],  # [!code highlight]
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from deepagents.backends import StateBackend
+from deepagents.middleware.summarization import create_summarization_tool_middleware
+
+backend = StateBackend  # if using default backend
+
+model = "anthropic:claude-sonnet-4-6"
+agent = create_deep_agent(
+    model=model,
+    middleware=[  # [!code highlight]
+        create_summarization_tool_middleware(model, backend),  # [!code highlight]
+    ],  # [!code highlight]
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from deepagents.backends import StateBackend
+from deepagents.middleware.summarization import create_summarization_tool_middleware
+
+backend = StateBackend  # if using default backend
+
+model = "openrouter:z-ai/glm-5.2"
+agent = create_deep_agent(
+    model=model,
+    middleware=[  # [!code highlight]
+        create_summarization_tool_middleware(model, backend),  # [!code highlight]
+    ],  # [!code highlight]
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from deepagents.backends import StateBackend
+from deepagents.middleware.summarization import create_summarization_tool_middleware
+
+backend = StateBackend  # if using default backend
+
+model = "fireworks:accounts/fireworks/models/glm-5p2"
+agent = create_deep_agent(
+    model=model,
+    middleware=[  # [!code highlight]
+        create_summarization_tool_middleware(model, backend),  # [!code highlight]
+    ],  # [!code highlight]
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from deepagents.backends import StateBackend
+from deepagents.middleware.summarization import create_summarization_tool_middleware
+
+backend = StateBackend  # if using default backend
+
+model = "baseten:zai-org/GLM-5.2"
+agent = create_deep_agent(
+    model=model,
+    middleware=[  # [!code highlight]
+        create_summarization_tool_middleware(model, backend),  # [!code highlight]
+    ],  # [!code highlight]
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from deepagents.backends import StateBackend
+from deepagents.middleware.summarization import create_summarization_tool_middleware
+
+backend = StateBackend  # if using default backend
+
+model = "ollama:north-mini-code-1.0"
+agent = create_deep_agent(
+    model=model,
+    middleware=[  # [!code highlight]
+        create_summarization_tool_middleware(model, backend),  # [!code highlight]
+    ],  # [!code highlight]
+)
+</code></pre>
+<p>添加压缩工具不会在模型上下文限制的 85% 时禁用自动摘要。两者共享相同的摘要引擎和状态。</p>
+<p>有关详细信息，请参阅 API 参考中的 <a href="https://reference.langchain.com/python/deepagents/middleware/summarization/SummarizationToolMiddleware"><code>SummarizationToolMiddleware</code></a> 和 <a href="https://reference.langchain.com/python/deepagents/middleware/summarization/create_summarization_tool_middleware"><code>create_summarization_tool_middleware</code></a>。</p>
+<h2 id="context-isolation-with-subagents">与子智能体的上下文隔离</h2>
+<p>子智能体解决了<strong id="context-bloat-problem">上下文膨胀问题</strong>。当主代理使用具有大量输出的工具（网络搜索、文件读取、数据库查询）时，上下文窗口很快就会填满。子智能体隔离了这项工作——主代理仅接收最终结果，而不是产生该结果的数十个工具调用。您还可以独立于主代理配置每个子智能体（例如，模型、工具、系统提示和技能）。</p>
+<p><strong id="how-it-works">它是如何工作的：</strong></p>
+<ul>
+<li>主代理有一个 <code>task</code> 工具来委派工作</li>
+<li>子智能体以其自己的新上下文运行</li>
+<li>子智能体自主执行直至完成</li>
+<li>子智能体向主代理返回单个最终报告</li>
+<li>主要代理的上下文保持干净</li>
+</ul>
+<p><strong>最佳实践：</strong></p>
+<ol>
+<li>
+<p><strong id="delegate-complex-tasks">委派复杂任务</strong>：使用子智能体进行多步骤工作，这会扰乱主代理的上下文。</p>
+</li>
+<li>
+<p><strong id="keep-subagent-responses-concise">保持子智能体响应简洁</strong>：指示子智能体返回摘要，而不是原始数据：</p>
+</li>
+</ol>
+<pre><code class="language-python">research_subagent = {
+    "name": "researcher",
+    "description": "Conducts research on a topic",
+    "system_prompt": """You are a research assistant.
+    IMPORTANT: Return only the essential summary (under 500 words).
+    Do NOT include raw search results or detailed tool outputs.""",
+    "tools": [web_search],
+}
+</code></pre>
+<ol start="3">
+<li><strong id="use-the-filesystem-for-large-data">使用文件系统处理大数据</strong>：子智能体可以将结果写入文件；主代理读取它需要的内容。</li>
+</ol>
+<p>有关配置，请参阅<a href="subagents.html">子智能体</a>；有关运行时上下文传播和每个子智能体命名空间，请参阅<a href="subagents.html#context-management">上下文管理</a>。</p>
+<h2 id="long-term-memory">长期记忆</h2>
+<p>使用默认文件系统时，深度智能体将其工作内存文件存储在代理状态中，该状态仅在单个线程中持续存在。长期记忆使您的深度智能体能够跨不同线程和对话保存信息。深度智能体可以使用长期记忆来存储用户偏好、积累的知识、研究进展或任何应在单个会话之后持续存在的信息。</p>
+<p>要使用长期内存，您必须使用 <code>CompositeBackend</code> 将特定路径（通常为 <code>/memories/</code>）路由到 LangGraph Store，从而提供持久的跨线程持久性。 <code>CompositeBackend</code> 是一种混合存储系统，其中一些文件无限期地保留，而其他文件则保留在单个线程范围内。</p>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from deepagents.backends import CompositeBackend, StateBackend, StoreBackend
+from langgraph.store.memory import InMemoryStore
+
+store = InMemoryStore()
+
+agent = create_deep_agent(
+    model="google_genai:gemini-3.6-flash",
+    store=store,
+    backend=CompositeBackend(
+        default=StateBackend(),
+        routes={
+            "/memories/": StoreBackend(namespace=lambda _rt: ("memories",)),
+        },
+    ),
+    system_prompt="""When users tell you their preferences, save them to
+    /memories/user_preferences.txt so you remember them in future conversations.""",
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from deepagents.backends import CompositeBackend, StateBackend, StoreBackend
+from langgraph.store.memory import InMemoryStore
+
+store = InMemoryStore()
+
+agent = create_deep_agent(
+    model="openai:gpt-5.5",
+    store=store,
+    backend=CompositeBackend(
+        default=StateBackend(),
+        routes={
+            "/memories/": StoreBackend(namespace=lambda _rt: ("memories",)),
+        },
+    ),
+    system_prompt="""When users tell you their preferences, save them to
+    /memories/user_preferences.txt so you remember them in future conversations.""",
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from deepagents.backends import CompositeBackend, StateBackend, StoreBackend
+from langgraph.store.memory import InMemoryStore
+
+store = InMemoryStore()
+
+agent = create_deep_agent(
+    model="anthropic:claude-sonnet-4-6",
+    store=store,
+    backend=CompositeBackend(
+        default=StateBackend(),
+        routes={
+            "/memories/": StoreBackend(namespace=lambda _rt: ("memories",)),
+        },
+    ),
+    system_prompt="""When users tell you their preferences, save them to
+    /memories/user_preferences.txt so you remember them in future conversations.""",
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from deepagents.backends import CompositeBackend, StateBackend, StoreBackend
+from langgraph.store.memory import InMemoryStore
+
+store = InMemoryStore()
+
+agent = create_deep_agent(
+    model="openrouter:z-ai/glm-5.2",
+    store=store,
+    backend=CompositeBackend(
+        default=StateBackend(),
+        routes={
+            "/memories/": StoreBackend(namespace=lambda _rt: ("memories",)),
+        },
+    ),
+    system_prompt="""When users tell you their preferences, save them to
+    /memories/user_preferences.txt so you remember them in future conversations.""",
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from deepagents.backends import CompositeBackend, StateBackend, StoreBackend
+from langgraph.store.memory import InMemoryStore
+
+store = InMemoryStore()
+
+agent = create_deep_agent(
+    model="fireworks:accounts/fireworks/models/glm-5p2",
+    store=store,
+    backend=CompositeBackend(
+        default=StateBackend(),
+        routes={
+            "/memories/": StoreBackend(namespace=lambda _rt: ("memories",)),
+        },
+    ),
+    system_prompt="""When users tell you their preferences, save them to
+    /memories/user_preferences.txt so you remember them in future conversations.""",
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from deepagents.backends import CompositeBackend, StateBackend, StoreBackend
+from langgraph.store.memory import InMemoryStore
+
+store = InMemoryStore()
+
+agent = create_deep_agent(
+    model="baseten:zai-org/GLM-5.2",
+    store=store,
+    backend=CompositeBackend(
+        default=StateBackend(),
+        routes={
+            "/memories/": StoreBackend(namespace=lambda _rt: ("memories",)),
+        },
+    ),
+    system_prompt="""When users tell you their preferences, save them to
+    /memories/user_preferences.txt so you remember them in future conversations.""",
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from deepagents.backends import CompositeBackend, StateBackend, StoreBackend
+from langgraph.store.memory import InMemoryStore
+
+store = InMemoryStore()
+
+agent = create_deep_agent(
+    model="ollama:north-mini-code-1.0",
+    store=store,
+    backend=CompositeBackend(
+        default=StateBackend(),
+        routes={
+            "/memories/": StoreBackend(namespace=lambda _rt: ("memories",)),
+        },
+    ),
+    system_prompt="""When users tell you their preferences, save them to
+    /memories/user_preferences.txt so you remember them in future conversations.""",
+)
+</code></pre>
+<p>您不需要使用文件预先填充 <code>/memories/</code>。您提供后端配置、存储和系统提示指令，告诉代理“保存什么”和“在哪里”。例如，您可以提示代理将首选项存储在 <code>/memories/preferences.txt</code> 中。该路径开始为空，当用户共享值得记住的信息时，代理会使用其文件系统工具（<code>write_file</code>、<code>edit_file</code>）按需创建文件。</p>
+<p>要预先植入内存，请在 LangSmith 上部署时使用 <a href="https://docs.langchain.com/langsmith/custom-store">Store API</a>。有关设置和用例，请参阅<a href="memory.html">长期存储器</a>。</p>
+<h2 id="best-practices">最佳实践</h2>
+<ol>
+<li><strong id="start-with-the-right-input-context">从正确的输入上下文开始</strong>：为始终相关的约定保持最小的内存；使用专注技能来实现特定任务的能力。</li>
+<li><strong id="leverage-subagents-for-heavy-work">利用子智能体完成繁重的工作</strong>：委派多步骤、输出繁重的任务，以保持主代理的上下文干净。</li>
+<li><strong id="adjust-subagent-outputs-in-configuration">在配置中调整子智能体输出</strong>：如果您在调试时注意到子智能体生成长输出，则可以向子智能体的 <code>system_prompt</code> 添加指导以创建摘要和综合结果。</li>
+<li><strong id="use-the-filesystem">使用文件系统</strong>：将大型输出保留到文件（例如子智能体写入或<a href="#offloading">自动卸载</a>），以便活动上下文保持较小；当模型需要细节时，可以使用 <code>read_file</code> 和 <code>grep</code> 拉取片段。</li>
+<li><strong id="document-long-term-memory-structure">记录长期记忆结构</strong>：告诉代理 <code>/memories/</code> 中存在什么以及如何使用它。</li>
+<li><strong id="pass-runtime-context-for-tools">传递工具的运行时上下文</strong>：使用 <code>context</code> 来获取用户元数据、API 密钥以及工具所需的其他静态配置。</li>
+</ol>
+<h2 id="related-resources">相关资源</h2>
+<ul>
+<li><a href="overview.html">Harness</a>：上下文管理概述、卸载、
+总结* <a href="multimodal.html">多模态</a>：图像、音频、视频和多模态工具输出</li>
+<li><a href="subagents.html">Subagents</a>：上下文隔离，运行时上下文传播</li>
+<li><a href="memory.html">长期记忆</a>：跨线程持久化</li>
+<li>
+<ul>
+<li><a href="https://docs.langchain.com/oss/openwiki/overview">OpenWiki</a>：编程智能体通过 <code>AGENTS.md</code> 找到的存储库 wiki</li>
+</ul>
+</li>
+<li><a href="skills.html">技能</a>：渐进式披露和技能创作</li>
+<li><a href="backends.html">后端</a>：文件系统后端和 CompositeBackend</li>
+<li><a href="https://docs.langchain.com/oss/python/concepts/context">上下文概念概述</a>：上下文类型和生命周期</li>
+</ul>
+<hr/>
+<div classname="source-links">
+
+
+
+
+[将这些文档](https://docs.langchain.com/use-these-docs) 通过 MCP 连接到 Claude、VSCode 等以获得实时答案。
+
+
+
+
+
+
+[在 GitHub 上编辑此页面](https://github.com/langchain-ai/docs/edit/main/src/oss/deepagents/context-engineering.mdx) 或 [提交问题](https://github.com/langchain-ai/docs/issues/new/choose)。
+
+
+
+</div><footer>非官方中文离线整理版。代码与原图保留；在线演示需要联网。© LangChain · <a href="../LICENSE">MIT 许可</a></footer></main><nav class="page-toc" aria-label="本页目录"><h2>本页目录</h2><ul><li><a href="#types-of-context">上下文类型</a></li><li><a href="#input-context">输入上下文</a></li><li><a href="#runtime-context">运行时上下文</a></li><li><a href="#custom-state-schema">自定义状态模式</a></li><li><a href="#context-compression">上下文压缩</a></li><li><a href="#context-isolation-with-subagents">与子智能体的上下文隔离</a></li><li><a href="#long-term-memory">长期记忆</a></li><li><a href="#best-practices">最佳实践</a></li><li><a href="#related-resources">相关资源</a></li></ul></nav></div></html>

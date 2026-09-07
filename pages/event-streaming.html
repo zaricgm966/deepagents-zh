@@ -1,0 +1,213 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>事件流 · Deep Agents</title><link rel="stylesheet" href="../style.css"><aside><a class="brand" href="../index.html">Deep Agents<span>中文离线文档</span></a><h3>入门与选型</h3><a href="overview.html">Deep Agents 概览</a><a href="quickstart.html">快速入门</a><a href="models.html">模型选择</a><a href="comparison.html">与 Claude Agent SDK 的对比</a><a href="code-link.html">Deep Agents Code 简介</a><h3>配置与核心能力</h3><a href="customization.html">自定义 Deep Agents</a><a href="tools.html">工具</a><a href="profiles.html">配置档案</a><a href="backends.html">文件系统后端</a><a href="interpreters.html">代码解释器</a><a href="sandboxes.html">沙箱</a><a href="memory.html">记忆</a><a href="skills.html">技能</a><a href="permissions.html">权限</a><a href="human-in-the-loop.html">人工介入</a><a href="multimodal.html">多模态输入与输出</a><h3>任务与上下文管理</h3><a href="context-engineering.html">上下文工程</a><a href="subagents.html">子智能体</a><a href="dynamic-subagents.html">动态子智能体</a><a href="async-subagents.html">异步子智能体</a><a href="streaming.html">流式输出</a><a href="event-streaming.html">事件流</a><a href="fault-tolerance.html">容错</a><a href="retrieval.html">检索</a><a href="rubric.html">评分标准</a><h3>应用教程</h3><a href="data-analysis.html">构建数据分析智能体</a><a href="content-builder.html">构建内容创作智能体</a><a href="deep-research.html">构建深度研究智能体</a><a href="rag.html">构建检索增强生成（RAG）智能体</a><h3>协议与集成</h3><a href="mcp.html">模型上下文协议（MCP）</a><a href="acp.html">智能体客户端协议（ACP）</a><a href="a2a.html">A2A 服务器</a><h3>前端开发</h3><a href="frontend--overview.html">前端集成概览</a><a href="frontend--sandbox.html">前端沙箱</a><a href="frontend--subagent-streaming.html">前端子智能体流式输出</a><a href="frontend--todo-list.html">前端待办事项列表</a><h3>生产环境与知识库</h3><a href="going-to-production.html">部署到生产环境</a><a href="openwiki.html">OpenWiki</a><h3>Coding Agent 源码解析</h3><a href="codex-source-analysis.html">Codex 源码解析</a><a href="claude-code-source-analysis.html">Claude Code 源码解析：公开 SDK 与运行时边界</a><h3>版本更新</h3><a href="changelog-py.html">Python 更新日志</a><a href="changelog-js.html">JavaScript / TypeScript 更新日志</a></aside><script src="../sidebar.js"></script><div class="reading-layout"><main><div class="meta">中文机器翻译 · 文档快照 2026-09-07 · <a href="https://docs.langchain.com/oss/python/deepagents/event-streaming">在线原文</a> · <a href="../markdown/event-streaming.md">编辑中文 Markdown</a> · <a href="../original-markdown/event-streaming.md">英文原稿</a></div><h1 id="event-streaming">事件流</h1>
+<blockquote>
+<p>流式传输子智能体、消息、工具调用和深度智能体的最终输出。</p>
+</blockquote>
+<p>本页涵盖了特定于深度智能体的流式传输问题 - 最重要的是，通过 <code>stream.subagents</code> 从委托子智能体进行流式传输。对于一般代理流（<code>stream.messages</code>、<code>stream.values</code>、工具调用、自定义更新），请参阅<a href="https://docs.langchain.com/oss/python/langchain/event-streaming">LangChain事件流</a>。</p>
+<h2 id="stream-subagents">流子智能体</h2>
+<p>深度智能体在 LangGraph 流之上添加了子智能体投影。当您希望每个委托的 <code>task</code> 调用有一个流句柄时，请使用 <code>stream.subagents</code>。投影是轻量级的：它首先发现子智能体任务，并且仅当您在子智能体句柄上访问消息、工具调用和价值流时才会打开它们。</p>
+<p>每个句柄的 <code>name</code> 是子智能体的配置名称：协调器在调用 <code>task</code> 工具时传递的 <code>subagent_type</code>。 Deep Agents 将该名称绑定到委托运行，因此您在子智能体规范中定义的相同标签就是您在流中过滤和路由的标签。</p>
+<pre><code class="language-python">stream = agent.stream_events(
+    {
+        "messages": [{"role": "user", "content": "Write me a haiku about the sea"}],
+    },
+    version="v3",
+)
+
+subagent_names: list[str] = []
+for subagent in stream.subagents:
+    print(subagent.name, subagent.path, subagent.status)
+
+    for message in subagent.messages:
+        print(message.text)
+
+    subagent_names.append(subagent.name)
+</code></pre>
+<h2 id="subagent-stream-fields">子智能体流字段</h2>
+<p>每个子智能体流都公开与父运行相同类型的投影，例如消息、工具调用、嵌套子智能体和最终输出。一般的父运行流模型请参见<a href="https://docs.langchain.com/oss/python/langchain/event-streaming">LangChain事件流</a>。</p>
+<p>Python 使用 Snake_case 投影名称，例如 <code>tool_calls</code>。每个子智能体流可以公开 <code>.messages</code>、<code>.tool_calls</code>、<code>.values</code>、<code>.subagents</code> 和 <code>.output</code>。</p>
+<table>
+<thead>
+<tr>
+<th>场地</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td>子智能体名称，取自协调器在其 <code>task</code> 调用中选择的 <code>subagent_type</code>。</td>
+</tr>
+<tr>
+<td><code>messages</code></td>
+<td>子智能体发出的消息。</td>
+</tr>
+<tr>
+<td><code>subagents</code></td>
+<td>嵌套子智能体调用。</td>
+</tr>
+<tr>
+<td><code>output</code></td>
+<td>最终子智能体状态，或委派任务的完成信号。</td>
+</tr>
+<tr>
+<td><code>path</code></td>
+<td>子智能体流的命名空间路径。</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td>生命周期状态，例如 <code>started</code>、<code>completed</code>、<code>failed</code> 或 <code>interrupted</code>。</td>
+</tr>
+<tr>
+<td><code>tool_calls</code></td>
+<td>工具调用范围为子智能体。</td>
+</tr>
+</tbody>
+</table>
+<h2 id="track-subagent-lifecycle">跟踪子智能体生命周期</h2>
+<p>当您只需要显示哪些子智能体已启动和完成时，请使用 <code>stream.subagents</code>。您不需要订阅消息或价值流，除非您访问单个子智能体上的这些预测。</p>
+<pre><code class="language-python">stream = agent.stream_events(input, version="v3")
+
+running = 0
+completed = 0
+failed = 0
+
+for subagent in stream.subagents:
+    running += 1
+    print(f"{subagent.name}: started")
+
+    try:
+        _ = subagent.output
+        running -= 1
+        completed += 1
+        print(f"{subagent.name}: completed")
+    except Exception:
+        running -= 1
+        failed += 1
+        print(f"{subagent.name}: failed")
+</code></pre>
+<h2 id="stream-messages">流式传输消息</h2>
+<p>深度智能体可以从协调器代理和委派的子智能体发出消息。对顶级消息使用 <code>stream.messages</code>，对每个委派的子智能体使用 <code>subagent.messages</code>。</p>
+<pre><code class="language-python">stream = agent.stream_events(input, version="v3")
+
+coordinator_messages: list[str] = []
+for message in stream.messages:
+    print("[coordinator]", message.text)
+    coordinator_messages.append(message.text)
+
+for subagent in stream.subagents:
+    for message in subagent.messages:
+        print(f"[{subagent.name}]", message.text)
+</code></pre>
+<h2 id="stream-tool-calls">流工具调用</h2>
+<p>深度智能体在代理树的每个级别公开工具调用。将顶级 <code>stream.tool_calls</code> 用于协调器工具，将每个 <code>subagent.tool_calls</code> 用于委派工作。</p>
+<pre><code class="language-python">stream = agent.stream_events(input, version="v3")
+
+coordinator_tool_names: list[str] = []
+for call in stream.tool_calls:
+    print("[coordinator tool]", call.tool_name, call.input)
+    print(call.completed, call.error)
+    coordinator_tool_names.append(call.tool_name)
+
+for subagent in stream.subagents:
+    for call in subagent.tool_calls:
+        print(f"[{subagent.name} tool]", call.tool_name, call.input)
+        for delta in call.output_deltas:
+            print(delta, end="", flush=True)
+
+        if call.completed and call.error is None:
+            print(call.output)
+        elif call.error is not None:
+            print(call.error)
+</code></pre>
+<h2 id="stream-nested-work">流式嵌套工作</h2>
+<p>您可以递归到子智能体流以观察嵌套的子智能体、消息和工具调用。</p>
+<pre><code class="language-python">stream = agent.stream_events(input, version="v3")
+
+subagent_names: list[str] = []
+for subagent in stream.subagents:
+    print(f"subagent {subagent.name}: {subagent.status}")
+
+    for tool_call in subagent.tool_calls:
+        print(f"{tool_call.tool_name}({tool_call.input})")
+        for delta in tool_call.output_deltas:
+            print(delta, end="", flush=True)
+
+    for nested in subagent.subagents:
+        print(f"nested subagent {nested.name}: {nested.status}")
+
+    subagent_names.append(subagent.name)
+</code></pre>
+<h2 id="consume-concurrently">同时消费</h2>
+<p>协调器和子智能体的输出经常交错。当您需要实时 UI 更新时，同时使用投影。</p>
+<p>对于异步代码中的并发消耗，请将 <code>astream_events</code> 与 <code>asyncio.gather</code> 结合使用：</p>
+<pre><code class="language-py">import asyncio
+
+stream = await agent.astream_events(input, version="v3")
+
+async def consume_coordinator():
+    async for message in stream.messages:
+        print("[coordinator]", await message.text)
+
+async def consume_subagents():
+    async for subagent in stream.subagents:
+        async for message in subagent.messages:
+            print(f"[{subagent.name}]", await message.text)
+
+await asyncio.gather(consume_coordinator(), consume_subagents())
+</code></pre>
+<p>对于同步代码，请改用 <code>stream.interleave(...)</code>：</p>
+<pre><code class="language-python">stream = agent.stream_events(input, version="v3")
+
+for name, item in stream.interleave("messages", "subagents"):
+    if name == "messages":
+        print("[coordinator]", item.text)
+    else:
+        for message in item.messages:
+            print(f"[{item.name}]", message.text)
+</code></pre>
+<p>当您需要协调器和所有子智能体之间的准确到达顺序时，请迭代原始协议事件并使用 <code>namespace</code> 来识别源：</p>
+<pre><code class="language-python">stream = agent.stream_events(input, version="v3")
+
+text_deltas: list[str] = []
+for event in stream:
+    if event.get("method") != "messages":
+        continue
+
+    payload = event["params"]["data"][0]
+    if not isinstance(payload, dict):
+        continue
+    if payload.get("event") != "content-block-delta":
+        continue
+
+    block = payload.get("delta") or {}
+    if block.get("type") == "text-delta":
+        source = "subagent" if event["params"]["namespace"] else "coordinator"
+        print(f"[{source}] {block['text']}")
+        text_deltas.append(block["text"])
+</code></pre>
+<h2 id="subagents-versus-subgraphs">子智能体与子图</h2>
+<p><code>stream.subgraphs</code> 显示图执行结构。 <code>stream.subagents</code> 显示产品级深度智能体任务委派。将 <code>stream.subagents</code> 用于面向用户的 UI，因为它隐藏内部图形节点并直接公开子智能体概念。</p>
+<h2 id="related">有关的</h2>
+<ul>
+<li><a href="https://docs.langchain.com/oss/python/langchain/event-streaming">LangChain事件流</a>涵盖了一般代理消息和工具调用流概念。</li>
+<li><a href="frontend--subagent-streaming.html">子智能体前端流</a> 显示将协调器消息与子智能体卡分开的 UI 模式。</li>
+<li><a href="https://docs.langchain.com/oss/python/langgraph/event-streaming">LangGraph Event Streaming</a> 涵盖了底层图流模型。</li>
+</ul>
+<hr/>
+<div classname="source-links">
+
+
+
+
+[将这些文档](https://docs.langchain.com/use-these-docs) 通过 MCP 连接到 Claude、VSCode 等以获得实时答案。
+
+
+
+
+
+
+[在 GitHub 上编辑此页面](https://github.com/langchain-ai/docs/edit/main/src/oss/deepagents/event-streaming.mdx) 或 [提交问题](https://github.com/langchain-ai/docs/issues/new/choose)。
+
+
+
+</div><footer>非官方中文离线整理版。代码与原图保留；在线演示需要联网。© LangChain · <a href="../LICENSE">MIT 许可</a></footer></main><nav class="page-toc" aria-label="本页目录"><h2>本页目录</h2><ul><li><a href="#stream-subagents">流子智能体</a></li><li><a href="#subagent-stream-fields">子智能体流字段</a></li><li><a href="#track-subagent-lifecycle">跟踪子智能体生命周期</a></li><li><a href="#stream-messages">流式传输消息</a></li><li><a href="#stream-tool-calls">流工具调用</a></li><li><a href="#stream-nested-work">流式嵌套工作</a></li><li><a href="#consume-concurrently">同时消费</a></li><li><a href="#subagents-versus-subgraphs">子智能体与子图</a></li><li><a href="#related">有关的</a></li></ul></nav></div></html>

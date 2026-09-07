@@ -1,0 +1,132 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>前端集成概览 · Deep Agents</title><link rel="stylesheet" href="../style.css"><aside><a class="brand" href="../index.html">Deep Agents<span>中文离线文档</span></a><h3>入门与选型</h3><a href="overview.html">Deep Agents 概览</a><a href="quickstart.html">快速入门</a><a href="models.html">模型选择</a><a href="comparison.html">与 Claude Agent SDK 的对比</a><a href="code-link.html">Deep Agents Code 简介</a><h3>配置与核心能力</h3><a href="customization.html">自定义 Deep Agents</a><a href="tools.html">工具</a><a href="profiles.html">配置档案</a><a href="backends.html">文件系统后端</a><a href="interpreters.html">代码解释器</a><a href="sandboxes.html">沙箱</a><a href="memory.html">记忆</a><a href="skills.html">技能</a><a href="permissions.html">权限</a><a href="human-in-the-loop.html">人工介入</a><a href="multimodal.html">多模态输入与输出</a><h3>任务与上下文管理</h3><a href="context-engineering.html">上下文工程</a><a href="subagents.html">子智能体</a><a href="dynamic-subagents.html">动态子智能体</a><a href="async-subagents.html">异步子智能体</a><a href="streaming.html">流式输出</a><a href="event-streaming.html">事件流</a><a href="fault-tolerance.html">容错</a><a href="retrieval.html">检索</a><a href="rubric.html">评分标准</a><h3>应用教程</h3><a href="data-analysis.html">构建数据分析智能体</a><a href="content-builder.html">构建内容创作智能体</a><a href="deep-research.html">构建深度研究智能体</a><a href="rag.html">构建检索增强生成（RAG）智能体</a><h3>协议与集成</h3><a href="mcp.html">模型上下文协议（MCP）</a><a href="acp.html">智能体客户端协议（ACP）</a><a href="a2a.html">A2A 服务器</a><h3>前端开发</h3><a href="frontend--overview.html">前端集成概览</a><a href="frontend--sandbox.html">前端沙箱</a><a href="frontend--subagent-streaming.html">前端子智能体流式输出</a><a href="frontend--todo-list.html">前端待办事项列表</a><h3>生产环境与知识库</h3><a href="going-to-production.html">部署到生产环境</a><a href="openwiki.html">OpenWiki</a><h3>Coding Agent 源码解析</h3><a href="codex-source-analysis.html">Codex 源码解析</a><a href="claude-code-source-analysis.html">Claude Code 源码解析：公开 SDK 与运行时边界</a><h3>版本更新</h3><a href="changelog-py.html">Python 更新日志</a><a href="changelog-js.html">JavaScript / TypeScript 更新日志</a></aside><script src="../sidebar.js"></script><div class="reading-layout"><main><div class="meta">中文机器翻译 · 文档快照 2026-09-07 · <a href="https://docs.langchain.com/oss/python/deepagents/frontend/overview">在线原文</a> · <a href="../markdown/frontend--overview.md">编辑中文 Markdown</a> · <a href="../original-markdown/frontend--overview.md">英文原稿</a></div><h1 id="overview">前端集成概览</h1>
+<blockquote>
+<p>构建显示实时子智能体流、任务进度和深度智能体沙箱的 UI</p>
+</blockquote>
+<p>构建实时可视化深度智能体工作流程的前端。这些模式展示了如何从使用 <code>createDeepAgent</code> 创建的代理中呈现子智能体进度、任务规划、流内容和类似 IDE 的沙箱体验。</p>
+<p>当 UI 使委托可见时，深度智能体最为有用。 LangChain SDK 没有显示单个不透明的助手气泡，而是公开了协调器、子智能体发现、自定义状态和沙箱支持的工件，以便用户可以检查长时间运行的任务是如何分解和完成的。</p>
+<p>这些模式使用 v1 前端 SDK 包。如果您使用的是早期版本，请参阅 <a href="https://github.com/langchain-ai/langgraphjs/blob/main/libs/sdk-react/docs/v1-migration.md">React</a>、<a href="https://github.com/langchain-ai/langgraphjs/blob/main/libs/sdk-vue/docs/v1-migration.md">Vue</a>、<a href="https://github.com/langchain-ai/langgraphjs/blob/main/libs/sdk-svelte/docs/v1-migration.md">Svelte</a> 和 <a href="https://github.com/langchain-ai/langgraphjs/blob/main/libs/sdk-angular/docs/v1-migration.md">Angular</a> 的迁移指南。</p>
+<h2 id="architecture">建筑学</h2>
+<p>深度智能体使用协调员-工作人员架构。主代理计划任务并将其委托给专门的子智能体，每个子智能体独立运行。在前端，v1 流句柄在根流上显示协调器消息，并公开作用域子智能体视图的子智能体发现快照。</p>
+<pre><code class="language-mermaid">%%{
+  init: {
+    "fontFamily": "monospace",
+    "flowchart": {
+      "curve": "curve"
+    }
+  }
+}%%
+graph LR
+  FRONTEND["useStream()"]
+  SELECTORS["selector helpers"]
+  BACKEND["createDeepAgent()"]
+  SUB1["Subagent A"]
+  SUB2["Subagent B"]
+
+  BACKEND --"stream"--&gt; FRONTEND
+  FRONTEND --"scope by subagent"--&gt; SELECTORS
+  SELECTORS --&gt; SUB1
+  SELECTORS --&gt; SUB2
+  FRONTEND --"submit"--&gt; BACKEND
+  BACKEND --"delegate"--&gt; SUB1
+  BACKEND --"delegate"--&gt; SUB2
+  SUB1 --"result"--&gt; BACKEND
+  SUB2 --"result"--&gt; BACKEND
+
+  classDef blueHighlight fill:#E5F4FF,stroke:#006DDD,color:#030710;
+  classDef greenHighlight fill:#F6FFDB,stroke:#6E8900,color:#2E3900;
+  classDef purpleHighlight fill:#EBD0F0,stroke:#885270,color:#441E33;
+  class FRONTEND,SELECTORS blueHighlight;
+  class BACKEND greenHighlight;
+  class SUB1,SUB2 purpleHighlight;
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+
+agent = create_deep_agent(
+    model="google_genai:gemini-3.6-flash",
+    tools=[get_weather],
+    system_prompt="You are a helpful assistant",
+    subagents=[
+        {
+            "name": "researcher",
+            "description": "Research assistant",
+            "system_prompt": "You are a research assistant.",
+        }
+    ],
+)
+</code></pre>
+<p>在前端，以与 <code>createAgent</code> 相同的方式连接 <a href="https://reference.langchain.com/javascript/langchain-react/index/useStream"><code>useStream</code></a>。传递<a href="https://docs.langchain.com/oss/python/langchain/frontend/overview">类型参数</a>以获得类型安全的流状态。深度智能体模式使用 <code>stream.subagents</code>、选择器帮助器（例如 <code>useMessages(stream, subagent)</code>）以及自定义状态值（例如 <code>stream.values.todos</code>）来呈现特定于子智能体的 UI。</p>
+<pre><code class="language-ts">function App() {
+  const stream = useStream&lt;typeof agent&gt;({
+    apiUrl: "http://localhost:2024",
+    assistantId: "agent",
+  });
+
+  // Deep agent state beyond messages
+  const todos = stream.values?.todos;
+  const subagents = [...stream.subagents.values()];
+}
+</code></pre>
+<h2 id="what-the-sdk-exposes">SDK公开了什么</h2>
+<p>深度智能体 UI 通常需要的不仅仅是最终答案。前端 SDK 为您提供了用户关心的运行部分的结构化投影：</p>
+<table>
+<thead>
+<tr>
+<th>投影</th>
+<th>用它来</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>stream.messages</code></td>
+<td>协调员对话和最终综合。</td>
+</tr>
+<tr>
+<td><code>stream.subagents</code></td>
+<td>实时发现专业工作人员，包括状态和任务元数据。</td>
+</tr>
+<tr>
+<td><code>stream.values</code></td>
+<td>共享状态，例如待办事项、计划、报告部分、沙箱元数据或代理编写的任何自定义密钥。</td>
+</tr>
+<tr>
+<td>工具调用状态</td>
+<td>将文件系统、搜索、浏览器或域工具呈现为带有进度和结果的卡片。</td>
+</tr>
+<tr>
+<td>中断</td>
+<td>暂停委派的工作以供用户批准或丢失输入，而不会丢失运行状态。</td>
+</tr>
+</tbody>
+</table>
+<p>这使您可以构建比简单的聊天记录更接近 IDE、任务板或工作流程监视器的界面。</p>
+<h2 id="patterns">图案</h2>
+<p><strong id="subagent-streaming">子智能体流媒体</strong></p>
+<p><a href="frontend--subagent-streaming.html">查看相关页面</a></p>
+<p>显示带有流媒体内容、进度跟踪和可折叠卡片的专业子智能体。</p>
+<p><strong id="todo-list">待办事项清单</strong></p>
+<p><a href="frontend--todo-list.html">查看相关页面</a></p>
+<p>当客服人员选择任务计划时，通过实时待办事项列表跟踪进度。</p>
+<p><strong id="sandbox">沙盒</strong></p>
+<p><a href="frontend--sandbox.html">查看相关页面</a></p>
+<p>使用文件浏览器、代码查看器和沙箱支持的差异面板构建类似 IDE 的 UI。</p>
+<h2 id="related-patterns">相关图案</h2>
+<p><a href="https://docs.langchain.com/oss/python/langchain/frontend/overview">LangChain前端模式</a>，包括markdown消息、工具调用和人机交互，也都可以与深度智能体配合使用。深度智能体构建在相同的 LangGraph 运行时上，因此 <code>useStream</code> 提供相同的核心 API。</p>
+<p>对于较低级别的图形可视化，请参阅 <a href="https://docs.langchain.com/oss/python/langgraph/frontend/overview">LangGraph 前端模式</a>。它们展示了如何将图形节点和状态键直接映射到 UI 组件。</p>
+<hr/>
+<div classname="source-links">
+
+
+
+
+[将这些文档](https://docs.langchain.com/use-these-docs) 通过 MCP 连接到 Claude、VSCode 等以获得实时答案。
+
+
+
+
+
+
+[在 GitHub 上编辑此页面](https://github.com/langchain-ai/docs/edit/main/src/oss/deepagents/frontend/overview.mdx) 或 [提交问题](https://github.com/langchain-ai/docs/issues/new/choose)。
+
+
+
+</div><footer>非官方中文离线整理版。代码与原图保留；在线演示需要联网。© LangChain · <a href="../LICENSE">MIT 许可</a></footer></main><nav class="page-toc" aria-label="本页目录"><h2>本页目录</h2><ul><li><a href="#architecture">建筑学</a></li><li><a href="#what-the-sdk-exposes">SDK公开了什么</a></li><li><a href="#patterns">图案</a></li><li><a href="#related-patterns">相关图案</a></li></ul></nav></div></html>

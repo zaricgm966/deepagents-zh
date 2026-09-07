@@ -1,0 +1,193 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>配置档案 · Deep Agents</title><link rel="stylesheet" href="../style.css"><aside><a class="brand" href="../index.html">Deep Agents<span>中文离线文档</span></a><h3>入门与选型</h3><a href="overview.html">Deep Agents 概览</a><a href="quickstart.html">快速入门</a><a href="models.html">模型选择</a><a href="comparison.html">与 Claude Agent SDK 的对比</a><a href="code-link.html">Deep Agents Code 简介</a><h3>配置与核心能力</h3><a href="customization.html">自定义 Deep Agents</a><a href="tools.html">工具</a><a href="profiles.html">配置档案</a><a href="backends.html">文件系统后端</a><a href="interpreters.html">代码解释器</a><a href="sandboxes.html">沙箱</a><a href="memory.html">记忆</a><a href="skills.html">技能</a><a href="permissions.html">权限</a><a href="human-in-the-loop.html">人工介入</a><a href="multimodal.html">多模态输入与输出</a><h3>任务与上下文管理</h3><a href="context-engineering.html">上下文工程</a><a href="subagents.html">子智能体</a><a href="dynamic-subagents.html">动态子智能体</a><a href="async-subagents.html">异步子智能体</a><a href="streaming.html">流式输出</a><a href="event-streaming.html">事件流</a><a href="fault-tolerance.html">容错</a><a href="retrieval.html">检索</a><a href="rubric.html">评分标准</a><h3>应用教程</h3><a href="data-analysis.html">构建数据分析智能体</a><a href="content-builder.html">构建内容创作智能体</a><a href="deep-research.html">构建深度研究智能体</a><a href="rag.html">构建检索增强生成（RAG）智能体</a><h3>协议与集成</h3><a href="mcp.html">模型上下文协议（MCP）</a><a href="acp.html">智能体客户端协议（ACP）</a><a href="a2a.html">A2A 服务器</a><h3>前端开发</h3><a href="frontend--overview.html">前端集成概览</a><a href="frontend--sandbox.html">前端沙箱</a><a href="frontend--subagent-streaming.html">前端子智能体流式输出</a><a href="frontend--todo-list.html">前端待办事项列表</a><h3>生产环境与知识库</h3><a href="going-to-production.html">部署到生产环境</a><a href="openwiki.html">OpenWiki</a><h3>Coding Agent 源码解析</h3><a href="codex-source-analysis.html">Codex 源码解析</a><a href="claude-code-source-analysis.html">Claude Code 源码解析：公开 SDK 与运行时边界</a><h3>版本更新</h3><a href="changelog-py.html">Python 更新日志</a><a href="changelog-js.html">JavaScript / TypeScript 更新日志</a></aside><script src="../sidebar.js"></script><div class="reading-layout"><main><div class="meta">中文机器翻译 · 文档快照 2026-09-07 · <a href="https://docs.langchain.com/oss/python/deepagents/profiles">在线原文</a> · <a href="../markdown/profiles.md">编辑中文 Markdown</a> · <a href="../original-markdown/profiles.md">英文原稿</a></div><h1 id="profiles">配置档案</h1>
+<blockquote>
+<p>选择模型时 Deep Agents 应用的按提供商和按模型默认的软件包</p>
+</blockquote>
+<p><strong>利用配置文件</strong>让您可以打包每当选择给定提供程序或特定模型时 Deep Agents 应用的配置：系统提示调整、工具描述覆盖、排除的工具或中间件、额外的中间件和通用子智能体编辑。它们是在不更改 <code>create_deep_agent</code> 调用站点的情况下调整特定模型线束行为方式的主要方法。在Python中构建配置文件时使用<code>HarnessProfile</code>； <a href="#load-profiles-from-config-files">加载或保存 YAML/JSON 文件</a> 时使用 <code>HarnessProfileConfig</code>。 Deep Agents 为 OpenAI 和 Anthropic (Claude) 模型提供了内置的线束配置文件。</p>
+<p><strong>提供者配置文件</strong>是<em>模型构造</em> kwargs 的较窄配套 API，它不会影响线束。大多数呼叫者不需要它们；当您希望 <code>init_chat_model</code> 默认值、凭据检查或运行时派生的 kwargs 作为您选择的提供程序的默认值时（例如，打包提供程序集成时），请选择其中之一。</p>
+<h2 id="harness-profiles">线束型材</h2>
+<p><code>HarnessProfile</code> 描述了 <code>create_deep_agent</code> 在构建聊天模型后应用的提示组装、工具可见性、中间件和默认子智能体调整：</p>
+<pre><code class="language-python">from deepagents import (
+    GeneralPurposeSubagentProfile,
+    HarnessProfile,
+    register_harness_profile,
+)
+
+register_harness_profile(
+    "openai:gpt-5.5",
+    HarnessProfile(
+        system_prompt_suffix="Respond in under 100 words.",
+        excluded_tools={"execute"},
+        excluded_middleware={"SummarizationMiddleware"},
+        general_purpose_subagent=GeneralPurposeSubagentProfile(enabled=False),
+    ),
+)
+</code></pre>
+<p><strong id="base_system_prompt">基本系统提示</strong></p>
+<p>替换基本 Deep Agents 系统提示符（<a href="customization.html#system-prompt">系统提示符</a> 中的 <code>base</code> 密钥）。</p>
+<p><strong id="system_prompt_suffix">系统提示符后缀</strong></p>
+<p>在调用者的 <code>suffix</code> 之后附加文本，放在组装的系统提示符的最后。应用于主代理、声明性子智能体和自动添加的通用子智能体。</p>
+<p><strong id="tool_description_overrides">工具描述_覆盖</strong></p>
+<p>覆盖按工具名称键入的各个工具描述。</p>
+<p><strong id="excluded_tools">排除的工具</strong></p>
+<p>从工具集中删除特定的线束级工具。按工具名称（字符串）匹配，用作注入后过滤器，以便它可以删除用户提供的工具和由线束中间件添加的工具。请参阅<a href="overview.html#virtual-filesystem-access">不使用默认文件系统工具运行</a> 以获取有效示例。</p>
+<p><strong id="excluded_middleware">排除的中间件</strong></p>
+<p>从<a href="customization.html#deep-agents-stack">深度智能体堆栈</a> 中剥离特定的中间件类。接受中间件类或字符串名称。</p>
+<p><strong id="extra_middleware">额外的中间件</strong></p>
+<p>将中间件附加到此配置文件适用的每个堆栈。有关内置排序，请参阅<a href="customization.html#full-stack">深度智能体堆栈</a>。</p>
+<p><strong id="general_purpose_subagent">通用子智能体</strong></p>
+<p>禁用、重命名或重新提示通用子智能体。当此字段的 <code>system_prompt</code> 与 <code>base_system_prompt</code> 一起设置时，通用特定子智能体提示将获胜 - 请参阅<a href="customization.html#general-purpose-subagent-prompt">通用子智能体提示</a>。</p>
+<p>呼叫者提供的 <code>system_prompt=</code> 始终位于组合提示符的前面，而 ​​<code>system_prompt_suffix</code> 始终位于末尾 — 无论选择哪种型号。相同的覆盖规则适用于子智能体：每个子智能体针对其自己的模型重新运行配置文件解析。请参阅<a href="customization.html#system-prompt">系统提示</a> 了解每个案例的完整细分（主代理、子智能体和通用子智能体）。</p>
+<p>要在不使用 <code>task</code> 工具的情况下运行代理，请参阅<a href="subagents.html#running-without-subagents">在没有子智能体的情况下运行</a> — 设置 <code>general_purpose_subagent=GeneralPurposeSubagentProfile(enabled=False)</code> 并通过 <code>subagents=</code> 不传递任何同步子智能体。 <code>SubAgentMiddleware</code>（和 <code>task</code> 工具）仅在至少存在一个同步子智能体时才附加，因此此配置将其完全排除。异步子智能体不受影响。</p>
+<p>列出 <code>FilesystemMiddleware</code>、<code>SubAgentMiddleware</code> 或 <code>excluded_middleware</code> 中的内部权限中间件会引发 <code>ValueError</code> — 它们是 <a href="customization.html#deep-agents-stack">深度智能体堆栈</a> 中所需的脚手架。要在模型中隐藏其工具而不删除中间件，请改用 <code>excluded_tools</code> — 请参阅<a href="overview.html#virtual-filesystem-access">在不使用默认文件系统工具的情况下运行</a>。</p>
+<p><code>excluded_middleware</code> 中的条目接受两种形式：</p>
+<ul>
+<li>中间件<em>类</em>（按确切类型匹配），或匹配 <code>AgentMiddleware.name</code> 的纯字符串。对内置别名和公共别名使用纯字符串，例如 <code>"SummarizationMiddleware"</code>。</li>
+<li><code>module:Class</code> 导入引用（例如，<code>"my_pkg.middleware:TelemetryMiddleware"</code>）用于从配置文件中定位精确的中间件类。导入引用会延迟解析，因此仅将它们用于受信任的本地配置 - 加载一个导入 Python 代码。</li>
+</ul>
+<p><strong id="lookup-order-for-preconfigured-model-instances">预配置模型实例的查找顺序</strong></p>
+<p>当您传递预配置的聊天模型实例而不是 <code>provider:model</code> 字符串时，该工具会从该实例合成规范的 <code>provider:identifier</code> 密钥，并按以下顺序查找它：</p>
+<ol>
+<li>完全匹配 <code>provider:identifier</code></li>
+<li>仅标识符（仅当标识符已包含 <code>:</code> 时）</li>
+<li>仅提供者的后备</li>
+</ol>
+<h2 id="registration-keys">注册码</h2>
+<p>两种配置文件类型使用相同的密钥格式：</p>
+<ul>
+<li><strong id="provider-level">提供商级别</strong> - 像 <code>"openai"</code> 这样的裸提供商名称适用于该提供商的每个模型。</li>
+<li><strong id="model-level">型号级别</strong> — 完全合格的 <code>provider:model</code> 密钥（如 <code>"openai:gpt-5.5"</code>）仅适用于该特定型号。</li>
+</ul>
+<p>当提供程序级别和模型级别配置文件同时存在时，它们会在解析时合并。未设置的模型级字段继承自提供者级配置文件；显式模型级值会覆盖它们。</p>
+<p>在现有密钥下重新注册会将新配置文件合并到之前的配置文件之上，但不会替换它。有关每个字段的规则，请参阅<a href="#merge-semantics">合并语义</a>。</p>
+<p>没有与每个提供商匹配的通配符密钥。要在各处应用相同的覆盖（例如，无论选择哪个模型，都删除 <code>SummarizationMiddleware</code>），请在您使用的每个提供商密钥下注册配置文件。配置文件用于根据所选模型进行调整。无论型号如何，都应在 <code>create_deep_agent</code> 调用站点上进行全局调整。</p>
+<h2 id="merge-semantics">合并语义</h2>
+<table>
+<thead>
+<tr>
+<th>场地</th>
+<th>合并行为</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>base_system_prompt</code>、<code>system_prompt_suffix</code></td>
+<td>设置后新值获胜；否则继承</td>
+</tr>
+<tr>
+<td><code>tool_description_overrides</code></td>
+<td>每个键的映射合并；新价值在共享密钥上获胜</td>
+</tr>
+<tr>
+<td><code>excluded_tools</code>、<code>excluded_middleware</code></td>
+<td>设置并集</td>
+</tr>
+<tr>
+<td><code>extra_middleware</code></td>
+<td>按名称合并：新实例替换其位置上的现有实例，附加新条目</td>
+</tr>
+<tr>
+<td><code>general_purpose_subagent</code></td>
+<td>按字段合并（未设置的字段继承）</td>
+</tr>
+</tbody>
+</table>
+<p>| <code>init_kwargs</code>（提供商）|字典按键合并；新价值赢得共享密钥| | <code>pre_init</code>（提供者）| Callables 链：现有的先运行，然后是新的 | | <code>init_kwargs_factory</code>（提供者）|每个 <code>resolve_model</code> 调用都会合并其输出的工厂链 |</p>
+<h2 id="provider-profiles">提供商简介</h2>
+<p><code>ProviderProfile</code> 声明深度智能体应如何为给定提供者或特定模型规范构建聊天模型。仅当您在创建深度智能体时提供 <code>provider:model</code> 字符串时才适用，而不是当您使用 <a href="https://reference.langchain.com/python/langchain/chat_models/base/init_chat_model"><code>init_chat_model</code></a> 传递预配置模型时适用：</p>
+<pre><code class="language-python">from deepagents import ProviderProfile, register_provider_profile
+
+register_provider_profile(
+    "openai",
+    ProviderProfile(init_kwargs={"temperature": 0}),
+)
+</code></pre>
+<p><strong id="init_kwargs">init_kwargs</strong></p>
+<p>静态初始化参数转发到 <code>init_chat_model</code>。</p>
+<p><strong id="pre_init">预初始化</strong></p>
+<p>在构建之前运行的副作用（例如，凭据验证）。</p>
+<p><strong id="init_kwargs_factory">init_kwargs_factory</strong></p>
+<p>Kwargs 源自运行时状态（例如，从环境变量中提取的标头）。</p>
+<h2 id="load-profiles-from-config-files">从配置文件加载配置文件</h2>
+<p>对于 YAML/JSON 支持的工作流程，请使用 <code>HarnessProfileConfig</code>。它镜像 <code>HarnessProfile</code> 的声明性子集（提示文本、工具描述覆盖、排除的工具和中间件、通用子智能体编辑）并拥有 <code>to_dict</code> / <code>from_dict</code>。仅运行时状态（中间件实例、工厂和类形式 <code>excluded_middleware</code> 条目）保留在 <code>HarnessProfile</code> 上。</p>
+<p><code>register_harness_profile</code> 接受任一类型，因此配置支持的调用者不需要手动转换步骤：</p>
+<pre><code class="language-yaml"># openai.yaml
+base_system_prompt: You are helpful.
+system_prompt_suffix: Respond briefly.
+excluded_tools:
+  - execute
+  - grep
+excluded_middleware:
+  - SummarizationMiddleware
+  - my_pkg.middleware:TelemetryMiddleware
+general_purpose_subagent:
+  enabled: false
+</code></pre>
+<pre><code class="language-python">import yaml
+from deepagents import HarnessProfileConfig, register_harness_profile
+
+with open("openai.yaml") as f:
+    register_harness_profile(
+        "openai",
+        HarnessProfileConfig.from_dict(yaml.safe_load(f)),
+    )
+</code></pre>
+<p>要去另一个方向，<code>HarnessProfileConfig.from_harness_profile(...)</code>当运行时配置文件仅使用可序列化功能时，将其导出回声明性形状：</p>
+<ul>
+<li>类形式的 <code>excluded_middleware</code> 条目序列化为公共别名（当类通过 <code>serialized_name: ClassVar[str]</code> 公开别名时）或 <code>module:Class</code> 导入引用。</li>
+<li>非空 <code>extra_middleware</code> 和 <code>__main__</code> 中或函数范围内声明的中间件类无法序列化 — 导出引发 <code>ValueError</code>。</li>
+</ul>
+<h2 id="ship-a-profile-as-a-plugin">将配置文件作为插件发送</h2>
+<p>可分发的配置文件可以通过 <code>importlib.metadata</code> 入口点自行注册，而不需要调用者手动运行 <code>register_*_profile</code>。加载顺序是<strong id="built-ins-first-then-entry-point-plugins-then-any-direct-register__profile-calls-in-user-code">首先内置，然后是入口点插件，然后是用户代码中的任何直接 <code>register_*_profile</code> 调用</strong>；所有三个路径都通过相同的附加注册，因此后面的注册位于同一密钥下的早期注册之上。</p>
+<p>在相应组下的发行版自己的 <code>pyproject.toml</code> 中声明一个入口点：</p>
+<pre><code class="language-toml">[project.entry-points."deepagents.harness_profiles"]
+my_provider = "my_pkg.profiles:register_harness"
+
+[project.entry-points."deepagents.provider_profiles"]
+my_provider = "my_pkg.profiles:register_provider"
+</code></pre>
+<p>每个目标都会解析为一个零参数可调用函数，该可调用函数在导入 <code>deepagents.profiles</code> 时执行注册：</p>
+<pre><code class="language-python">from deepagents import (
+    HarnessProfile,
+    ProviderProfile,
+    register_harness_profile,
+    register_provider_profile,
+)
+
+
+def register_harness() -&gt; None:
+    register_harness_profile(
+        "my_provider",
+        HarnessProfile(system_prompt_suffix="Batch independent tool calls in parallel."),
+    )
+
+
+def register_provider() -&gt; None:
+    register_provider_profile(
+        "my_provider",
+        ProviderProfile(init_kwargs={"temperature": 0}),
+    )
+</code></pre>
+<h2 id="related">有关的</h2>
+<ul>
+<li><a href="overview.html">线束概述</a>—线束功能概述</li>
+<li><a href="models.html">Models</a>—配置模型提供者和参数</li>
+<li><a href="customization.html">定制</a>—全<code>create_deep_agent</code>配置面</li>
+</ul>
+<hr/>
+<div classname="source-links">
+
+
+
+
+[将这些文档](https://docs.langchain.com/use-these-docs) 通过 MCP 连接到 Claude、VSCode 等以获得实时答案。
+
+
+
+
+
+
+[在 GitHub 上编辑此页面](https://github.com/langchain-ai/docs/edit/main/src/oss/deepagents/profiles.mdx) 或 [提交问题](https://github.com/langchain-ai/docs/issues/new/choose)。
+
+
+
+</div><footer>非官方中文离线整理版。代码与原图保留；在线演示需要联网。© LangChain · <a href="../LICENSE">MIT 许可</a></footer></main><nav class="page-toc" aria-label="本页目录"><h2>本页目录</h2><ul><li><a href="#harness-profiles">线束型材</a></li><li><a href="#registration-keys">注册码</a></li><li><a href="#merge-semantics">合并语义</a></li><li><a href="#provider-profiles">提供商简介</a></li><li><a href="#load-profiles-from-config-files">从配置文件加载配置文件</a></li><li><a href="#ship-a-profile-as-a-plugin">将配置文件作为插件发送</a></li><li><a href="#related">有关的</a></li></ul></nav></div></html>

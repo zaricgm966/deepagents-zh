@@ -1,0 +1,167 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>JavaScript / TypeScript 更新日志 · Deep Agents</title><link rel="stylesheet" href="../style.css"><aside><a class="brand" href="../index.html">Deep Agents<span>中文离线文档</span></a><h3>入门与选型</h3><a href="overview.html">Deep Agents 概览</a><a href="quickstart.html">快速入门</a><a href="models.html">模型选择</a><a href="comparison.html">与 Claude Agent SDK 的对比</a><a href="code-link.html">Deep Agents Code 简介</a><h3>配置与核心能力</h3><a href="customization.html">自定义 Deep Agents</a><a href="tools.html">工具</a><a href="profiles.html">配置档案</a><a href="backends.html">文件系统后端</a><a href="interpreters.html">代码解释器</a><a href="sandboxes.html">沙箱</a><a href="memory.html">记忆</a><a href="skills.html">技能</a><a href="permissions.html">权限</a><a href="human-in-the-loop.html">人工介入</a><a href="multimodal.html">多模态输入与输出</a><h3>任务与上下文管理</h3><a href="context-engineering.html">上下文工程</a><a href="subagents.html">子智能体</a><a href="dynamic-subagents.html">动态子智能体</a><a href="async-subagents.html">异步子智能体</a><a href="streaming.html">流式输出</a><a href="event-streaming.html">事件流</a><a href="fault-tolerance.html">容错</a><a href="retrieval.html">检索</a><a href="rubric.html">评分标准</a><h3>应用教程</h3><a href="data-analysis.html">构建数据分析智能体</a><a href="content-builder.html">构建内容创作智能体</a><a href="deep-research.html">构建深度研究智能体</a><a href="rag.html">构建检索增强生成（RAG）智能体</a><h3>协议与集成</h3><a href="mcp.html">模型上下文协议（MCP）</a><a href="acp.html">智能体客户端协议（ACP）</a><a href="a2a.html">A2A 服务器</a><h3>前端开发</h3><a href="frontend--overview.html">前端集成概览</a><a href="frontend--sandbox.html">前端沙箱</a><a href="frontend--subagent-streaming.html">前端子智能体流式输出</a><a href="frontend--todo-list.html">前端待办事项列表</a><h3>生产环境与知识库</h3><a href="going-to-production.html">部署到生产环境</a><a href="openwiki.html">OpenWiki</a><h3>Coding Agent 源码解析</h3><a href="codex-source-analysis.html">Codex 源码解析</a><a href="claude-code-source-analysis.html">Claude Code 源码解析：公开 SDK 与运行时边界</a><h3>版本更新</h3><a href="changelog-py.html">Python 更新日志</a><a href="changelog-js.html">JavaScript / TypeScript 更新日志</a></aside><script src="../sidebar.js"></script><div class="reading-layout"><main><div class="meta">中文机器翻译 · 文档快照 2026-09-07 · <a href="https://docs.langchain.com/oss/javascript/releases/changelog">在线原文</a> · <a href="../markdown/changelog-js.md">编辑中文 Markdown</a> · <a href="../original-markdown/changelog-js.md">英文原稿</a></div><h1 id="changelog">JavaScript / TypeScript 更新日志</h1>
+<blockquote>
+<p>我们的 JavaScript/TypeScript 包的更新和改进日志</p>
+</blockquote>
+<p><strong id="subscribe">订阅</strong>：我们的变更日志包括一个 <a href="https://docs.langchain.com/oss/javascript/releases/changelog/rss.xml">RSS feed</a>，可以与 <a href="https://slack.com/help/articles/218688467-Add-RSS-feeds-to-Slack">Slack</a>、<a href="https://zapier.com/apps/email/integrations/rss/1441/send-new-rss-feed-entries-via-email">电子邮件</a>、Discord 机器人（如 <a href="https://readybot.io/">Readybot</a> 或 <a href="https://rss.app/en/bots/rssfeeds-discord-bot">RSS Feeds to Discord Bot</a>）集成，和其他订阅工具。</p>
+<p><strong id="mar-24-2026">2026 年 3 月 24 日</strong></p>
+<p>## <code>deepagents</code> v1.9.0-alpha.0</p>
+<p><code>deepagents</code> v1.9.0 的 Alpha 版本。</p>
+<ul>
+<li>
+<p><strong id="async-subagents"><a href="https://docs.langchain.com/oss/javascript/deepagents/async-subagents">异步子智能体</a></strong>：深度智能体可以启动非阻塞后台任务，因此用户可以在子智能体同时工作时继续与代理交互。子智能体需要 <a href="https://docs.langchain.com/langsmith/deployment">LangSmith 部署</a>。</p>
+</li>
+<li>
+<p><strong id="backend-protocol-v2"><a href="https://docs.langchain.com/oss/javascript/deepagents/backends">后端</a> 协议 v2</strong>：我们引入了新的 v2 后端协议 (<code>BackendProtocolV2</code>)，并对 Deep Agents 后端接口进行了向后兼容的更改。主要变化：</p>
+<ul>
+<li><strong id="structured-result-types">结构化结果类型</strong>：所有方法现在都返回结构化 <code>Result</code> 对象（例如，<code>ReadResult</code>、<code>LsResult</code>、<code>GrepResult</code>、<code>GlobResult</code>），并通过 <code>error</code> 字段进行一致的错误处理，而不是返回原始值或引发异常。</li>
+<li><strong id="multi-modal-file-support">多模式文件支持</strong>：<code>read()</code> 返回带有 <code>.content</code> 字段的 <code>ReadResult</code>，而不是纯字符串。对于二进制文件（图像、PDF、音频、视频），完整的原始 <code>Uint8Array</code> 内容通过 <code>readRaw()</code> 返回，使代理能够本地处理多模式文件。</li>
+<li><strong id="simplified-method-names">简化方法名称</strong>：<code>lsInfo</code> -&gt; <code>ls</code>、<code>grepRaw</code> -&gt; <code>grep</code>、<code>globInfo</code> -&gt; <code>glob</code>。</li>
+<li><strong id="backward-compatible">向后兼容</strong>：现有的 v1 后端可以使用 <code>adaptBackendProtocol</code> 适应 v2 接口。 v1 接口（<code>BackendProtocolV1</code>、<code>SandboxBackendProtocolV1</code>）已弃用，但为了兼容性而保留。</li>
+</ul>
+</li>
+</ul>
+<p><strong id="jan-14-2026">2026 年 1 月 14 日</strong></p>
+<p>## v1.1.0</p>
+<p>### <code>@langchain/langgraph</code></p>
+<p>引入 <strong id="stateschema">StateSchema</strong> - 一种更清晰、与库无关的方式来定义图形状态，可与任何 <a href="https://github.com/standard-schema/standard-schema">标准模式</a> 兼容的验证库配合使用。</p>
+<p>### 标准 JSON 架构支持</p>
+<p>LangGraph 现在支持 <a href="https://standardschema.dev/json-schema">标准 JSON 模式</a>，这是由 Zod 4、Valibot、ArkType 和其他模式库实现的开放规范。这意味着您可以使用您喜欢的验证库而无需锁定：</p>
+<pre><code class="language-typescript">import { z } from "zod"; // or valibot, arktype, etc.
+import { StateSchema, ReducedValue, MessagesValue } from "@langchain/langgraph";
+
+const AgentState = new StateSchema({
+  messages: MessagesValue,
+  currentStep: z.string(),
+  count: z.number().default(0),
+  history: new ReducedValue(
+    z.array(z.string()).default(() =&gt; []),
+    {
+      inputSchema: z.string(),
+      reducer: (current, next) =&gt; [...current, next],
+    }
+  ),
+});
+
+// Type-safe state and update types
+type State = typeof AgentState.State;
+type Update = typeof AgentState.Update;
+
+const graph = new StateGraph(AgentState)
+  .addNode("agent", (state) =&gt; ({ count: state.count + 1 }))
+  .addEdge(START, "agent")
+  .addEdge("agent", END)
+  .compile();
+</code></pre>
+<p>### 新的状态值原语</p>
+<ul>
+<li><strong id="reducedvalue">ReducedValue</strong>：使用自定义缩减器定义字段以累积值。支持类型安全减速器输入的单独输入和输出模式。</li>
+<li><strong id="untrackedvalue">UntrackedValue</strong>：定义执行期间存在但从未设置检查点的瞬态 - 对于数据库连接、缓存或仅运行时配置有用。</li>
+<li><strong id="messagesvalue">MessagesValue</strong>：使用标准消息缩减器预先构建的 <code>ReducedValue</code>，用于聊天消息。</li>
+</ul>
+<p>### 类型助手导出</p>
+<p>用于在图形生成器外部键入函数的新导出类型实用程序：</p>
+<ul>
+<li><code>图节点</code> - 具有完全推理功能的类型节点函数  * <code>条件边缘路由器</code> - 键入条件边缘路由器</li>
+</ul>
+<pre><code class="language-typescript">// Type standalone node functions
+const myNode: GraphNode&lt;typeof AgentState&gt; = (state, config) =&gt; {
+  return { count: state.count + 1 };
+};
+
+// Use schema type helpers directly
+const processState = (state: typeof AgentState.State) =&gt; {
+  console.log(state.count);
+};
+</code></pre>
+<p>现有的 <code>Annotation</code> 和基于 zod 的 API 继续保持不变 - <code>StateSchema</code> 对于那些喜欢模式优先定义的人来说是一个额外的选项。</p>
+<p><strong id="learn-more-about-stateschema">了解有关状态模式的更多信息</strong></p>
+<p><a href="https://docs.langchain.com/oss/javascript/langgraph/graph-api#schema">查看相关页面</a></p>
+<p>请参阅使用 StateSchema、ReducedValue 和 UntrackedValue 定义图形状态的完整文档。</p>
+<p><strong id="learn-about-type-utilities">了解类型实用程序</strong></p>
+<p><a href="https://docs.langchain.com/oss/javascript/langgraph/graph-api#type-utilities">查看相关页面</a></p>
+<p>使用 GraphNode 和 ConditionalEdgeRouter 在图形生成器外部键入函数。</p>
+<p><strong id="dec-12-2025">2025 年 12 月 12 日</strong></p>
+<p>## v1.2.0</p>
+<p>### <code>langchain</code></p>
+<ul>
+<li><a href="https://docs.langchain.com/oss/javascript/langchain/structured-output">结构化输出</a>：增加了使用 <code>providerStrategy</code> 进行结构化输出时手动设置 <code>strict</code> 模式的功能。</li>
+</ul>
+<p>### <code>@langchain/openai</code></p>
+<ul>
+<li><strong id="new-provider-built-in-tools">新的提供商内置工具：</strong> 支持由提供商在服务器端执行的文件搜索、网页搜索、代码解释器、图像生成、计算机使用、shell 和 MCP 连接器工具。请参阅<a href="https://docs.langchain.com/oss/javascript/langchain/tools#server-side-tool-use">服务器端工具使用</a>和<a href="https://docs.langchain.com/oss/javascript/integrations/chat/openai">OpenAI</a>聊天集成。</li>
+<li><strong id="content-moderation">内容审核：</strong> <code>ChatOpenAI</code> 上的新 <code>moderateContent</code> 选项用于检测和处理不安全内容。</li>
+<li>首选 GPT-5.2 Pro 模型的响应 API。</li>
+</ul>
+<p>## v1.3.0</p>
+<p>### <code>@langchain/anthropic</code></p>
+<ul>
+<li><strong>新的提供商内置工具：</strong> 支持由提供商在服务器端执行的文本编辑器、Web 获取、计算机使用、工具搜索和 MCP 工具集工具。请参阅<a href="https://docs.langchain.com/oss/javascript/langchain/tools#server-side-tool-use">服务器端工具使用</a> 和<a href="https://docs.langchain.com/oss/javascript/integrations/chat/anthropic">Anthropic</a> 聊天集成。</li>
+<li>暴露的 <code>ChatAnthropicInput</code> 类型可提高类型安全性。</li>
+</ul>
+<p>## v1.1.0</p>
+<p>### <code>@langchain/ollama</code></p>
+<ul>
+<li><strong id="native-structured-outputs">本机结构化输出：</strong> 通过 <code>withStructuredOutput</code> 添加了对本机结构化输出的支持。</li>
+<li>支持自定义 <code>baseUrl</code> 配置。</li>
+</ul>
+<p>## v1.0.0</p>
+<p>### <code>@langchain/community</code></p>
+<ul>
+<li>Jira 文档加载器更新为使用 v3 API。</li>
+<li>LanceDB：添加了 <code>similaritySearch()</code> 和 <code>similaritySearchWithScore()</code> 支持。</li>
+<li>Elasticsearch 混合搜索支持。</li>
+<li>全新 <code>GoogleCalendarDeleteTool</code>。</li>
+<li>针对 LlamaCppEmbeddings、PrismaVectorStore、IBM WatsonX 的各种错误修复以及安全性改进。</li>
+</ul>
+<p>### 其他套餐</p>
+<ul>
+<li><strong id="langchainxai">@langchain/xai：</strong> 本机实时搜索支持。</li>
+<li><strong id="langchaintavily">@langchain/tavily：</strong> 添加了 Tavily 的研究端点。</li>
+<li><strong id="langchainmongodb">@langchain/mongodb:</strong> 新的 MongoDB LLM 缓存。</li>
+<li><strong id="langchainmcp-adapters">@langchain/mcp-adapters：</strong> 添加了 <code>onConnectionError</code> 选项。</li>
+<li><strong id="langchaingoogle-common">@langchain/google-common：</strong> <code>withStructuredOutput</code> 中的 <code>jsonSchema</code> 方法支持。</li>
+<li><strong id="langchaincore">@langchain/core：</strong> 安全修复、美人鱼图中更好的子图嵌套、运行 ID 的 UUID7。</li>
+</ul>
+<p><strong id="nov-25-2025">2025 年 11 月 25 日</strong></p>
+<p>## v1.1.0</p>
+<ul>
+<li><a href="https://docs.langchain.com/oss/javascript/langchain/models#model-profiles">模型配置文件</a>：聊天模型现在通过 <code>.profile</code> getter 公开支持的特性和功能。这些数据来源于<a href="https://models.dev">models.dev</a>，一个提供模型能力数据的开源项目。</li>
+<li><a href="https://docs.langchain.com/oss/javascript/langchain/middleware/built-in#model-retry">模型重试中间件</a>：新的中间件，用于自动重试失败的模型调用，并具有可配置的指数退避，提高代理可靠性。</li>
+<li><a href="https://docs.langchain.com/oss/javascript/langchain/middleware/built-in#provider-specific-middleware">内容审核中间件</a>：OpenAI 内容审核中间件，用于检测和处理代理交互中的不安全内容。支持检查用户输入、模型输出和工具结果。</li>
+<li><a href="https://docs.langchain.com/oss/javascript/langchain/middleware/built-in#summarization">摘要中间件</a>：已更新以支持使用模型配置文件进行上下文感知摘要的灵活触发点。</li>
+<li><a href="https://docs.langchain.com/oss/javascript/langchain/structured-output">结构化输出</a>：现在可以从模型配置文件推断 <code>ProviderStrategy</code> 支持（本机结构化输出）。</li>
+<li><a href="https://docs.langchain.com/oss/javascript/langchain/middleware/custom#dynamic-prompt"><code>SystemMessage</code> for <code>createAgent</code></a>：支持将 <code>SystemMessage</code> 实例直接传递给 <code>createAgent</code> 的 <code>systemPrompt</code> 参数，以及用于扩展系统消息的新 <code>concat</code> 方法。启用缓存控制和结构化内容块等高级功能。</li>
+<li><a href="https://docs.langchain.com/oss/javascript/langchain/short-term-memory">动态系统提示中间件</a>：<code>dynamicSystemPromptMiddleware</code> 的返回值现在是纯累加的。当返回 <a href="https://reference.langchain.com/javascript/langchain-core/messages/SystemMessage"><code>SystemMessage</code></a> 或 <code>string</code> 时，它们会与现有系统消息合并而不是替换它们，从而更容易组合多个修改提示的中间件。</li>
+<li><strong id="compatibility-improvements">兼容性改进：</strong> 修复了结构化输出和工具架构中 Zod v4 验证错误的错误处理，确保正确显示详细的错误消息。</li>
+</ul>
+<p><strong id="oct-20-2025">2025 年 10 月 20 日</strong></p>
+<p>## v1.0.0</p>
+<p>### <code>langchain</code></p>
+<ul>
+<li><a href="https://docs.langchain.com/oss/javascript/releases/langchain-v1">发行说明</a></li>
+<li><a href="https://docs.langchain.com/oss/javascript/migrate/langchain-v1">迁移指南</a></li>
+</ul>
+<p>### <code>langgraph</code></p>
+<ul>
+<li><a href="https://docs.langchain.com/oss/javascript/releases/langgraph-v1">发行说明</a></li>
+<li><a href="https://docs.langchain.com/oss/javascript/migrate/langgraph-v1">迁移指南</a></li>
+</ul>
+<p>如果您遇到任何问题或有反馈，请<a href="https://github.com/langchain-ai/docs/issues/new?template=01-langchain.yml">打开问题</a>，以便我们改进。要查看 v0.x 文档，<a href="https://github.com/langchain-ai/langchainjs/tree/v0.3/docs/core_docs/docs">转到存档内容</a>。</p>
+<hr/>
+<div classname="source-links">
+
+
+
+
+[将这些文档](https://docs.langchain.com/use-these-docs) 通过 MCP 连接到 Claude、VSCode 等以获得实时答案。
+
+
+
+
+
+
+[在 GitHub 上编辑此页面](https://github.com/langchain-ai/docs/edit/main/src/oss/javascript/releases/changelog.mdx) 或 [提交问题](https://github.com/langchain-ai/docs/issues/new/choose)。
+
+
+
+</div><footer>非官方中文离线整理版。代码与原图保留；在线演示需要联网。© LangChain · <a href="../LICENSE">MIT 许可</a></footer></main><nav class="page-toc" aria-label="本页目录"><h2>本页目录</h2><ul></ul></nav></div></html>

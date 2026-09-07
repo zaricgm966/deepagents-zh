@@ -1,0 +1,479 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Deep Agents 概览 · Deep Agents</title><link rel="stylesheet" href="../style.css"><aside><a class="brand" href="../index.html">Deep Agents<span>中文离线文档</span></a><h3>入门与选型</h3><a href="overview.html">Deep Agents 概览</a><a href="quickstart.html">快速入门</a><a href="models.html">模型选择</a><a href="comparison.html">与 Claude Agent SDK 的对比</a><a href="code-link.html">Deep Agents Code 简介</a><h3>配置与核心能力</h3><a href="customization.html">自定义 Deep Agents</a><a href="tools.html">工具</a><a href="profiles.html">配置档案</a><a href="backends.html">文件系统后端</a><a href="interpreters.html">代码解释器</a><a href="sandboxes.html">沙箱</a><a href="memory.html">记忆</a><a href="skills.html">技能</a><a href="permissions.html">权限</a><a href="human-in-the-loop.html">人工介入</a><a href="multimodal.html">多模态输入与输出</a><h3>任务与上下文管理</h3><a href="context-engineering.html">上下文工程</a><a href="subagents.html">子智能体</a><a href="dynamic-subagents.html">动态子智能体</a><a href="async-subagents.html">异步子智能体</a><a href="streaming.html">流式输出</a><a href="event-streaming.html">事件流</a><a href="fault-tolerance.html">容错</a><a href="retrieval.html">检索</a><a href="rubric.html">评分标准</a><h3>应用教程</h3><a href="data-analysis.html">构建数据分析智能体</a><a href="content-builder.html">构建内容创作智能体</a><a href="deep-research.html">构建深度研究智能体</a><a href="rag.html">构建检索增强生成（RAG）智能体</a><h3>协议与集成</h3><a href="mcp.html">模型上下文协议（MCP）</a><a href="acp.html">智能体客户端协议（ACP）</a><a href="a2a.html">A2A 服务器</a><h3>前端开发</h3><a href="frontend--overview.html">前端集成概览</a><a href="frontend--sandbox.html">前端沙箱</a><a href="frontend--subagent-streaming.html">前端子智能体流式输出</a><a href="frontend--todo-list.html">前端待办事项列表</a><h3>生产环境与知识库</h3><a href="going-to-production.html">部署到生产环境</a><a href="openwiki.html">OpenWiki</a><h3>Coding Agent 源码解析</h3><a href="codex-source-analysis.html">Codex 源码解析</a><a href="claude-code-source-analysis.html">Claude Code 源码解析：公开 SDK 与运行时边界</a><h3>版本更新</h3><a href="changelog-py.html">Python 更新日志</a><a href="changelog-js.html">JavaScript / TypeScript 更新日志</a></aside><script src="../sidebar.js"></script><div class="reading-layout"><main><div class="meta">中文机器翻译 · 文档快照 2026-09-07 · <a href="https://docs.langchain.com/oss/python/deepagents/overview">在线原文</a> · <a href="../markdown/overview.md">编辑中文 Markdown</a> · <a href="../original-markdown/overview.md">英文原稿</a></div><h1 id="deep-agents-overview">Deep Agents 概览</h1>
+<blockquote>
+<p>构建可以规划、使用子智能体并利用文件系统来执行复杂任务的代理</p>
+</blockquote>
+<p>Deep Agents 是开始构建由 LLM 支持的代理和应用程序的最简单方法 - 具有用于上下文管理、子智能体生成和长期内存的文件系统内置功能。 <a href="#task-planning">任务规划</a> 和<a href="#skills">技能</a> 等可选功能可在您的用例需要时扩展工具。您可以将深度智能体用于任何任务，包括复杂的多步骤任务。</p>
+<p>Deep Agents 具有以下功能：</p>
+<ul>
+<li><strong id="take-actions-in-an-environment">在环境中采取行动</strong>：通过工具采取行动，读写文件，执行代码</li>
+<li><strong id="connect-to-your-data">连接到您的数据</strong>：在适当的时刻加载记忆、技能和领域知识</li>
+<li><strong id="manage-growing-context">管理不断增长的环境</strong>：总结历史并在长期运行中卸载大量结果</li>
+<li><strong id="parallelize-tasks">并行化任务</strong>：委托给在隔离上下文窗口中运行的通用或专用子智能体</li>
+<li><strong id="stay-in-the-loop">留在循环中</strong>：在关键决策点暂停以供人工批准</li>
+<li><strong id="improve-over-time">随着时间的推移而改进</strong>：根据实际使用情况更新记忆、技能和提示</li>
+</ul>
+<p>有关每个组件的完整详细信息，请参阅<a href="#core-capabilities">核心功能</a>。</p>
+<h2 id="try-it">尝试一下</h2>
+<h2 id="quickstart">快速入门</h2>
+<pre><code class="language-python">from deepagents import create_deep_agent
+
+
+def get_weather(city: str) -&gt; str:
+    """Get weather for a given city."""
+    return f"It's always sunny in {city}!"
+
+
+agent = create_deep_agent(
+    model="google_genai:gemini-3.6-flash",
+    tools=[get_weather],
+    system_prompt="You are a helpful assistant",
+)
+
+# Run the agent
+agent.invoke(
+    {"messages": [{"role": "user", "content": "what is the weather in sf"}]}
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+
+
+def get_weather(city: str) -&gt; str:
+    """Get weather for a given city."""
+    return f"It's always sunny in {city}!"
+
+
+agent = create_deep_agent(
+    model="openai:gpt-5.5",
+    tools=[get_weather],
+    system_prompt="You are a helpful assistant",
+)
+
+# Run the agent
+agent.invoke(
+    {"messages": [{"role": "user", "content": "what is the weather in sf"}]}
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+
+
+def get_weather(city: str) -&gt; str:
+    """Get weather for a given city."""
+    return f"It's always sunny in {city}!"
+
+
+agent = create_deep_agent(
+    model="anthropic:claude-sonnet-4-6",
+    tools=[get_weather],
+    system_prompt="You are a helpful assistant",
+)
+
+# Run the agent
+agent.invoke(
+    {"messages": [{"role": "user", "content": "what is the weather in sf"}]}
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+
+
+def get_weather(city: str) -&gt; str:
+    """Get weather for a given city."""
+    return f"It's always sunny in {city}!"
+
+
+agent = create_deep_agent(
+    model="openrouter:z-ai/glm-5.2",
+    tools=[get_weather],
+    system_prompt="You are a helpful assistant",
+)
+
+# Run the agent
+agent.invoke(
+    {"messages": [{"role": "user", "content": "what is the weather in sf"}]}
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+
+
+def get_weather(city: str) -&gt; str:
+    """Get weather for a given city."""
+    return f"It's always sunny in {city}!"
+
+
+agent = create_deep_agent(
+    model="fireworks:accounts/fireworks/models/glm-5p2",
+    tools=[get_weather],
+    system_prompt="You are a helpful assistant",
+)
+
+# Run the agent
+agent.invoke(
+    {"messages": [{"role": "user", "content": "what is the weather in sf"}]}
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+
+
+def get_weather(city: str) -&gt; str:
+    """Get weather for a given city."""
+    return f"It's always sunny in {city}!"
+
+
+agent = create_deep_agent(
+    model="baseten:zai-org/GLM-5.2",
+    tools=[get_weather],
+    system_prompt="You are a helpful assistant",
+)
+
+# Run the agent
+agent.invoke(
+    {"messages": [{"role": "user", "content": "what is the weather in sf"}]}
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+
+
+def get_weather(city: str) -&gt; str:
+    """Get weather for a given city."""
+    return f"It's always sunny in {city}!"
+
+
+agent = create_deep_agent(
+    model="ollama:north-mini-code-1.0",
+    tools=[get_weather],
+    system_prompt="You are a helpful assistant",
+)
+
+# Run the agent
+agent.invoke(
+    {"messages": [{"role": "user", "content": "what is the weather in sf"}]}
+)
+</code></pre>
+<p>请参阅<a href="quickstart.html">快速入门</a> 和<a href="customization.html">自定义指南</a>，开始使用 Deep Agents 构建您自己的代理和应用程序。</p>
+<p>使用 <a href="https://smith.langchain.com?utm_source=docs\&amp;utm_medium=cta\&amp;utm_campaign=langsmith-signup\&amp;utm_content=oss-deepagents-overview">LangSmith</a> 跟踪请求、调试代理行为并评估输出。按照<a href="https://docs.langchain.com/langsmith/observability-quickstart">可观测性快速入门</a> 进行设置。准备好投入生产后，请参阅<a href="going-to-production.html">进入生产</a> 了解 LangSmith 部署选项。</p>
+<h2 id="core-capabilities">核心能力</h2>
+<p><img "center"}}="" alt="代理按类别利用能力" classname="rounded-lg block mx-auto" data-path="oss/images/agent_harness_capabilities.svg" height="360" src="../assets/81e9e1b2d515aa98.svg" style="{{justifyContent:" width="1500"/></p>
+<p>Deep Agents 是一个<a href="https://docs.langchain.com/oss/python/concepts/products#agent-harnesses-like-the-deep-agents-sdk">“代理工具”</a>。它与其他代理框架具有相同的核心工具调用循环，但具有使代理可靠地执行实际任务的内置功能：</p>
+<p><strong>执行环境</strong></p>
+<p><a href="#execution-environment">查看相关页面</a></p>
+<p>工具、虚拟文件系统、可选沙箱和 REPL（解释器）</p>
+<p><strong>上下文管理</strong></p>
+<p><a href="#context-management">查看相关页面</a></p>
+<p>技能、记忆、总结、上下文卸载和提示缓存</p>
+<p><strong>代表团</strong></p>
+<p><a href="#delegation">查看相关页面</a></p>
+<p>子智能体生成和可选的任务规划</p>
+<p><strong>转向</strong></p>
+<p><a href="#steering">查看相关页面</a></p>
+<p>人机交互批准和中断</p>
+<p><a href="https://pypi.org/project/deepagents/"><code>deepagents</code></a> 是一个独立的库，构建在 <a href="https://docs.langchain.com/oss/python/langchain/">LangChain</a> 的代理核心构建块之上。它使用 <a href="https://docs.langchain.com/oss/python/langgraph/">LangGraph</a> 运行时来实现持久执行、流式处理、人机交互和其他功能。</p>
+<p><a href="https://docs.langchain.com/oss/python/langchain/">LangChain</a> 是为您的代理提供核心构建块的框架。要了解有关 LangChain、LangGraph 和 Deep Agent 之间差异的更多信息，请参阅<a href="https://docs.langchain.com/oss/python/concepts/products">框架、运行时和利用</a>。有关与 Anthropic 的工具的并排比较，请参阅 <a href="comparison.html">Deep Agents 与 Claude Agent SDK</a>。</p>
+<p>要构建没有这些内置功能的自定义代理，请考虑使用 LangChain 的 <a href="https://docs.langchain.com/oss/python/langchain/agents"><code>create_agent</code></a> 或构建自定义 <a href="https://docs.langchain.com/oss/python/langgraph/overview">LangGraph</a> 工作流程。</p>
+<h2 id="execution-environment">执行环境</h2>
+<p>执行环境是代理执行操作的地方。它有四层：</p>
+<ul>
+<li><strong id="tools"><a href="#tools-and-mcp">工具</a></strong>：代理可以调用​​的自定义函数、API 和数据库</li>
+<li><strong id="virtual-filesystem"><a href="#virtual-filesystem-access">虚拟文件系统</a></strong>：由可插入后端支持的文件工具</li>
+<li><strong><a href="#filesystem-permissions">文件系统权限</a></strong>：对代理可以读取或写入的路径进行声明性访问控制</li>
+<li><strong><a href="#code-execution">代码执行</a></strong>：沙盒 shell 执行和进程内 JavaScript 解释器</li>
+</ul>
+<p><strong><a href="#streaming">流</a></strong> 允许您使用消息、工具、值和委派任务的类型化事件流来跟上发生的一切。</p>
+<h3 id="tools-and-mcp">工具和 MCP</h3>
+<p>使用 <code>tools=</code> 参数传递自定义函数、LangChain 工具或来自任何 <a href="tools.html#mcp-tools">MCP 服务器</a> 的工具。 Deep Agents 完全支持 <a href="https://docs.langchain.com/oss/python/langchain/mcp">模型上下文协议 (MCP)</a>，让您通过标准接口连接到数据库、API、文件系统等。</p>
+<pre><code class="language-python">from deepagents import create_deep_agent
+
+agent = create_deep_agent(
+    model="anthropic:claude-sonnet-4-6",
+    tools=[search, fetch_page, run_query],
+)
+</code></pre>
+<p>有关定义自定义工具、使用 MCP 服务器以及内置线束工具的完整列表的详细信息，请参阅<a href="tools.html">工具</a>。</p>
+<h3 id="virtual-filesystem-access">虚拟文件系统访问</h3>
+<p>该工具提供了一个可配置的虚拟文件系统，可以由不同的<a href="backends.html">可插入后端</a> 支持：内存状态、本地磁盘、LangGraph 存储、复合路由或具有用于读写访问的<a href="permissions.html">权限规则</a> 的自定义后端。</p>
+<p>后端支持以下文件系统操作：</p>
+<table>
+<thead>
+<tr>
+<th>工具</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ls</code></td>
+<td>列出目录中的文件以及元数据（大小、修改时间）</td>
+</tr>
+<tr>
+<td><code>read_file</code></td>
+<td>使用行号读取文件内容，支持大文件的偏移/限制。还支持返回非文本文件（图像、视频、音频和文档）的多模式内容块。请参阅下面支持的扩展。</td>
+</tr>
+<tr>
+<td><code>write_file</code></td>
+<td>创建一个新文件，或覆盖现有文件</td>
+</tr>
+<tr>
+<td><code>edit_file</code></td>
+<td>在文件中执行精确的字符串替换（使用全局替换模式）</td>
+</tr>
+<tr>
+<td><code>delete</code></td>
+<td>递归删除文件或目录及其内容</td>
+</tr>
+<tr>
+<td><code>glob</code></td>
+<td>查找匹配模式的文件（例如，<code>**/*.py</code>）</td>
+</tr>
+<tr>
+<td><code>grep</code></td>
+<td>使用多种输出模式搜索文件内容（仅文件、带上下文的内容或计数）</td>
+</tr>
+<tr>
+<td><code>execute</code></td>
+<td>在环境中运行 shell 命令（仅适用于 <a href="sandboxes.html">沙盒后端</a>）</td>
+</tr>
+</tbody>
+</table>
+<p><code>delete</code> 工具需要 <code>deepagents&gt;=0.7</code>。不支持删除的后端会自动从模型中隐藏该工具。</p>
+<p><strong id="supported-multimodal-file-extensions">支持的多模式文件扩展名</strong></p>
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>扩展</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://docs.langchain.com/oss/python/langchain/messages#multimodal">图片</a></td>
+<td><code>.png</code>、<code>.jpg</code>、<code>.jpeg</code>、<code>.gif</code>、<code>.webp</code>、<code>.heic</code>、<code>.heif</code></td>
+</tr>
+<tr>
+<td><a href="https://docs.langchain.com/oss/python/langchain/messages#multimodal">视频</a></td>
+<td><code>.mp4</code>、<code>.mpeg</code>、<code>.mov</code>、<code>.avi</code>、<code>.flv</code>、<code>.mpg</code>、<code>.webm</code>、<code>.wmv</code>、<code>.3gpp</code></td>
+</tr>
+<tr>
+<td><a href="https://docs.langchain.com/oss/python/langchain/messages#multimodal">音频</a></td>
+<td><code>.wav</code>、<code>.mp3</code>、<code>.aiff</code>、<code>.aac</code>、<code>.ogg</code>、<code>.flac</code></td>
+</tr>
+<tr>
+<td><a href="https://docs.langchain.com/oss/python/langchain/messages#multimodal">文件</a></td>
+<td><code>.pdf</code>、<code>.ppt</code>、<code>.pptx</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong id="running-without-the-default-filesystem-tools">不使用默认文件系统工具运行</strong></p>
+<p>要从模型中隐藏上面列出的文件系统工具，请使用 <code>excluded_tools</code> 注册 <a href="profiles.html#harness-profiles">harness profile</a>：</p>
+<pre><code class="language-python">from deepagents import HarnessProfile, register_harness_profile
+
+register_harness_profile(
+    "anthropic:claude-sonnet-4-6",
+    HarnessProfile(
+        excluded_tools=frozenset(
+            {"ls", "read_file", "write_file", "edit_file", "delete", "glob", "grep"}
+        ),
+    ),
+)
+</code></pre>
+<p>通过 <code>excluded_middleware</code> 删除 <a href="https://reference.langchain.com/python/deepagents/middleware/filesystem/FilesystemMiddleware"><code>FilesystemMiddleware</code></a> 本身被故意拒绝——它需要 <a href="customization.html#deep-agents-stack">深度智能体堆栈</a> 中的脚手架。使用 <code>excluded_tools</code> 仅隐藏模型可见的工具表面并将中间件保留在适当的位置。要删除 <code>task</code> 工具，请参阅<a href="subagents.html#running-without-subagents">在没有子智能体的情况下运行</a>。</p>
+<p><strong id="restricting-filesystem-tools">限制文件系统工具</strong></p>
+<p><code>FilesystemMiddleware</code> 上的 <code>tools</code> 允许列表需要 <code>deepagents&gt;=0.7</code>。</p>
+<p>要仅公开上面列出的文件系统工具的子集，而不是将它们全部隐藏，请将 <code>tools</code> 白名单传递给 <a href="https://reference.langchain.com/python/deepagents/middleware/filesystem/FilesystemMiddleware"><code>FilesystemMiddleware</code></a> 并通过 <code>middleware=</code> 提供实例。列表中未列出的任何内置文件系统工具都将从模型的工具列表中删除。</p>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from deepagents.middleware import FilesystemMiddleware
+
+# Read-only agent: write_file, edit_file, delete, and execute are never shown
+agent = create_deep_agent(
+    model="claude-sonnet-4-6",
+    middleware=[
+        FilesystemMiddleware(backend=backend, tools=["read_file", "ls", "glob", "grep"]),
+    ],
+)
+</code></pre>
+<p><code>read_file</code> 必须始终包含在列表中 - 忽略它会在创建代理时引发 <code>ValueError</code>。当配置的后端不支持 <code>execute</code> 和 <code>delete</code> 工具时，无论您是否将它们包含在 <code>tools</code> 中，它们也会从工具表面删除。您通过 <code>create_deep_agent</code> 自己的 <code>tools=</code> 参数添加的自定义工具永远不会受到此白名单的影响。</p>
+<p>通过这种方式传递您自己的 <a href="https://reference.langchain.com/python/deepagents/middleware/filesystem/FilesystemMiddleware"><code>FilesystemMiddleware</code></a> 实例将替换主代理的默认实例，并且通用子智能体继承相同的限制。有关详细信息，请参阅<a href="customization.html#override-a-default-middleware-instance">覆盖默认中间件实例</a>。声明性子智能体不会继承它：在该子智能体自己的 <code>middleware</code> 字段中包含 <code>FilesystemMiddleware(tools=...)</code> 实例以独立限制它。</p>
+<p>虚拟文件系统由其他几个工具功能使用，例如技能、内存、代码执行和上下文管理。您还可以在为 Deep Agent 构建自定义工具和中间件时使用文件系统。</p>
+<p>有关更多信息，请参阅<a href="backends.html">后端</a>。要生成代理可以从文件系统读取的持久存储库 wiki，请参阅 <a href="https://docs.langchain.com/oss/openwiki/overview">OpenWiki</a>。</p>
+<h3 id="filesystem-permissions">文件系统权限</h3>
+<p>该工具支持声明性权限规则，控制代理可以读取或写入哪些文件和目录。权限适用于上面列出的内置文件系统工具，并按照声明顺序和首匹配胜语义进行评估。</p>
+<p>创建代理时，通过将规则列表传递给 <code>permissions=</code> 来定义权限。每条规则包括：</p>
+<ul>
+<li><code>operations</code>：<code>"read"</code> 和/或 <code>"write"</code></li>
+<li><code>paths</code>：文件或目录的全局模式</li>
+<li><code>mode</code>：<code>"allow"</code> 或 <code>"deny"</code></li>
+</ul>
+<p>规则从上到下进行评估，第一个匹配的规则获胜。如果没有规则匹配，则允许该操作。</p>
+<p>此模型允许您将代理限制到特定目录（例如，<code>/workspace/</code>），保护敏感文件（例如 <code>.env</code> 或凭据），并为子智能体提供比父代理更窄的访问权限。</p>
+<p>权限不适用于<a href="sandboxes.html">沙箱后端</a>，它支持通过 <code>execute</code> 工具执行任意命令。对于自定义验证逻辑，请使用<a href="backends.html#add-policy-hooks">后端策略挂钩</a>。</p>
+<p>有关完整的规则结构、示例和子智能体继承，请参阅<a href="permissions.html">权限</a>。</p>
+<h3 id="code-execution">代码执行</h3>
+<p>Deep Agents 通过两种方式支持代码执行：</p>
+<ul>
+<li><a href="sandboxes.html">沙箱后端</a> 在隔离环境中公开用于 shell 命令的 <code>execute</code> 工具。</li>
+<li><a href="interpreters.html">解释器</a> 添加一个 <code>eval</code> 工具，该工具在限定范围的 QuickJS 运行时中运行 JavaScript。</li>
+</ul>
+<p>当代理需要安装依赖项、运行测试、调用 CLI 或使用操作系统文件系统时，请使用沙箱后端。沙箱后端实现 <code>SandboxBackendProtocolV2</code>；当检测到时，该工具会将 <code>execute</code> 工具添加到代理的可用工具中。</p>
+<p>当代理需要轻量级可编程层用于循环、批处理、确定性数据转换或编程工具调用时，请使用解释器。解释器不提供 shell 访问、软件包安装或文件系统和网络访问。</p>
+<p>有关沙箱设置、提供程序和文件传输 API，请参阅<a href="sandboxes.html">沙箱</a>。对于 QuickJS 运行时和编程工具调用，请参阅<a href="interpreters.html">解释器</a>。</p>
+<h3 id="streaming">流媒体</h3>
+<p><a href="event-streaming.html">事件流</a> 将代理运行公开为消息、工具调用、值和输出的类型化投影。深度智能体添加 <code>stream.subagents</code>，以便每个委派任务获得自己的句柄以及独立的消息、工具调用和嵌套子智能体流。</p>
+<h2 id="context-management">上下文管理</h2>
+<p>上下文管理组件控制代理知道什么、它可以在令牌限制内运行多长时间以及它在会话中保留什么。它有四层：</p>
+<ul>
+<li><strong><a href="#skills">技能</a></strong>：从技能文件逐步加载按需领域知识</li>
+<li><strong><a href="#memory">内存</a></strong>：启动时从 <code>AGENTS.md</code> 文件加载的持久指令和首选项</li>
+<li><strong><a href="#summarization-and-context-offloading">摘要和上下文卸载</a></strong>：自动压缩对话历史记录和大型工具结果</li>
+<li><strong><a href="#prompt-caching">提示缓存</a></strong>：静态提示部分符合缓存条件，可加快推理速度并降低支持模型的成本</li>
+</ul>
+<h3 id="skills">技能</h3>
+<p>技能包为您的深度智能体提供专门的工作流程、领域知识和自定义说明。</p>
+<p>每个技能都遵循<a href="https://agentskills.io/">代理技能标准</a>，并位于包含 <code>SKILL.md</code> 文件的目录中。技能还可以包括脚本、模板、参考文档和其他支持资源。</p>
+<p>深度智能体以渐进式披露方式加载技能：代理在启动时读取 <code>SKILL.md</code> frontmatter，然后仅在任务需要时读取完整的技能内容。这使得启动上下文保持紧凑，同时仍然可以按需提供丰富的功能。</p>
+<p>更多信息请参见【技能​​】(/oss/python/deepagents/skills)。</p>
+<h3 id="memory">记忆</h3>
+<p>记忆为您的深度智能体提供跨对话的持久上下文，例如编码风格、偏好、约定和项目指南。</p>
+<p>内存使用您在创建代理时通过 <code>memory</code> 参数传递的 <a href="https://agents.md/"><code>AGENTS.md</code> 文件</a>。与技能不同的是，内存文件始终会加载，内容存储在配置的后端（<code>StateBackend</code>、<code>StoreBackend</code> 或 <code>FilesystemBackend</code>）中。</p>
+<p>代理还可以根据交互和反馈更新记忆，因此偏好和模式可以继续下去，而无需在每个线程中重述它们。</p>
+<p>有关配置详细信息和示例，请参阅<a href="customization.html#memory">内存</a>。要生成编程智能体通过 <code>AGENTS.md</code> 发现的存储库 wiki，请参阅 <a href="https://docs.langchain.com/oss/openwiki/overview">OpenWiki</a>。</p>
+<h3 id="summarization-and-context-offloading">总结和上下文卸载</h3>
+<p>该工具管理上下文，以便深度智能体可以在令牌限制内处理长时间运行的工作，同时将最相关的信息保留在范围内。</p>
+<p>该上下文流有四个部分：</p>
+<ul>
+<li><strong id="input-context">输入上下文</strong>：系统提示、记忆、技能和工具提示定义了代理的开始内容。</li>
+<li><strong id="compression">压缩</strong>：内置卸载和摘要压缩对话历史记录和大型中间结果。</li>
+<li><strong id="isolation">隔离</strong>：子智能体隔离繁重的子任务并仅返回最终结果（请参阅<a href="#delegation">委派</a>）。</li>
+<li><strong id="long-term-memory">长期内存</strong>：虚拟文件系统中的持久存储跨线程传送信息。</li>
+</ul>
+<p>这些机制共同支持超出单个上下文窗口的多步骤任务，同时减少手动上下文修剪和令牌使用。</p>
+<p>详细配置请参见<a href="context-engineering.html">上下文工程</a>。对于多模态输入和工具输出，请参见<a href="multimodal.html">多模态</a>。</p>
+<h3 id="prompt-caching">提示缓存</h3>
+<p>对于 Anthropic 和 Amazon Bedrock 模型，<code>create_deep_agent</code> 自动将提示缓存应用于系统提示的静态部分 - 每回合重复的基本代理指令、内存和技能内容。这避免了在调用之间重新处理相同的令牌，从而减少了长时间运行的代理的延迟和成本。</p>
+<p>使用人类模型或基岩模型（Claude 或 Nova）时，默认启用提示缓存。无需配置。</p>
+<p>对于其他提供商，请参阅<a href="https://docs.langchain.com/oss/python/integrations/middleware">中间件集成</a>，了解可用的特定于提供商的缓存中间件。</p>
+<h2 id="delegation">代表团</h2>
+<p>委托组件使代理能够将大问题分解为更小的、可并行的工作单元。它有两层：</p>
+<ul>
+<li><strong><a href="#task-planning">任务计划</a></strong>：用于结构化任务跟踪的可选 <code>write_todos</code> 工具</li>
+<li><strong><a href="#subagents">子智能体</a></strong>：处理独立子任务的临时子智能体</li>
+</ul>
+<h3 id="task-planning">任务规划</h3>
+<p>任务规划是一种可选的利用功能，可让代理在执行期间维护结构化任务列表。</p>
+<p>从 v0.7 开始，任务计划只能选择加入。在早期版本中，默认包含任务计划中间件。</p>
+<p>规划通常有助于：</p>
+<ul>
+<li>长或复杂的多步骤任务</li>
+<li>能力较差的模型受益于明确的问责工具</li>
+<li>从代理状态传输进度的 UI（请参阅 <a href="frontend--todo-list.html">待办事项列表</a>）</li>
+</ul>
+<p>将 <a href="https://reference.langchain.com/python/langchain/agents/middleware/todo/TodoListMiddleware"><code>TodoListMiddleware</code></a> 传递给中间件参数，为代理提供 <code>write_todos</code> 工具，用于在执行期间维护结构化任务列表。</p>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from langchain.agents.middleware import TodoListMiddleware
+
+agent = create_deep_agent(
+    model="google_genai:gemini-3.6-flash",
+    middleware=[TodoListMiddleware()],
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from langchain.agents.middleware import TodoListMiddleware
+
+agent = create_deep_agent(
+    model="openai:gpt-5.5",
+    middleware=[TodoListMiddleware()],
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from langchain.agents.middleware import TodoListMiddleware
+
+agent = create_deep_agent(
+    model="anthropic:claude-sonnet-4-6",
+    middleware=[TodoListMiddleware()],
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from langchain.agents.middleware import TodoListMiddleware
+
+agent = create_deep_agent(
+    model="openrouter:z-ai/glm-5.2",
+    middleware=[TodoListMiddleware()],
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from langchain.agents.middleware import TodoListMiddleware
+
+agent = create_deep_agent(
+    model="fireworks:accounts/fireworks/models/glm-5p2",
+    middleware=[TodoListMiddleware()],
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from langchain.agents.middleware import TodoListMiddleware
+
+agent = create_deep_agent(
+    model="baseten:zai-org/GLM-5.2",
+    middleware=[TodoListMiddleware()],
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from langchain.agents.middleware import TodoListMiddleware
+
+agent = create_deep_agent(
+    model="ollama:north-mini-code-1.0",
+    middleware=[TodoListMiddleware()],
+)
+</code></pre>
+<p>任务支持状态跟踪（<code>'pending'</code>、<code>'in_progress'</code>、<code>'completed'</code>）并保留在代理状态。这为代理提供了一个轻量级的规划层，用于组织长期运行和多步骤的工作。</p>
+<p>有关配置选项和行为详细信息，请参阅<a href="https://docs.langchain.com/oss/python/langchain/middleware/built-in#to-do-list">待办事项列表</a>。</p>
+<h3 id="subagents">子智能体</h3>
+<p>该工具包括一个内置的 <code>task</code> 工具，可让主代理为隔离、长时间运行、多步骤或并行任务创建临时子智能体。</p>
+<p>子智能体执行提供：</p>
+<ul>
+<li><strong id="fresh-context">新上下文</strong>：每次调用都会创建一个具有自己的上下文的新代理实例。</li>
+<li><strong id="autonomous-execution">自主执行</strong>：子智能体独立运行直到完成。</li>
+<li><strong id="single-handoff">单次切换</strong>：它将一份最终报告返回给主代理。</li>
+<li><strong id="configurable-strategy">可配置策略</strong>：使用<a href="subagents.html#default-subagent">默认 <code>general-purpose</code> 子智能体</a>（默认启用）或定义<a href="subagents.html#custom-subagents">自定义子智能体</a>。</li>
+<li><strong id="stateless-messaging">无状态消息传递</strong>：子智能体是无状态的，不能发回多条消息。</li>
+<li><strong id="context-and-token-efficiency">上下文和令牌效率</strong>：繁重的子任务工作保持隔离并被压缩为紧凑的结果。</li>
+</ul>
+<p><strong id="running-without-subagents-no-task-tool">无需子智能体即可运行（无 <code>task</code> 工具）</strong></p>
+<p>要在不使用 <code>task</code> 工具的情况下运行代理，请参阅<a href="subagents.html#running-without-subagents">在不使用子智能体的情况下运行</a>。不要尝试通过 <code>excluded_middleware</code> 删除 <a href="https://reference.langchain.com/python/deepagents/middleware/subagents/SubAgentMiddleware"><code>SubAgentMiddleware</code></a>——这是故意拒绝的。相反，通过 <a href="profiles.html#harness-profiles">harness profile</a> 禁用自动添加的子智能体，并且不通过 <code>subagents=</code> 传递任何同步子智能体。异步子智能体不受影响。有关完整订购信息，请参阅<a href="customization.html#full-stack">全栈</a>。</p>
+<p>有关详细信息，请参阅<a href="subagents.html">子智能体</a>。</p>
+<h2 id="steering">转向</h2>
+<p>控制组件使人们能够在运行时控制代理行为，并为代理工作设置文件系统权限。</p>
+<h3 id="human-in-the-loop">人在回路</h3>
+<p>Deep Agents 与 LangGraph 中断集成，因此您可以暂停敏感工具调用以供批准。使用 <code>create_deep_agent</code> 中的 <code>interrupt_on</code> 参数启用此行为。</p>
+<p><code>interrupt_on</code> 接受工具名称到中断配置的映射。例如，<code>interrupt_on={"edit_file": True}</code> 在每次编辑之前暂停，让您在执行之前批准调用、添加指导或修改工具输入。</p>
+<p>这为您提供了一个运行时安全和控制层，用于破坏性操作、昂贵的 API 调用和交互式调试。</p>
+<p>有关更多信息，请参阅<a href="human-in-the-loop.html">人在环</a>。</p>
+<h2 id="get-started">开始使用</h2>
+<p><strong>快速入门</strong></p>
+<p><a href="quickstart.html">查看相关页面</a></p>
+<p>构建您的第一个深度智能体</p>
+<p><strong id="customization">定制</strong></p>
+<p><a href="customization.html">查看相关页面</a></p>
+<p>了解定制选项</p>
+<p><strong id="code">代码</strong></p>
+<p><a href="code-link.html">查看相关页面</a></p>
+<p>使用深度智能体代码</p>
+<p><strong id="acp">非加普</strong></p>
+<p><a href="acp.html">查看相关页面</a></p>
+<p>通过 ACP 在代码编辑器中使用深度智能体</p>
+<p><strong id="reference">参考</strong></p>
+<p><a href="https://reference.langchain.com/python/deepagents/">查看相关页面</a></p>
+<p>请参阅 <code>deepagents</code> API 参考</p>
+<hr/>
+<div classname="source-links">
+
+
+
+
+[将这些文档](https://docs.langchain.com/use-these-docs) 通过 MCP 连接到 Claude、VSCode 等以获得实时答案。
+
+
+
+
+
+
+[在 GitHub 上编辑此页面](https://github.com/langchain-ai/docs/edit/main/src/oss/deepagents/overview.mdx) 或 [提交问题](https://github.com/langchain-ai/docs/issues/new/choose)。
+
+
+
+</div><footer>非官方中文离线整理版。代码与原图保留；在线演示需要联网。© LangChain · <a href="../LICENSE">MIT 许可</a></footer></main><nav class="page-toc" aria-label="本页目录"><h2>本页目录</h2><ul><li><a href="#try-it">尝试一下</a></li><li><a href="#quickstart">快速入门</a></li><li><a href="#core-capabilities">核心能力</a></li><li><a href="#execution-environment">执行环境</a></li><li><a href="#context-management">上下文管理</a></li><li><a href="#delegation">代表团</a></li><li><a href="#steering">转向</a></li><li><a href="#get-started">开始使用</a></li></ul></nav></div></html>

@@ -1,0 +1,90 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>OpenWiki · Deep Agents</title><link rel="stylesheet" href="../style.css"><aside><a class="brand" href="../index.html">Deep Agents<span>中文离线文档</span></a><h3>入门与选型</h3><a href="overview.html">Deep Agents 概览</a><a href="quickstart.html">快速入门</a><a href="models.html">模型选择</a><a href="comparison.html">与 Claude Agent SDK 的对比</a><a href="code-link.html">Deep Agents Code 简介</a><h3>配置与核心能力</h3><a href="customization.html">自定义 Deep Agents</a><a href="tools.html">工具</a><a href="profiles.html">配置档案</a><a href="backends.html">文件系统后端</a><a href="interpreters.html">代码解释器</a><a href="sandboxes.html">沙箱</a><a href="memory.html">记忆</a><a href="skills.html">技能</a><a href="permissions.html">权限</a><a href="human-in-the-loop.html">人工介入</a><a href="multimodal.html">多模态输入与输出</a><h3>任务与上下文管理</h3><a href="context-engineering.html">上下文工程</a><a href="subagents.html">子智能体</a><a href="dynamic-subagents.html">动态子智能体</a><a href="async-subagents.html">异步子智能体</a><a href="streaming.html">流式输出</a><a href="event-streaming.html">事件流</a><a href="fault-tolerance.html">容错</a><a href="retrieval.html">检索</a><a href="rubric.html">评分标准</a><h3>应用教程</h3><a href="data-analysis.html">构建数据分析智能体</a><a href="content-builder.html">构建内容创作智能体</a><a href="deep-research.html">构建深度研究智能体</a><a href="rag.html">构建检索增强生成（RAG）智能体</a><h3>协议与集成</h3><a href="mcp.html">模型上下文协议（MCP）</a><a href="acp.html">智能体客户端协议（ACP）</a><a href="a2a.html">A2A 服务器</a><h3>前端开发</h3><a href="frontend--overview.html">前端集成概览</a><a href="frontend--sandbox.html">前端沙箱</a><a href="frontend--subagent-streaming.html">前端子智能体流式输出</a><a href="frontend--todo-list.html">前端待办事项列表</a><h3>生产环境与知识库</h3><a href="going-to-production.html">部署到生产环境</a><a href="openwiki.html">OpenWiki</a><h3>Coding Agent 源码解析</h3><a href="codex-source-analysis.html">Codex 源码解析</a><a href="claude-code-source-analysis.html">Claude Code 源码解析：公开 SDK 与运行时边界</a><h3>版本更新</h3><a href="changelog-py.html">Python 更新日志</a><a href="changelog-js.html">JavaScript / TypeScript 更新日志</a></aside><script src="../sidebar.js"></script><div class="reading-layout"><main><div class="meta">中文机器翻译 · 文档快照 2026-09-07 · <a href="https://docs.langchain.com/oss/python/deepagents/openwiki">在线原文</a> · <a href="../markdown/openwiki.md">编辑中文 Markdown</a> · <a href="../original-markdown/openwiki.md">英文原稿</a></div><h1 id="openwiki">OpenWiki</h1>
+<blockquote>
+<p>用于编写和维护代理 wiki 的 CLI，以便编程智能体更快地工作</p>
+</blockquote>
+<p>OpenWiki 是一个开源 CLI，用于编写和维护有关您的代码库或个人知识的 Markdown wiki。该 wiki 捕获了架构、集成、评估和工作流程等详细信息，因此 <a href="overview.html">编程智能体</a> 可以将其用作持久上下文，而不是在每个任务上重新发现存储库。</p>
+<p>这使得代理的工作速度更快，代币成本更低：代理首先阅读精选的 wiki，然后仅在需要更多详细信息的地方检查源。人类可以浏览相同的 Markdown（以及本地 <a href="https://docs.langchain.com/oss/openwiki/visualize">可视化工具</a>），但主要受众是代理。</p>
+<p>OpenWiki 基于 <a href="overview.html">Deep Agents</a> 构建，并支持使用 <a href="https://docs.langchain.com/langsmith/observability-quickstart">LangSmith</a> 进行跟踪。</p>
+<h2 id="get-started">开始使用</h2>
+<p>安装 CLI，然后初始化当前存储库的文档：</p>
+<pre><code class="language-bash">npm install -g openwiki
+openwiki --init
+</code></pre>
+<p>请参阅<a href="https://docs.langchain.com/oss/openwiki/quickstart">快速入门</a> 选择模型提供程序、生成文档并使其保持最新。要在 Codex、Claude Code、OpenCode 或 Cursor 中运行 OpenWiki，而不是在独立模型会话中运行，请参阅<a href="https://docs.langchain.com/oss/openwiki/integrations">编程智能体集成</a>。</p>
+<h2 id="modes">模式</h2>
+<p>OpenWiki 有两种模式：</p>
+<table>
+<thead>
+<tr>
+<th>模式</th>
+<th>命令</th>
+<th>输出</th>
+<th>使用时</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong id="code">代码</strong>（默认）</td>
+<td><code>openwiki</code> / <code>openwiki code</code></td>
+<td>当前存储库中的 <code>openwiki/</code></td>
+<td>您需要编程智能体的存储库上下文和文档</td>
+</tr>
+<tr>
+<td><strong id="personal">个人的</strong></td>
+<td><code>openwiki personal</code></td>
+<td><code>~/.openwiki/wiki</code></td>
+<td>您想要来自配置来源的本地个人大脑</td>
+</tr>
+</tbody>
+</table>
+<p>裸机 <code>openwiki --init</code> 和 <code>openwiki --update</code> 在代码模式下运行。使用 <code>openwiki personal --init</code> 或 <code>openwiki personal --update</code> 作为个人 wiki。</p>
+<h2 id="capabilities">能力</h2>
+<p><strong id="repository-wikis">存储库维基</strong></p>
+<p><a href="https://docs.langchain.com/oss/openwiki/code-mode">查看相关页面</a></p>
+<p>在 <code>openwiki/</code> 下生成 Markdown 文档，然后将它们连接到 <code>AGENTS.md</code> 和 <code>CLAUDE.md</code> 中，以便编程智能体可以找到它们。</p>
+<p><strong id="coding-agent-integrations">编程智能体集成</strong></p>
+<p><a href="https://docs.langchain.com/oss/openwiki/integrations">查看相关页面</a></p>
+<p>使用主机模型和存储库工具在 Codex、Claude Code、OpenCode 或 Cursor 中运行 OpenWiki。</p>
+<p><strong id="personal-brain">个人大脑</strong></p>
+<p><a href="https://docs.langchain.com/oss/openwiki/personal-mode">查看相关页面</a></p>
+<p>从 git 存储库、自定义 MCP、Gmail、Notion、网络搜索、黑客新闻和 X/Twitter 构建本地 wiki。</p>
+<p><strong id="grounded-claims">有根据的主张</strong></p>
+<p><a href="https://docs.langchain.com/oss/openwiki/code-mode#grounded-claims">查看相关页面</a></p>
+<p>将重要事实跟踪回版本化源证据，并在证据发生变化时刷新页面。</p>
+<p><strong id="automatic-updates">自动更新</strong></p>
+<p><a href="https://docs.langchain.com/oss/openwiki/automate-updates">查看相关页面</a></p>
+<p>从 GitHub Actions、GitLab CI 或 Bitbucket Pipelines 刷新文档，并在内容更改时打开 PR。</p>
+<p><strong id="model-providers">模型提供商</strong></p>
+<p><a href="https://docs.langchain.com/oss/openwiki/providers">查看相关页面</a></p>
+<p>使用 OpenAI、Anthropic、Gemini、Bedrock、OpenRouter、GitHub Copilot 和其他开箱即用的提供商。</p>
+<p><strong id="open-knowledge-format">开放知识格式</strong></p>
+<p><a href="https://docs.langchain.com/oss/openwiki/code-mode#open-knowledge-format">查看相关页面</a></p>
+<p>发出 OKF v0.2 Markdown 捆绑包，其中包含前言、索引和链接概念。</p>
+<p><strong id="langsmith-tracing">朗史密斯追踪</strong></p>
+<p><a href="https://docs.langchain.com/oss/openwiki/quickstart#trace-with-langsmith">查看相关页面</a></p>
+<p>跟踪文档通过 LangSmith 运行。</p>
+<h2 id="next-steps">后续步骤</h2>
+<p><strong id="quickstart">快速入门</strong></p>
+<p><a href="https://docs.langchain.com/oss/openwiki/quickstart">查看相关页面</a></p>
+<p>安装 OpenWiki、配置提供程序并生成您的第一个 wiki。</p>
+<p><strong id="cli-reference">CLI 参考</strong></p>
+<p><a href="https://docs.langchain.com/oss/openwiki/cli-reference">查看相关页面</a></p>
+<p>查看命令、标志和连接器子命令。</p>
+<hr/>
+<div classname="source-links">
+
+
+
+
+[将这些文档](https://docs.langchain.com/use-these-docs) 通过 MCP 连接到 Claude、VSCode 等以获得实时答案。
+
+
+
+
+
+
+[在 GitHub 上编辑此页面](https://github.com/langchain-ai/docs/edit/main/src/oss/openwiki/overview.mdx) 或 [提交问题](https://github.com/langchain-ai/docs/issues/new/choose)。
+
+
+
+</div><footer>非官方中文离线整理版。代码与原图保留；在线演示需要联网。© LangChain · <a href="../LICENSE">MIT 许可</a></footer></main><nav class="page-toc" aria-label="本页目录"><h2>本页目录</h2><ul><li><a href="#get-started">开始使用</a></li><li><a href="#modes">模式</a></li><li><a href="#capabilities">能力</a></li><li><a href="#next-steps">后续步骤</a></li></ul></nav></div></html>

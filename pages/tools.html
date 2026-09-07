@@ -1,0 +1,501 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>工具 · Deep Agents</title><link rel="stylesheet" href="../style.css"><aside><a class="brand" href="../index.html">Deep Agents<span>中文离线文档</span></a><h3>入门与选型</h3><a href="overview.html">Deep Agents 概览</a><a href="quickstart.html">快速入门</a><a href="models.html">模型选择</a><a href="comparison.html">与 Claude Agent SDK 的对比</a><a href="code-link.html">Deep Agents Code 简介</a><h3>配置与核心能力</h3><a href="customization.html">自定义 Deep Agents</a><a href="tools.html">工具</a><a href="profiles.html">配置档案</a><a href="backends.html">文件系统后端</a><a href="interpreters.html">代码解释器</a><a href="sandboxes.html">沙箱</a><a href="memory.html">记忆</a><a href="skills.html">技能</a><a href="permissions.html">权限</a><a href="human-in-the-loop.html">人工介入</a><a href="multimodal.html">多模态输入与输出</a><h3>任务与上下文管理</h3><a href="context-engineering.html">上下文工程</a><a href="subagents.html">子智能体</a><a href="dynamic-subagents.html">动态子智能体</a><a href="async-subagents.html">异步子智能体</a><a href="streaming.html">流式输出</a><a href="event-streaming.html">事件流</a><a href="fault-tolerance.html">容错</a><a href="retrieval.html">检索</a><a href="rubric.html">评分标准</a><h3>应用教程</h3><a href="data-analysis.html">构建数据分析智能体</a><a href="content-builder.html">构建内容创作智能体</a><a href="deep-research.html">构建深度研究智能体</a><a href="rag.html">构建检索增强生成（RAG）智能体</a><h3>协议与集成</h3><a href="mcp.html">模型上下文协议（MCP）</a><a href="acp.html">智能体客户端协议（ACP）</a><a href="a2a.html">A2A 服务器</a><h3>前端开发</h3><a href="frontend--overview.html">前端集成概览</a><a href="frontend--sandbox.html">前端沙箱</a><a href="frontend--subagent-streaming.html">前端子智能体流式输出</a><a href="frontend--todo-list.html">前端待办事项列表</a><h3>生产环境与知识库</h3><a href="going-to-production.html">部署到生产环境</a><a href="openwiki.html">OpenWiki</a><h3>Coding Agent 源码解析</h3><a href="codex-source-analysis.html">Codex 源码解析</a><a href="claude-code-source-analysis.html">Claude Code 源码解析：公开 SDK 与运行时边界</a><h3>版本更新</h3><a href="changelog-py.html">Python 更新日志</a><a href="changelog-js.html">JavaScript / TypeScript 更新日志</a></aside><script src="../sidebar.js"></script><div class="reading-layout"><main><div class="meta">中文机器翻译 · 文档快照 2026-09-07 · <a href="https://docs.langchain.com/oss/python/deepagents/tools">在线原文</a> · <a href="../markdown/tools.md">编辑中文 Markdown</a> · <a href="../original-markdown/tools.md">英文原稿</a></div><h1 id="tools">工具</h1>
+<blockquote>
+<p>将 Deep Agent 连接到自定义函数、API、数据库和任何 MCP 服务器</p>
+</blockquote>
+<p>深度智能体可以调用​​您定义的任何工具、任何<a href="https://python.langchain.com/docs/concepts/tools/">LangChain工具</a>以及来自任何<a href="#mcp-tools">MCP服务器</a>的工具。通过 <code>tools=</code> 参数以及<a href="overview.html#execution-environment">内置线束工具</a> 将它们传递给 <code>create_deep_agent</code>，以进行文件管理和子智能体生成。</p>
+<pre><code class="language-python">from deepagents import create_deep_agent
+
+
+agent = create_deep_agent(
+    model="google_genai:gemini-3.6-flash",
+    tools=[search, fetch_url, run_query],
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+
+
+agent = create_deep_agent(
+    model="openai:gpt-5.5",
+    tools=[search, fetch_url, run_query],
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+
+
+agent = create_deep_agent(
+    model="anthropic:claude-sonnet-4-6",
+    tools=[search, fetch_url, run_query],
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+
+
+agent = create_deep_agent(
+    model="openrouter:z-ai/glm-5.2",
+    tools=[search, fetch_url, run_query],
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+
+
+agent = create_deep_agent(
+    model="fireworks:accounts/fireworks/models/glm-5p2",
+    tools=[search, fetch_url, run_query],
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+
+
+agent = create_deep_agent(
+    model="baseten:zai-org/GLM-5.2",
+    tools=[search, fetch_url, run_query],
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+
+
+agent = create_deep_agent(
+    model="ollama:north-mini-code-1.0",
+    tools=[search, fetch_url, run_query],
+)
+</code></pre>
+<h2 id="custom-tools">定制工具</h2>
+<p>将任何可调用的（例如普通函数、LangChain <code>@tool</code> 修饰的函数或工具字典）直接传递给 <code>tools=</code>。 Deep Agents 从函数签名和文档字符串推断工具架构，因此在大多数情况下您不需要定义单独的架构。</p>
+<pre><code class="language-python">import os
+from typing import Literal
+from tavily import TavilyClient
+from deepagents import create_deep_agent
+
+tavily_client = TavilyClient(api_key=os.environ["TAVILY_API_KEY"])
+
+
+def internet_search(
+    query: str,
+    max_results: int = 5,
+    topic: Literal["general", "news", "finance"] = "general",
+    include_raw_content: bool = False,
+):
+    """Run a web search"""
+    return tavily_client.search(
+        query,
+        max_results=max_results,
+        include_raw_content=include_raw_content,
+        topic=topic,
+    )
+
+
+agent = create_deep_agent(
+    model="google_genai:gemini-3.6-flash",
+    tools=[internet_search],
+)
+</code></pre>
+<pre><code class="language-python">import os
+from typing import Literal
+from tavily import TavilyClient
+from deepagents import create_deep_agent
+
+tavily_client = TavilyClient(api_key=os.environ["TAVILY_API_KEY"])
+
+
+def internet_search(
+    query: str,
+    max_results: int = 5,
+    topic: Literal["general", "news", "finance"] = "general",
+    include_raw_content: bool = False,
+):
+    """Run a web search"""
+    return tavily_client.search(
+        query,
+        max_results=max_results,
+        include_raw_content=include_raw_content,
+        topic=topic,
+    )
+
+
+agent = create_deep_agent(
+    model="openai:gpt-5.5",
+    tools=[internet_search],
+)
+</code></pre>
+<pre><code class="language-python">import os
+from typing import Literal
+from tavily import TavilyClient
+from deepagents import create_deep_agent
+
+tavily_client = TavilyClient(api_key=os.environ["TAVILY_API_KEY"])
+
+
+def internet_search(
+    query: str,
+    max_results: int = 5,
+    topic: Literal["general", "news", "finance"] = "general",
+    include_raw_content: bool = False,
+):
+    """Run a web search"""
+    return tavily_client.search(
+        query,
+        max_results=max_results,
+        include_raw_content=include_raw_content,
+        topic=topic,
+    )
+
+
+agent = create_deep_agent(
+    model="anthropic:claude-sonnet-4-6",
+    tools=[internet_search],
+)
+</code></pre>
+<pre><code class="language-python">import os
+from typing import Literal
+from tavily import TavilyClient
+from deepagents import create_deep_agent
+
+tavily_client = TavilyClient(api_key=os.environ["TAVILY_API_KEY"])
+
+
+def internet_search(
+    query: str,
+    max_results: int = 5,
+    topic: Literal["general", "news", "finance"] = "general",
+    include_raw_content: bool = False,
+):
+    """Run a web search"""
+    return tavily_client.search(
+        query,
+        max_results=max_results,
+        include_raw_content=include_raw_content,
+        topic=topic,
+    )
+
+
+agent = create_deep_agent(
+    model="openrouter:z-ai/glm-5.2",
+    tools=[internet_search],
+)
+</code></pre>
+<pre><code class="language-python">import os
+from typing import Literal
+from tavily import TavilyClient
+from deepagents import create_deep_agent
+
+tavily_client = TavilyClient(api_key=os.environ["TAVILY_API_KEY"])
+
+
+def internet_search(
+    query: str,
+    max_results: int = 5,
+    topic: Literal["general", "news", "finance"] = "general",
+    include_raw_content: bool = False,
+):
+    """Run a web search"""
+    return tavily_client.search(
+        query,
+        max_results=max_results,
+        include_raw_content=include_raw_content,
+        topic=topic,
+    )
+
+
+agent = create_deep_agent(
+    model="fireworks:accounts/fireworks/models/glm-5p2",
+    tools=[internet_search],
+)
+</code></pre>
+<pre><code class="language-python">import os
+from typing import Literal
+from tavily import TavilyClient
+from deepagents import create_deep_agent
+
+tavily_client = TavilyClient(api_key=os.environ["TAVILY_API_KEY"])
+
+
+def internet_search(
+    query: str,
+    max_results: int = 5,
+    topic: Literal["general", "news", "finance"] = "general",
+    include_raw_content: bool = False,
+):
+    """Run a web search"""
+    return tavily_client.search(
+        query,
+        max_results=max_results,
+        include_raw_content=include_raw_content,
+        topic=topic,
+    )
+
+
+agent = create_deep_agent(
+    model="baseten:zai-org/GLM-5.2",
+    tools=[internet_search],
+)
+</code></pre>
+<pre><code class="language-python">import os
+from typing import Literal
+from tavily import TavilyClient
+from deepagents import create_deep_agent
+
+tavily_client = TavilyClient(api_key=os.environ["TAVILY_API_KEY"])
+
+
+def internet_search(
+    query: str,
+    max_results: int = 5,
+    topic: Literal["general", "news", "finance"] = "general",
+    include_raw_content: bool = False,
+):
+    """Run a web search"""
+    return tavily_client.search(
+        query,
+        max_results=max_results,
+        include_raw_content=include_raw_content,
+        topic=topic,
+    )
+
+
+agent = create_deep_agent(
+    model="ollama:north-mini-code-1.0",
+    tools=[internet_search],
+)
+</code></pre>
+<p>有关定义和使用 LangChain 工具（工具字典、<code>StructuredTool</code>、返回类型、错误处理等）的完整详细信息，请参阅<a href="https://docs.langchain.com/oss/python/langchain/tools">工具</a>。</p>
+<h2 id="mcp-tools">MCP工具</h2>
+<p>Deep Agents 完全支持 <a href="https://docs.langchain.com/oss/python/langchain/mcp">模型上下文协议 (MCP)</a>，这是用于将代理连接到外部服务的开放标准。从任何 MCP 服务器加载工具并将其直接传递到 <code>create_deep_agent</code>。</p>
+<p>MCP 是一种开放协议，允许代理通过标准接口连接到不断增长的服务器生态系统（数据库、API、文件系统、浏览器等）。您无需为每个服务编写自定义集成代码，而是将深度智能体指向 MCP 服务器，它会获取服务器公开的所有工具。</p>
+<p>安装 LangChain 并附加 <code>mcp</code> 以连接到 MCP 服务器：</p>
+<pre><code class="language-bash">pip install "langchain[mcp]"
+</code></pre>
+<pre><code class="language-bash">uv add "langchain[mcp]"
+</code></pre>
+<pre><code class="language-python">import asyncio
+
+from deepagents import create_deep_agent
+from langchain.mcp import MCPAdapter
+
+
+async def main():
+    config = {"mcpServers": {"my_server": {"url": "http://localhost:8000/mcp"}}}
+    async with MCPAdapter(config) as adapter:
+        tools = await adapter.list_tools()
+        agent = create_deep_agent(
+            model="google_genai:gemini-3.6-flash",
+            tools=tools,
+        )
+        await agent.ainvoke(
+            {
+                "messages": [
+                    {"role": "user", "content": "Use the MCP server to help me."}
+                ]
+            },
+            config={"configurable": {"thread_id": "1"}},
+        )
+</code></pre>
+<pre><code class="language-python">import asyncio
+
+from deepagents import create_deep_agent
+from langchain.mcp import MCPAdapter
+
+
+async def main():
+    config = {"mcpServers": {"my_server": {"url": "http://localhost:8000/mcp"}}}
+    async with MCPAdapter(config) as adapter:
+        tools = await adapter.list_tools()
+        agent = create_deep_agent(
+            model="openai:gpt-5.5",
+            tools=tools,
+        )
+        await agent.ainvoke(
+            {
+                "messages": [
+                    {"role": "user", "content": "Use the MCP server to help me."}
+                ]
+            },
+            config={"configurable": {"thread_id": "1"}},
+        )
+</code></pre>
+<pre><code class="language-python">import asyncio
+
+from deepagents import create_deep_agent
+from langchain.mcp import MCPAdapter
+
+
+async def main():
+    config = {"mcpServers": {"my_server": {"url": "http://localhost:8000/mcp"}}}
+    async with MCPAdapter(config) as adapter:
+        tools = await adapter.list_tools()
+        agent = create_deep_agent(
+            model="anthropic:claude-sonnet-5",
+            tools=tools,
+        )
+        await agent.ainvoke(
+            {
+                "messages": [
+                    {"role": "user", "content": "Use the MCP server to help me."}
+                ]
+            },
+            config={"configurable": {"thread_id": "1"}},
+        )
+</code></pre>
+<pre><code class="language-python">import asyncio
+
+from deepagents import create_deep_agent
+from langchain.mcp import MCPAdapter
+
+
+async def main():
+    config = {"mcpServers": {"my_server": {"url": "http://localhost:8000/mcp"}}}
+    async with MCPAdapter(config) as adapter:
+        tools = await adapter.list_tools()
+        agent = create_deep_agent(
+            model="openrouter:z-ai/glm-5.2",
+            tools=tools,
+        )
+        await agent.ainvoke(
+            {
+                "messages": [
+                    {"role": "user", "content": "Use the MCP server to help me."}
+                ]
+            },
+            config={"configurable": {"thread_id": "1"}},
+        )
+</code></pre>
+<pre><code class="language-python">import asyncio
+
+from deepagents import create_deep_agent
+from langchain.mcp import MCPAdapter
+
+
+async def main():
+    config = {"mcpServers": {"my_server": {"url": "http://localhost:8000/mcp"}}}
+    async with MCPAdapter(config) as adapter:
+        tools = await adapter.list_tools()
+        agent = create_deep_agent(
+            model="fireworks:accounts/fireworks/models/glm-5p2",
+            tools=tools,
+        )
+        await agent.ainvoke(
+            {
+                "messages": [
+                    {"role": "user", "content": "Use the MCP server to help me."}
+                ]
+            },
+            config={"configurable": {"thread_id": "1"}},
+        )
+</code></pre>
+<pre><code class="language-python">import asyncio
+
+from deepagents import create_deep_agent
+from langchain.mcp import MCPAdapter
+
+
+async def main():
+    config = {"mcpServers": {"my_server": {"url": "http://localhost:8000/mcp"}}}
+    async with MCPAdapter(config) as adapter:
+        tools = await adapter.list_tools()
+        agent = create_deep_agent(
+            model="baseten:zai-org/GLM-5.2",
+            tools=tools,
+        )
+        await agent.ainvoke(
+            {
+                "messages": [
+                    {"role": "user", "content": "Use the MCP server to help me."}
+                ]
+            },
+            config={"configurable": {"thread_id": "1"}},
+        )
+</code></pre>
+<pre><code class="language-python">import asyncio
+
+from deepagents import create_deep_agent
+from langchain.mcp import MCPAdapter
+
+
+async def main():
+    config = {"mcpServers": {"my_server": {"url": "http://localhost:8000/mcp"}}}
+    async with MCPAdapter(config) as adapter:
+        tools = await adapter.list_tools()
+        agent = create_deep_agent(
+            model="ollama:north-mini-code-1.0",
+            tools=tools,
+        )
+        await agent.ainvoke(
+            {
+                "messages": [
+                    {"role": "user", "content": "Use the MCP server to help me."}
+                ]
+            },
+            config={"configurable": {"thread_id": "1"}},
+        )
+</code></pre>
+<p>有关详细的配置选项（包括 stdio 服务器、OAuth 身份验证、工具过滤和有状态会话），请参阅完整的 <a href="https://docs.langchain.com/oss/python/langchain/mcp">MCP 指南</a>。</p>
+<h2 id="built-in-harness-tools">内置线束工具</h2>
+<p>除了您提供的工具之外，每个 Deep Agent 还附带来自线束的一组内置工具：</p>
+<table>
+<thead>
+<tr>
+<th>工具</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ls</code></td>
+<td>列出目录中的文件。</td>
+</tr>
+<tr>
+<td><code>read_file</code></td>
+<td>读取文件内容（具有分页和多模式支持）。</td>
+</tr>
+<tr>
+<td><code>write_file</code></td>
+<td>创建一个新文件，或覆盖现有文件。</td>
+</tr>
+<tr>
+<td><code>edit_file</code></td>
+<td>在文件中执行精确的字符串替换。</td>
+</tr>
+<tr>
+<td><code>delete</code></td>
+<td>递归删除文件或目录及其内容。 <code>delete</code> 工具需要 <code>deepagents&gt;=0.7</code>。</td>
+</tr>
+<tr>
+<td><code>glob</code></td>
+<td>查找与 glob 模式匹配的文件。</td>
+</tr>
+<tr>
+<td><code>grep</code></td>
+<td>搜索文件内容。</td>
+</tr>
+<tr>
+<td><code>execute</code></td>
+<td>运行 shell 命令（仅限沙箱后端）。</td>
+</tr>
+<tr>
+<td><code>task</code></td>
+<td>生成一个子智能体来处理委托的任务。</td>
+</tr>
+</tbody>
+</table>
+<p>要使用 <code>write_todos</code> 添加结构化任务计划，请选择使用 <a href="https://reference.langchain.com/python/langchain/agents/middleware/todo/TodoListMiddleware"><code>TodoListMiddleware</code></a>。参见<a href="overview.html#task-planning">任务规划</a>。</p>
+<p>有关每个内置工具功能的完整详细信息，请参阅<a href="overview.html#execution-environment">线束概述</a>。</p>
+<h2 id="multimodal-tool-outputs">多模式工具输出</h2>
+<p>当所选模型支持多模式工具结果时，自定义工具可以返回纯文本或<a href="https://docs.langchain.com/oss/python/langchain/messages#standard-content-blocks">标准内容块</a>（文本、图像、音频、视频和文件）。内置 <code>read_file</code> 工具还返回支持的非文本文件类型的多模式块。</p>
+<p>返回纯文本结果的字符串，或文本加媒体或交错多模式输出的内容块的有序列表。有关示例和上下文压缩注意事项，请参阅<a href="multimodal.html">多模式</a> 和<a href="https://docs.langchain.com/oss/python/langchain/tools#return-multimodal-content">工具返回值</a>。</p>
+<hr/>
+<div classname="source-links">
+
+
+
+
+[将这些文档](https://docs.langchain.com/use-these-docs) 通过 MCP 连接到 Claude、VSCode 等以获得实时答案。
+
+
+
+
+
+
+[在 GitHub 上编辑此页面](https://github.com/langchain-ai/docs/edit/main/src/oss/deepagents/tools.mdx) 或 [提交问题](https://github.com/langchain-ai/docs/issues/new/choose)。
+
+
+
+</div><footer>非官方中文离线整理版。代码与原图保留；在线演示需要联网。© LangChain · <a href="../LICENSE">MIT 许可</a></footer></main><nav class="page-toc" aria-label="本页目录"><h2>本页目录</h2><ul><li><a href="#custom-tools">定制工具</a></li><li><a href="#mcp-tools">MCP工具</a></li><li><a href="#built-in-harness-tools">内置线束工具</a></li><li><a href="#multimodal-tool-outputs">多模式工具输出</a></li></ul></nav></div></html>

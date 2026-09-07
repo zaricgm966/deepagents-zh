@@ -1,0 +1,554 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>代码解释器 · Deep Agents</title><link rel="stylesheet" href="../style.css"><aside><a class="brand" href="../index.html">Deep Agents<span>中文离线文档</span></a><h3>入门与选型</h3><a href="overview.html">Deep Agents 概览</a><a href="quickstart.html">快速入门</a><a href="models.html">模型选择</a><a href="comparison.html">与 Claude Agent SDK 的对比</a><a href="code-link.html">Deep Agents Code 简介</a><h3>配置与核心能力</h3><a href="customization.html">自定义 Deep Agents</a><a href="tools.html">工具</a><a href="profiles.html">配置档案</a><a href="backends.html">文件系统后端</a><a href="interpreters.html">代码解释器</a><a href="sandboxes.html">沙箱</a><a href="memory.html">记忆</a><a href="skills.html">技能</a><a href="permissions.html">权限</a><a href="human-in-the-loop.html">人工介入</a><a href="multimodal.html">多模态输入与输出</a><h3>任务与上下文管理</h3><a href="context-engineering.html">上下文工程</a><a href="subagents.html">子智能体</a><a href="dynamic-subagents.html">动态子智能体</a><a href="async-subagents.html">异步子智能体</a><a href="streaming.html">流式输出</a><a href="event-streaming.html">事件流</a><a href="fault-tolerance.html">容错</a><a href="retrieval.html">检索</a><a href="rubric.html">评分标准</a><h3>应用教程</h3><a href="data-analysis.html">构建数据分析智能体</a><a href="content-builder.html">构建内容创作智能体</a><a href="deep-research.html">构建深度研究智能体</a><a href="rag.html">构建检索增强生成（RAG）智能体</a><h3>协议与集成</h3><a href="mcp.html">模型上下文协议（MCP）</a><a href="acp.html">智能体客户端协议（ACP）</a><a href="a2a.html">A2A 服务器</a><h3>前端开发</h3><a href="frontend--overview.html">前端集成概览</a><a href="frontend--sandbox.html">前端沙箱</a><a href="frontend--subagent-streaming.html">前端子智能体流式输出</a><a href="frontend--todo-list.html">前端待办事项列表</a><h3>生产环境与知识库</h3><a href="going-to-production.html">部署到生产环境</a><a href="openwiki.html">OpenWiki</a><h3>Coding Agent 源码解析</h3><a href="codex-source-analysis.html">Codex 源码解析</a><a href="claude-code-source-analysis.html">Claude Code 源码解析：公开 SDK 与运行时边界</a><h3>版本更新</h3><a href="changelog-py.html">Python 更新日志</a><a href="changelog-js.html">JavaScript / TypeScript 更新日志</a></aside><script src="../sidebar.js"></script><div class="reading-layout"><main><div class="meta">中文机器翻译 · 文档快照 2026-09-07 · <a href="https://docs.langchain.com/oss/python/deepagents/interpreters">在线原文</a> · <a href="../markdown/interpreters.md">编辑中文 Markdown</a> · <a href="../original-markdown/interpreters.md">英文原稿</a></div><h1 id="interpreters">代码解释器</h1>
+<blockquote>
+<p>在深度智能体内运行轻量级代码来组合工具、编排子智能体和转换结构化数据</p>
+</blockquote>
+<p>解释器在代理循环内为代理提供了一个可编程的<strong id="in-memory">内存中</strong>工作空间。代理编写代码来完成任务，运行时执行它并仅返回相关结果。中间结果不会成为模型上下文的一部分。</p>
+<p><a href="sandboxes.html">沙箱</a> 是一种对环境进行操作的代码优先方式（例如运行命令、安装依赖项和编辑文件），而解释器是一种代码优先方式，用于编写工具、保留状态以及决定应返回模型的信息。</p>
+<p>口译员处于 <a href="https://docs.langchain.com/oss/python/versioning"><strong id="beta">beta</strong></a> 状态。 API 和生命周期行为可能会在版本之间发生变化。</p>
+<p>解释器需要 <code>langchain-quickjs&gt;=0.2.0</code> 和 Python <code>&gt;=3.11</code>。</p>
+<h2 id="why-use-interpreters">为什么要使用口译员？</h2>
+<p>大多数代理工作在模型推理和工具调用之间交替进行。一个模型可以一次触发多个工具调用，但是该批次在发出时就被固定了。没有任何东西可以循环、在结果上分支、重试失败或将一个调用的输出提供给下一个调用而无需另一个模型轮转，并且每个结果都返回到模型的上下文。该模型还决定发出多少次调用，因此要求它在数百个项目上分派工作是不可靠的，而且它往往覆盖一个样本而不是每个项目。</p>
+<p>解释器将该编排转移到代码中，以便模型推理“做什么”，而不是每个中间步骤。</p>
+<p><strong>编程工具调用 (PTC)</strong></p>
+<p><a href="#programmatic-tool-calling-ptc">查看相关页面</a></p>
+<p>从解释器代码中调用选定的工具，包括循环、重试、分支和并行批处理。</p>
+<p><strong>动态子智能体</strong></p>
+<p><a href="#dynamic-subagents">查看相关页面</a></p>
+<p>从代码中分派子智能体，以针对大量输入进行扇出、验证和递归工作流程。</p>
+<p><strong id="stateful-work">有状态的工作</strong></p>
+<p><a href="#how-interpreters-work">查看相关页面</a></p>
+<p>将中间值保持在运行时状态，而不会使模型上下文过载。</p>
+<p><strong id="deterministic-transforms">确定性变换</strong></p>
+<p><a href="#how-interpreters-work">查看相关页面</a></p>
+<p>对结构化数据进行排序、分组、解析、验证、评分和聚合，无需再次进行模型转换。</p>
+<h2 id="choose-a-pattern">选择图案</h2>
+<p>对代理循环内的代码使用解释器：组合工具、保留状态以及控制返回模型的内容。</p>
+<p>使用 <a href="sandboxes.html">沙箱</a> 针对环境编写代码：shell 命令、包安装、测试、文件系统编辑和操作系统级执行。</p>
+<table>
+<thead>
+<tr>
+<th>需要</th>
+<th>使用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>一两个简单的外部调用</td>
+<td>正常的工具调用</td>
+</tr>
+<tr>
+<td>纯内存 JavaScript：循环、分支、重试或数据转换（无外部工具）</td>
+<td>口译员</td>
+</tr>
+<tr>
+<td>许多从代码编排的外部工具调用（需要 <a href="#programmatic-tool-calling-ptc">PTC</a>）</td>
+<td>具有<a href="#programmatic-tool-calling-ptc">编程工具调用 (PTC)</a> 的解释器</td>
+</tr>
+<tr>
+<td>许多独立的工作单元、多个视角或对大量输入的递归分析</td>
+<td>具有 <a href="dynamic-subagents.html">动态子智能体</a> 的解释器</td>
+</tr>
+<tr>
+<td>Shell 命令、软件包安装、测试或完整操作系统文件系统访问</td>
+<td><a href="sandboxes.html">沙盒</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="quickstart">快速入门</h2>
+<p>安装 QuickJS 中间件包，然后使用 <code>create_deep_agent</code> 上的 <code>middleware</code> 参数传递解释器中间件。</p>
+<pre><code class="language-bash">pip install -U "deepagents[quickjs]"
+</code></pre>
+<pre><code class="language-bash">uv add "deepagents[quickjs]"
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from langchain_quickjs import CodeInterpreterMiddleware
+
+agent = create_deep_agent(
+    model="google_genai:gemini-3.6-flash",
+    middleware=[CodeInterpreterMiddleware()],
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from langchain_quickjs import CodeInterpreterMiddleware
+
+agent = create_deep_agent(
+    model="openai:gpt-5.5",
+    middleware=[CodeInterpreterMiddleware()],
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from langchain_quickjs import CodeInterpreterMiddleware
+
+agent = create_deep_agent(
+    model="anthropic:claude-sonnet-4-6",
+    middleware=[CodeInterpreterMiddleware()],
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from langchain_quickjs import CodeInterpreterMiddleware
+
+agent = create_deep_agent(
+    model="openrouter:z-ai/glm-5.2",
+    middleware=[CodeInterpreterMiddleware()],
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from langchain_quickjs import CodeInterpreterMiddleware
+
+agent = create_deep_agent(
+    model="fireworks:accounts/fireworks/models/glm-5p2",
+    middleware=[CodeInterpreterMiddleware()],
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from langchain_quickjs import CodeInterpreterMiddleware
+
+agent = create_deep_agent(
+    model="baseten:zai-org/GLM-5.2",
+    middleware=[CodeInterpreterMiddleware()],
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from langchain_quickjs import CodeInterpreterMiddleware
+
+agent = create_deep_agent(
+    model="ollama:north-mini-code-1.0",
+    middleware=[CodeInterpreterMiddleware()],
+)
+</code></pre>
+<h2 id="how-interpreters-work">口译员如何工作</h2>
+<p>中间件向代理添加了 <code>eval</code> 工具。有用时，代理编写 JavaScript 并调用 <code>eval</code>；您不直接致电口译员。该工具在 QuickJS 上下文中运行代码，其变量可以在 <code>eval</code> 调用之间持续存在，具体取决于持久性 <code>mode</code>。它捕获 <code>console.log</code>、<code>console.warn</code> 和 <code>console.error</code>，并返回最后一个表达式的结果。</p>
+<p>代理可以编写如下代码：</p>
+<pre><code class="language-ts">const rows = [
+  { team: "alpha", score: 8 },
+  { team: "beta", score: 13 },
+  { team: "alpha", score: 21 },
+];
+
+const totals = rows.reduce((acc, row) =&gt; {
+  acc[row.team] = (acc[row.team] ?? 0) + row.score;
+  console.log(`${row.team} score: ${acc[row.team]}`);
+  return acc;
+}, {});
+
+totals;
+</code></pre>
+<p>默认情况下（<code>mode="thread"</code>），解释器状态在同一线程中的轮次中保持不变。有关 <code>mode</code> 选项和快照生命周期，请参阅<a href="#persistence">持久性</a>。</p>
+<p>代码针对 <a href="https://github.com/quickjs-ng/quickjs"><strong id="quickjs">QuickJS</strong></a>（一个轻量级 JavaScript 运行时）运行。默认情况下，解释器代码无法访问主机文件系统、网络、shell、包管理器或时钟。它可以计算、保持状态以及写入 <code>console.log</code>、<code>console.warn</code> 或 <code>console.error</code>，仅此而已。</p>
+<p>两个明确的桥梁扩展了这一范围：</p>
+<ul>
+<li><strong id="tools">工具</strong>，通过<a href="#programmatic-tool-calling-ptc">编程工具调用(PTC)</a>。在 <code>tools</code> 命名空间下提供作为异步函数的工具许可列表。这些可以是代理自己的工具或您定义并传入的独立工具。</li>
+<li><strong id="subagents">子智能体</strong>，通过<a href="dynamic-subagents.html">动态子智能体</a>。当代理配置了子智能体时，解释器会公开 <code>task()</code> 全局变量，以便从代码中分派它们。</li>
+</ul>
+<p>编程工具调用处于关闭状态，直到您<a href="#enable-ptc">启用它</a>。只要代理有子智能体，通过 <code>task()</code> 的子智能体调度默认处于打开状态，您可以将其关闭。没有其他东西跨越 QuickJS 的边界。</p>
+<h2 id="programmatic-tool-calling-ptc">编程工具调用 (PTC)</h2>
+<p>编程工具调用 (PTC) 在全局 <code>tools</code> 命名空间下公开解释器内选定的代理工具。代理可以编写在循环、分支、重试或并行批次中调用工具的代码，而不是要求模型发出一个工具调用、等待结果，然后决定下一次调用。</p>
+<p>当中间结果仅作为下一步的输入时，这会有所帮助：解释器在任何内容返回到模型之前过滤或聚合它们，从而保持多步骤工作流的令牌效率。它与模型无关，由中间件而不是特定于提供商的工具调用 API 实现。</p>
+<p>中间件将每个列入许可名单的工具公开为 <code>tools</code> 下的异步函数。代理使用 <code>await</code> 调用它，在代码中处理结果，模型只能看到最终的解释器输出，而不是每个中间值。工具名称将转换为驼峰命名法，而输入对象仍遵循工具的架构，因此名为 <code>web_search</code> 的工具将变为 <code>tools.webSearch(...)</code>：</p>
+<pre><code class="language-ts">const result: string = await tools.webSearch({
+  query: "deepagents interpreters",
+});
+</code></pre>
+<h3 id="enable-ptc">启用 PTC</h3>
+<p>使用显式允许列表启用 PTC：</p>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from langchain_quickjs import CodeInterpreterMiddleware
+
+agent = create_deep_agent(
+    model="google_genai:gemini-3.6-flash",
+    middleware=[CodeInterpreterMiddleware(ptc=["web_search"])],
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from langchain_quickjs import CodeInterpreterMiddleware
+
+agent = create_deep_agent(
+    model="openai:gpt-5.5",
+    middleware=[CodeInterpreterMiddleware(ptc=["web_search"])],
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from langchain_quickjs import CodeInterpreterMiddleware
+
+agent = create_deep_agent(
+    model="anthropic:claude-sonnet-4-6",
+    middleware=[CodeInterpreterMiddleware(ptc=["web_search"])],
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from langchain_quickjs import CodeInterpreterMiddleware
+
+agent = create_deep_agent(
+    model="openrouter:z-ai/glm-5.2",
+    middleware=[CodeInterpreterMiddleware(ptc=["web_search"])],
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from langchain_quickjs import CodeInterpreterMiddleware
+
+agent = create_deep_agent(
+    model="fireworks:accounts/fireworks/models/glm-5p2",
+    middleware=[CodeInterpreterMiddleware(ptc=["web_search"])],
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from langchain_quickjs import CodeInterpreterMiddleware
+
+agent = create_deep_agent(
+    model="baseten:zai-org/GLM-5.2",
+    middleware=[CodeInterpreterMiddleware(ptc=["web_search"])],
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from langchain_quickjs import CodeInterpreterMiddleware
+
+agent = create_deep_agent(
+    model="ollama:north-mini-code-1.0",
+    middleware=[CodeInterpreterMiddleware(ptc=["web_search"])],
+)
+</code></pre>
+<p>启用 PTC 后，代理可以从解释器代码调用列入许可名单的工具。此示例并行搜索多个主题并在返回模型之前合并结果：</p>
+<pre><code class="language-ts">const topics = ["retrieval", "memory", "evaluation"];
+
+const results = await Promise.all(
+  topics.map((topic) =&gt;
+    tools.webSearch({ query: `${topic} best practices 2025` }),
+  ),
+);
+
+results.join("\n\n");
+</code></pre>
+<p>PTC 调用当前通过解释器桥执行，不经过正常的工具调用路径。因此，每个 PTC 调用的工具调用都不会强制执行 <code>interrupt_on</code> 审批工作流。</p>
+<h2 id="dynamic-subagents">动态子智能体</h2>
+<p>下面的概述介绍了何时使用动态子智能体和最小 <code>task()</code> 模式。有关配置、编排示例、工作流触发器和安全注意事项，请参阅<a href="dynamic-subagents.html">动态子智能体</a>。</p>
+<p>动态子智能体允许解释器使用内置的 <code>task()</code> 全局从代码中分派配置的 <a href="subagents.html">子智能体</a>。跨越许多独立单元的任务（例如检查目录中的每个文件或对一批票进行分类）会成为一个循环，将工作展开并综合结果。</p>
+<p>使用动态子智能体：</p>
+<ul>
+<li><strong id="fan-out-and-synthesize">扇出和综合</strong>：在多个项目上并行运行相同类型的工作，然后合并结果。</li>
+<li><strong id="verification">验证</strong>：将结果发送给独立验证者子智能体并仅保留已确认的结果。</li>
+<li><strong id="recursive-workflows">递归工作流程</strong>：在解释器变量中保留工作集，选择切片，调用子智能体并优化结果。</li>
+</ul>
+<pre><code class="language-ts">const paths = ["src/auth.ts", "src/routes/api.ts"];
+
+const reviews = await Promise.all(
+  paths.map((path) =&gt;
+    task({
+      description: `Review ${path} for authentication issues`,
+      subagentType: "reviewer",
+    }),
+  ),
+);
+
+reviews.join("\n\n");
+</code></pre>
+<h2 id="persistence">坚持</h2>
+<p>通过 <code>CodeInterpreterMiddleware</code> 上的 <code>mode</code> 参数控制交叉转弯状态：</p>
+<ul>
+<li><strong id="thread"><code>"thread"</code></strong>（默认）：状态在 <code>eval</code> 呼叫和座席轮次之间持续存在。中间件在每个代理轮次后对解释器状态进行快照，并在下一次轮次之前恢复它。</li>
+<li><strong id="turn"><code>"turn"</code></strong>：状态在一个代理回合内的多个 <code>eval</code> 呼叫中持续存在，然后在下一回合重置。</li>
+<li><strong id="call"><code>"call"</code></strong>：每个 <code>eval</code> 调用都在新的 REPL 中运行，不会继承之前的调用。</li>
+</ul>
+<p>对于 <code>mode="thread"</code>，快照是解释器内存中 JavaScript 状态的序列化副本，包括代理完成运行代码时存在的全局变量、变量、函数和导入模块。在对话轮次中，生命周期是：</p>
+<ol>
+<li>一轮开始，中间件恢复线程的最新解释器快照。</li>
+<li>代理呼叫 <code>eval</code> 一次或多次。这些调用共享一个实时上下文；中间件不会在它们之间创建快照。</li>
+<li>回合结束，中间件将更新的快照写入图状态。</li>
+<li>下一回合从该快照恢复，而不是空运行时。</li>
+</ol>
+<p>快照仅保留可序列化的数据。恢复后，函数、类和其他不可序列化的运行时对象将成为不可访问的工件。访问会引发类似 <code>Value for 'fn' was not restored because it is not serializable (type: function).</code> 的错误</p>
+<p>快照保留了解释器的记忆，而不是外界的影响。如果解释器代码通过 PTC 调用工具，则恢复先前的解释器快照不会撤消该工具调用的副作用。它仅恢复记录或处理结果的解释器变量。</p>
+<p>交叉转弯持久性不需要检查点：</p>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from langchain_quickjs import CodeInterpreterMiddleware
+
+agent = create_deep_agent(
+    model="google_genai:gemini-3.6-flash",
+    middleware=[
+        CodeInterpreterMiddleware(
+            mode="thread",  # Default
+        )
+    ],
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from langchain_quickjs import CodeInterpreterMiddleware
+
+agent = create_deep_agent(
+    model="openai:gpt-5.5",
+    middleware=[
+        CodeInterpreterMiddleware(
+            mode="thread",  # Default
+        )
+    ],
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from langchain_quickjs import CodeInterpreterMiddleware
+
+agent = create_deep_agent(
+    model="anthropic:claude-sonnet-4-6",
+    middleware=[
+        CodeInterpreterMiddleware(
+            mode="thread",  # Default
+        )
+    ],
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from langchain_quickjs import CodeInterpreterMiddleware
+
+agent = create_deep_agent(
+    model="openrouter:z-ai/glm-5.2",
+    middleware=[
+        CodeInterpreterMiddleware(
+            mode="thread",  # Default
+        )
+    ],
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from langchain_quickjs import CodeInterpreterMiddleware
+
+agent = create_deep_agent(
+    model="fireworks:accounts/fireworks/models/glm-5p2",
+    middleware=[
+        CodeInterpreterMiddleware(
+            mode="thread",  # Default
+        )
+    ],
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from langchain_quickjs import CodeInterpreterMiddleware
+
+agent = create_deep_agent(
+    model="baseten:zai-org/GLM-5.2",
+    middleware=[
+        CodeInterpreterMiddleware(
+            mode="thread",  # Default
+        )
+    ],
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from langchain_quickjs import CodeInterpreterMiddleware
+
+agent = create_deep_agent(
+    model="ollama:north-mini-code-1.0",
+    middleware=[
+        CodeInterpreterMiddleware(
+            mode="thread",  # Default
+        )
+    ],
+)
+</code></pre>
+<p>由于解释器快照以图形状态存储，因此 <a href="https://docs.langchain.com/oss/python/langgraph/checkpointers">检查点</a> 也会在检查点历史记录中捕获它们。当你需要耐用的线程或<a href="https://docs.langchain.com/oss/python/langgraph/use-time-travel">时间旅行</a>时添加一个：</p>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from langchain_quickjs import CodeInterpreterMiddleware
+from langgraph.checkpoint.memory import MemorySaver
+
+agent = create_deep_agent(
+    model="google_genai:gemini-3.6-flash",
+    checkpointer=MemorySaver(),
+    middleware=[CodeInterpreterMiddleware(mode="thread")],
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from langchain_quickjs import CodeInterpreterMiddleware
+from langgraph.checkpoint.memory import MemorySaver
+
+agent = create_deep_agent(
+    model="openai:gpt-5.5",
+    checkpointer=MemorySaver(),
+    middleware=[CodeInterpreterMiddleware(mode="thread")],
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from langchain_quickjs import CodeInterpreterMiddleware
+from langgraph.checkpoint.memory import MemorySaver
+
+agent = create_deep_agent(
+    model="anthropic:claude-sonnet-4-6",
+    checkpointer=MemorySaver(),
+    middleware=[CodeInterpreterMiddleware(mode="thread")],
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from langchain_quickjs import CodeInterpreterMiddleware
+from langgraph.checkpoint.memory import MemorySaver
+
+agent = create_deep_agent(
+    model="openrouter:z-ai/glm-5.2",
+    checkpointer=MemorySaver(),
+    middleware=[CodeInterpreterMiddleware(mode="thread")],
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from langchain_quickjs import CodeInterpreterMiddleware
+from langgraph.checkpoint.memory import MemorySaver
+
+agent = create_deep_agent(
+    model="fireworks:accounts/fireworks/models/glm-5p2",
+    checkpointer=MemorySaver(),
+    middleware=[CodeInterpreterMiddleware(mode="thread")],
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from langchain_quickjs import CodeInterpreterMiddleware
+from langgraph.checkpoint.memory import MemorySaver
+
+agent = create_deep_agent(
+    model="baseten:zai-org/GLM-5.2",
+    checkpointer=MemorySaver(),
+    middleware=[CodeInterpreterMiddleware(mode="thread")],
+)
+</code></pre>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from langchain_quickjs import CodeInterpreterMiddleware
+from langgraph.checkpoint.memory import MemorySaver
+
+agent = create_deep_agent(
+    model="ollama:north-mini-code-1.0",
+    checkpointer=MemorySaver(),
+    middleware=[CodeInterpreterMiddleware(mode="thread")],
+)
+</code></pre>
+<p>设置 <code>mode="turn"</code> 仅在一个回合内保留解释器状态，或设置 <code>mode="call"</code> 在每个 <code>eval</code> 上进行新的 REPL。</p>
+<h2 id="security">安全</h2>
+<p>解释器使用 QuickJS 来运行不受信任的 JavaScript，并具有严格的默认隔离。将其视为作用域解释器运行时，而不是完整的生产沙箱后端。</p>
+<p>您通过 PTC 公开的每个工具都是解释器代码可以使用的外部功能。将 PTC 许可名单视为权限边界：仅公开代理所需的工具，并避免桥接可以访问敏感系统、花钱、改变数据或调用不受限制网络的广泛工具，除非该行为是故意的。</p>
+<table>
+<thead>
+<tr>
+<th>能力</th>
+<th>默认可用</th>
+<th>怎么曝光</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>JavaScript 执行</td>
+<td>是的</td>
+<td>添加解释器中间件</td>
+</tr>
+<tr>
+<td>顶级<code>await</code></td>
+<td>是的</td>
+<td>在解释器代码中使用 Promise</td>
+</tr>
+<tr>
+<td><code>console.log</code>、<code>warn</code>、<code>error</code> 捕获</td>
+<td>是的</td>
+<td>使用 <code>capture_console=False</code> 禁用</td>
+</tr>
+<tr>
+<td>代理工具</td>
+<td>不</td>
+<td>添加 PTC 许可名单</td>
+</tr>
+<tr>
+<td>文件系统访问</td>
+<td>不</td>
+<td>通过 PTC 白名单添加<a href="overview.html#virtual-filesystem-access">内置文件系统工具</a></td>
+</tr>
+<tr>
+<td>网络接入</td>
+<td>不</td>
+<td>通过 PTC 公开特定的网络工具</td>
+</tr>
+<tr>
+<td>挂钟或日期时间访问</td>
+<td>不</td>
+<td>如果需要，公开显式时间工具</td>
+</tr>
+<tr>
+<td>Shell 命令、软件包安装、测试、操作系统级执行</td>
+<td>不</td>
+<td>使用<a href="sandboxes.html">沙箱后端</a></td>
+</tr>
+</tbody>
+</table>
+<p><strong id="how-code-execution-works">代码执行如何工作</strong></p>
+<p>解释器代码在嵌入式 QuickJS 上下文中运行，而不是在单独的 VM 或进程中运行。在Python中，这个运行时由<a href="https://github.com/langchain-ai/quickjs-rs"><code>quickjs-rs</code></a>提供，它在其<a href="https://github.com/langchain-ai/quickjs-rs#security">安全指南</a>中记录了同进程执行边界。</p>
+<p>将解释器视为功能范围的执行层，而不是主机内存隔离边界。对于不受信任或半受信任的代码，请在隔离的工作进程或容器中运行代理，并缩小 PTC 许可名单的范围。</p>
+<h2 id="configuration">配置</h2>
+<p><code>CodeInterpreterMiddleware</code> 接受以下选项：</p>
+<table>
+<thead>
+<tr>
+<th>夸格</th>
+<th>默认</th>
+<th>目的</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>memory_limit</code></td>
+<td><code>64 * 1024 * 1024</code> <br/>(64 MB)</td>
+<td>每个线程的 QuickJS 堆内存上限。</td>
+</tr>
+<tr>
+<td><code>timeout</code></td>
+<td><code>5.0</code></td>
+<td>每个 <code>eval</code> 调用的超时限制（以秒为单位）。</td>
+</tr>
+<tr>
+<td><code>tool_name</code></td>
+<td><code>"eval"</code></td>
+<td>暴露给模型的解释器工具的名称。</td>
+</tr>
+<tr>
+<td><code>capture_console</code></td>
+<td><code>True</code></td>
+<td>在工具响应中捕获 <code>console.log</code>、<code>console.warn</code> 和 <code>console.error</code>。设置为 <code>False</code> 以丢弃控制台输出。</td>
+</tr>
+<tr>
+<td><code>max_result_chars</code></td>
+<td><code>4000</code></td>
+<td>将返回到模型的结果、错误和标准输出文本截断为最大字符数。</td>
+</tr>
+<tr>
+<td><code>ptc</code></td>
+<td><code>None</code></td>
+<td>在解释器内公开为 <code>tools.*</code> 的工具名称或 <code>BaseTool</code> 实例的白名单。省略禁用。请参见<a href="#enable-ptc">启用 PTC</a>。</td>
+</tr>
+<tr>
+<td><code>max_ptc_calls</code></td>
+<td><code>256</code></td>
+<td>每个 <code>eval</code> 允许的最大 <code>tools.*</code> 调用。仅在可信环境中设置为 <code>None</code>。请参见<a href="#programmatic-tool-calling-ptc">编程工具调用(PTC)</a>和<a href="#security">安全</a>。</td>
+</tr>
+<tr>
+<td><code>subagents</code></td>
+<td><code>True</code></td>
+<td>当代理有子智能体时，公开内置的 <code>task()</code> 全局。设置为 <code>False</code> 要求通过普通 <code>task</code> 工具进行调度。请参见<a href="#dynamic-subagents">动态子智能体</a>。</td>
+</tr>
+<tr>
+<td><code>mode</code></td>
+<td><code>"thread"</code></td>
+<td>控制解释器持久性：<code>"thread"</code>（跨回合）、<code>"turn"</code>（一回合内）或<code>"call"</code>（每个<code>eval</code>的新鲜REPL）。请参见<a href="#persistence">持久性</a>。</td>
+</tr>
+<tr>
+<td><code>max_snapshot_bytes</code></td>
+<td><code>None</code></td>
+<td>删除大于此字节限制的快照。默认为 <code>memory_limit</code>。请参见<a href="#persistence">持久化</a>。</td>
+</tr>
+</tbody>
+</table>
+<hr/>
+<div classname="source-links">
+
+
+
+
+[将这些文档](https://docs.langchain.com/use-these-docs) 通过 MCP 连接到 Claude、VSCode 等以获得实时答案。
+
+
+
+
+
+
+[在 GitHub 上编辑此页面](https://github.com/langchain-ai/docs/edit/main/src/oss/deepagents/interpreters.mdx) 或 [提交问题](https://github.com/langchain-ai/docs/issues/new/choose)。
+
+
+
+</div><footer>非官方中文离线整理版。代码与原图保留；在线演示需要联网。© LangChain · <a href="../LICENSE">MIT 许可</a></footer></main><nav class="page-toc" aria-label="本页目录"><h2>本页目录</h2><ul><li><a href="#why-use-interpreters">为什么要使用口译员？</a></li><li><a href="#choose-a-pattern">选择图案</a></li><li><a href="#quickstart">快速入门</a></li><li><a href="#how-interpreters-work">口译员如何工作</a></li><li><a href="#programmatic-tool-calling-ptc">编程工具调用 (PTC)</a></li><li><a href="#dynamic-subagents">动态子智能体</a></li><li><a href="#persistence">坚持</a></li><li><a href="#security">安全</a></li><li><a href="#configuration">配置</a></li></ul></nav></div></html>

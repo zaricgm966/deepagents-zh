@@ -1,0 +1,249 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>容错 · Deep Agents</title><link rel="stylesheet" href="../style.css"><aside><a class="brand" href="../index.html">Deep Agents<span>中文离线文档</span></a><h3>入门与选型</h3><a href="overview.html">Deep Agents 概览</a><a href="quickstart.html">快速入门</a><a href="models.html">模型选择</a><a href="comparison.html">与 Claude Agent SDK 的对比</a><a href="code-link.html">Deep Agents Code 简介</a><h3>配置与核心能力</h3><a href="customization.html">自定义 Deep Agents</a><a href="tools.html">工具</a><a href="profiles.html">配置档案</a><a href="backends.html">文件系统后端</a><a href="interpreters.html">代码解释器</a><a href="sandboxes.html">沙箱</a><a href="memory.html">记忆</a><a href="skills.html">技能</a><a href="permissions.html">权限</a><a href="human-in-the-loop.html">人工介入</a><a href="multimodal.html">多模态输入与输出</a><h3>任务与上下文管理</h3><a href="context-engineering.html">上下文工程</a><a href="subagents.html">子智能体</a><a href="dynamic-subagents.html">动态子智能体</a><a href="async-subagents.html">异步子智能体</a><a href="streaming.html">流式输出</a><a href="event-streaming.html">事件流</a><a href="fault-tolerance.html">容错</a><a href="retrieval.html">检索</a><a href="rubric.html">评分标准</a><h3>应用教程</h3><a href="data-analysis.html">构建数据分析智能体</a><a href="content-builder.html">构建内容创作智能体</a><a href="deep-research.html">构建深度研究智能体</a><a href="rag.html">构建检索增强生成（RAG）智能体</a><h3>协议与集成</h3><a href="mcp.html">模型上下文协议（MCP）</a><a href="acp.html">智能体客户端协议（ACP）</a><a href="a2a.html">A2A 服务器</a><h3>前端开发</h3><a href="frontend--overview.html">前端集成概览</a><a href="frontend--sandbox.html">前端沙箱</a><a href="frontend--subagent-streaming.html">前端子智能体流式输出</a><a href="frontend--todo-list.html">前端待办事项列表</a><h3>生产环境与知识库</h3><a href="going-to-production.html">部署到生产环境</a><a href="openwiki.html">OpenWiki</a><h3>Coding Agent 源码解析</h3><a href="codex-source-analysis.html">Codex 源码解析</a><a href="claude-code-source-analysis.html">Claude Code 源码解析：公开 SDK 与运行时边界</a><h3>版本更新</h3><a href="changelog-py.html">Python 更新日志</a><a href="changelog-js.html">JavaScript / TypeScript 更新日志</a></aside><script src="../sidebar.js"></script><div class="reading-layout"><main><div class="meta">中文机器翻译 · 文档快照 2026-09-07 · <a href="https://docs.langchain.com/oss/python/deepagents/fault-tolerance">在线原文</a> · <a href="../markdown/fault-tolerance.md">编辑中文 Markdown</a> · <a href="../original-markdown/fault-tolerance.md">英文原稿</a></div><h1 id="fault-tolerance">容错</h1>
+<blockquote>
+<p>通过速率限制、重试、回退和错误处理，使您的深度智能体具有弹性</p>
+</blockquote>
+<p>当出现问题时，容错中间件可以让您的深度智能体保持运行。并非所有错误都应该以相同的方式处理：瞬时故障（网络超时、速率限制）应该自动重试，LLM 可以恢复的错误（错误的工具输出、解析失败）应该反馈给模型，需要人工输入的错误应该暂停代理。</p>
+<h2 id="error-handling-strategies">错误处理策略</h2>
+<p>不同的错误需要不同的处理策略：</p>
+<table>
+<thead>
+<tr>
+<th>错误类型</th>
+<th>谁修好</th>
+<th>战略</th>
+<th>中间件或功能</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>瞬时错误（网络问题、速率限制）</td>
+<td>系统（自动）</td>
+<td>使用指数退避重试</td>
+<td><a href="https://reference.langchain.com/python/langchain/agents/middleware/model_retry/ModelRetryMiddleware">模型重试中间件</a>、<a href="https://reference.langchain.com/python/langchain/agents/middleware/tool_retry/ToolRetryMiddleware">工具重试中间件</a></td>
+</tr>
+<tr>
+<td>LLM 可恢复错误（工具故障、解析问题）</td>
+<td>法学硕士</td>
+<td>转换为误差<code>ToolMessage</code>并让模型进行调整</td>
+<td><a href="https://reference.langchain.com/python/langchain/agents/middleware/tool_error/ToolErrorMiddleware">工具错误中间件</a></td>
+</tr>
+<tr>
+<td>用户可修复的错误（信息缺失、说明不明确）</td>
+<td>人类</td>
+<td>使用 <code>interrupt()</code> 暂停</td>
+<td><a href="human-in-the-loop.html">人在环</a></td>
+</tr>
+<tr>
+<td>提供商中断</td>
+<td>系统（自动）</td>
+<td>退回到替代模型</td>
+<td><a href="https://reference.langchain.com/python/langchain/agents/middleware/model_fallback/ModelFallbackMiddleware">模型回退中间件</a></td>
+</tr>
+<tr>
+<td>过多的调用（失控循环）</td>
+<td>系统（自动）</td>
+<td>每次运行的模型和工具调用上限</td>
+<td><a href="https://reference.langchain.com/python/langchain/agents/middleware/model_call_limit/ModelCallLimitMiddleware">ModelCallLimitMiddleware</a>、<a href="https://reference.langchain.com/python/langchain/agents/middleware/tool_call_limit/ToolCallLimitMiddleware">ToolCallLimitMiddleware</a></td>
+</tr>
+<tr>
+<td>意外错误</td>
+<td>开发商</td>
+<td>让它们冒泡</td>
+<td>无中间件；让异常传播</td>
+</tr>
+</tbody>
+</table>
+<p>以下部分通过代码示例介绍了每种策略。</p>
+<p><strong id="transient-errors">暂时性错误</strong></p>
+<p>添加重试中间件以自动重试网络问题和速率限制。模型调用和工具调用都有自己的具有指数退避的重试中间件：</p>
+<pre><code class="language-python">from langchain.agents import create_agent
+from langchain.agents.middleware import ModelRetryMiddleware, ToolRetryMiddleware
+
+agent = create_agent(
+    model="google_genai:gemini-3.6-flash",
+    tools=[search_tool, fetch_url_tool],
+    middleware=[
+        ModelRetryMiddleware(max_retries=3, backoff_factor=2.0, initial_delay=1.0),
+        ToolRetryMiddleware(
+            max_retries=2,
+            tools=["search", "fetch_url"],
+            retry_on=(TimeoutError, ConnectionError),
+        ),
+    ],
+)
+</code></pre>
+<p><strong id="llm-recoverable">LLM-可恢复</strong></p>
+<p>使用 <a href="https://reference.langchain.com/python/langchain/agents/middleware/tool_error/ToolErrorMiddleware">ToolErrorMiddleware</a> 捕获工具异常并将其转换为错误 <code>ToolMessage</code>，以便 LLM 可以看到出了什么问题并重试：</p>
+<p><code>ToolErrorMiddleware</code> 需要 <code>langchain&gt;=1.3.14</code>。</p>
+<pre><code class="language-python">from langchain.agents import create_agent
+from langchain.agents.middleware import ToolErrorMiddleware
+
+
+def on_error(exc: Exception, request: ToolCallRequest) -&gt; str | None:
+    if isinstance(exc, ValueError):
+        return f"Tool `{request.tool_call['name']}` failed: {type(exc).__name__}. Fix the input and retry."
+    # propagate everything else
+
+
+agent = create_agent(
+    model="google_genai:gemini-3.6-flash",
+    tools=[search_tool],
+    middleware=[ToolErrorMiddleware(on_error)],
+)
+</code></pre>
+<p><strong id="user-fixable">用户可修复</strong></p>
+<p>需要时暂停并收集用户信息（例如帐户 ID、订单号或说明）。使用 <code>interrupt_on</code> 在特定工具调用之前暂停代理：</p>
+<pre><code class="language-python">from deepagents import create_deep_agent
+
+agent = create_deep_agent(
+    model="google_genai:gemini-3.6-flash",
+    tools=[send_email_tool, delete_record_tool],
+    interrupt_on={
+        "send_email": True,
+        "delete_record": True,
+    },
+)
+</code></pre>
+<p>有关完整的人机交互指南，请参阅<a href="human-in-the-loop.html">人机交互</a>。</p>
+<p><strong id="provider-outage">提供商中断</strong></p>
+<p>如果您的主要模型提供程序完全崩溃，请使用 <a href="https://reference.langchain.com/python/langchain/agents/middleware/model_fallback/ModelFallbackMiddleware">ModelFallbackMiddleware</a> 切换到替代模型：</p>
+<pre><code class="language-python">from langchain.agents import create_agent
+from langchain.agents.middleware import ModelFallbackMiddleware
+
+agent = create_agent(
+    model="google_genai:gemini-3.6-flash",
+    tools=[search_tool],
+    middleware=[
+        ModelFallbackMiddleware("gpt-5.5"),
+    ],
+)
+</code></pre>
+<p><strong id="excessive-calls">过多的通话</strong></p>
+<p>如果没有限制，困惑的代理可以通过循环同一工具调用或进行数百个模型调用，在几分钟内耗尽您的 LLM API 预算。设置每次运行的模型调用和工具执行上限：</p>
+<pre><code class="language-python">from langchain.agents import create_agent
+from langchain.agents.middleware import ModelCallLimitMiddleware, ToolCallLimitMiddleware
+
+agent = create_agent(
+    model="google_genai:gemini-3.6-flash",
+    tools=[search_tool],
+    middleware=[
+        ModelCallLimitMiddleware(run_limit=50),
+        ToolCallLimitMiddleware(run_limit=200),
+    ],
+)
+</code></pre>
+<p><strong id="unexpected">意外</strong></p>
+<p>让它们冒泡进行调试。不要抓住你无法处理的东西。 <a href="https://reference.langchain.com/python/langchain/agents/middleware/tool_error/ToolErrorMiddleware">ToolErrorMiddleware</a> 仅显示您明确返回内容的异常；其他一切都保持不变：</p>
+<pre><code class="language-python">def on_error(exc: Exception, request: ToolCallRequest) -&gt; str | None:
+    if isinstance(exc, (ValueError, KeyError)):
+        # Surface known, recoverable errors to the model
+        return f"Tool `{request.tool_call['name']}` failed: {type(exc).__name__}."
+    # Everything else (unexpected errors) propagates and halts the run
+</code></pre>
+<h2 id="rate-limiting">速率限制</h2>
+<p>有两种互补的方法可以限制资源使用：控制模型提供程序的请求率，并限制每次运行的调用总数。</p>
+<h3 id="provider-rate-limiting">提供商速率限制</h3>
+<p>聊天模型提供程序对给定时间段内可以进行的调用数量施加限制。要控制发出请求的速率，请使用 <code>rate_limiter</code> 初始化模型：</p>
+<pre><code class="language-python">from langchain.rate_limiters import InMemoryRateLimiter
+from langchain.chat_models import init_chat_model
+
+rate_limiter = InMemoryRateLimiter(
+    requests_per_second=0.1,  # 1 request every 10s
+    check_every_n_seconds=0.1,  # Check every 100ms whether allowed to make a request
+    max_bucket_size=10,  # Controls the maximum burst size
+)
+
+model = init_chat_model(
+    model="google_genai:gemini-3.6-flash",
+    rate_limiter=rate_limiter,  # [!code highlight]
+)
+
+agent = create_deep_agent(model=model, tools=[search_tool])
+</code></pre>
+<p>完整配置请参见【速率限制】(/oss/python/langchain/models#rate-limiting)。</p>
+<h3 id="call-limits">通话限额</h3>
+<p>如果没有限制，困惑的代理可以通过循环同一工具调用或进行数百个模型调用，在几分钟内耗尽您的 LLM API 预算。设置每次运行的模型调用和工具执行上限：</p>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from langchain.agents.middleware import ModelCallLimitMiddleware, ToolCallLimitMiddleware
+
+agent = create_deep_agent(
+    model="google_genai:gemini-3.6-flash",
+    middleware=[
+        ModelCallLimitMiddleware(run_limit=50),
+        ToolCallLimitMiddleware(run_limit=200),
+    ],
+)
+</code></pre>
+<p>使用 <code>run_limit</code> 限制单次调用内的调用（每轮重置）。使用 <code>thread_limit</code> 限制整个对话中的呼叫（需要检查点）。有关完整配置，请参阅 <a href="https://reference.langchain.com/python/langchain/agents/middleware/model_call_limit/ModelCallLimitMiddleware">ModelCallLimitMiddleware</a> 和 <a href="https://reference.langchain.com/python/langchain/agents/middleware/tool_call_limit/ToolCallLimitMiddleware">ToolCallLimitMiddleware</a>。</p>
+<h2 id="retries">重试</h2>
+<p>瞬时故障（网络超时、速率限制）应自动重试。模型调用和工具调用都有自己的具有指数退避的重试中间件：</p>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from langchain.agents.middleware import ModelRetryMiddleware, ToolRetryMiddleware
+
+agent = create_deep_agent(
+    model="google_genai:gemini-3.6-flash",
+    middleware=[
+        # Retry model calls on rate limits, timeouts, and 5xx errors
+        ModelRetryMiddleware(max_retries=3, backoff_factor=2.0, initial_delay=1.0),
+        # Retry specific tools that hit external APIs (not all tools)
+        ToolRetryMiddleware(
+            max_retries=2,
+            tools=["search", "fetch_url"],
+            retry_on=(TimeoutError, ConnectionError),
+        ),
+    ],
+)
+</code></pre>
+<p>将 <a href="https://reference.langchain.com/python/langchain/agents/middleware/tool_retry/ToolRetryMiddleware">ToolRetryMiddleware</a> 范围限定为特定工具，而不是重试所有内容。失败的文件系统 <code>read_file</code> 不会从重试中受益，但超时的网络搜索可能会受益。有关完整配置，请参阅 <a href="https://reference.langchain.com/python/langchain/agents/middleware/model_retry/ModelRetryMiddleware">ModelRetryMiddleware</a>。</p>
+<p>主要集成包会引发标准异常类型（<a href="https://reference.langchain.com/python/langchain-core/exceptions/ModelAuthenticationError">ModelAuthenticationError</a>、<a href="https://reference.langchain.com/python/langchain-core/exceptions/ModelRateLimitError">ModelRateLimitError</a>、<a href="https://reference.langchain.com/python/langchain-core/exceptions/ModelTimeoutError">ModelTimeoutError</a> 等），这些类型默认带有重试中间件遵循的 <code>is_retryable</code> 标志。有关完整列表，请参阅<a href="https://docs.langchain.com/oss/python/langchain/models#model-exceptions">型号例外</a>。</p>
+<h2 id="fallbacks">后备措施</h2>
+<p>如果您的主要模型提供程序完全崩溃，后备中间件将切换到替代模型：</p>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from langchain.agents.middleware import ModelFallbackMiddleware
+
+agent = create_deep_agent(
+    model="google_genai:gemini-3.6-flash",
+    middleware=[
+        # If the primary model is fully down, fall back to an alternative
+        ModelFallbackMiddleware("gpt-5.5"),
+    ],
+)
+</code></pre>
+<p>有关完整配置，请参阅 <a href="https://reference.langchain.com/python/langchain/agents/middleware/model_fallback/ModelFallbackMiddleware">ModelFallbackMiddleware</a>。</p>
+<h2 id="error-handling">错误处理</h2>
+<p>当工具在执行期间引发异常时，代理运行默认停止。使用 <a href="https://reference.langchain.com/python/langchain/agents/middleware/tool_error/ToolErrorMiddleware">ToolErrorMiddleware</a> 捕获特定异常并将其转换为模型可以看到并从中恢复的错误 ToolMessage，而不是导致运行崩溃。</p>
+<p><code>ToolErrorMiddleware</code> 需要 <code>langchain&gt;=1.3.14</code>。</p>
+<pre><code class="language-python">from deepagents import create_deep_agent
+from langchain.agents.middleware import ToolErrorMiddleware
+
+
+def on_error(exc: Exception, request: ToolCallRequest) -&gt; str | None:
+    if isinstance(exc, ValueError):
+        return f"`{request.tool_call['name']}` failed with {type(exc).__name__}."
+    # propagate everything else
+
+
+agent = create_deep_agent(
+    model="google_genai:gemini-3.6-flash",
+    middleware=[ToolErrorMiddleware(on_error)],
+)
+</code></pre>
+<p>有关完整的配置选项和使用模式，包括异步处理程序和使用重试中间件进行组合，请参阅<a href="https://docs.langchain.com/oss/python/langchain/middleware/built-in#tool-error">预构建中间件</a>。</p>
+<hr/>
+<div classname="source-links">
+
+
+
+
+[将这些文档](https://docs.langchain.com/use-these-docs) 通过 MCP 连接到 Claude、VSCode 等以获得实时答案。
+
+
+
+
+
+
+[在 GitHub 上编辑此页面](https://github.com/langchain-ai/docs/edit/main/src/oss/deepagents/fault-tolerance.mdx) 或 [提交问题](https://github.com/langchain-ai/docs/issues/new/choose)。
+
+
+
+</div><footer>非官方中文离线整理版。代码与原图保留；在线演示需要联网。© LangChain · <a href="../LICENSE">MIT 许可</a></footer></main><nav class="page-toc" aria-label="本页目录"><h2>本页目录</h2><ul><li><a href="#error-handling-strategies">错误处理策略</a></li><li><a href="#rate-limiting">速率限制</a></li><li><a href="#retries">重试</a></li><li><a href="#fallbacks">后备措施</a></li><li><a href="#error-handling">错误处理</a></li></ul></nav></div></html>

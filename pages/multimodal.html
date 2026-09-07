@@ -1,0 +1,123 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>多模态输入与输出 · Deep Agents</title><link rel="stylesheet" href="../style.css"><aside><a class="brand" href="../index.html">Deep Agents<span>中文离线文档</span></a><h3>入门与选型</h3><a href="overview.html">Deep Agents 概览</a><a href="quickstart.html">快速入门</a><a href="models.html">模型选择</a><a href="comparison.html">与 Claude Agent SDK 的对比</a><a href="code-link.html">Deep Agents Code 简介</a><h3>配置与核心能力</h3><a href="customization.html">自定义 Deep Agents</a><a href="tools.html">工具</a><a href="profiles.html">配置档案</a><a href="backends.html">文件系统后端</a><a href="interpreters.html">代码解释器</a><a href="sandboxes.html">沙箱</a><a href="memory.html">记忆</a><a href="skills.html">技能</a><a href="permissions.html">权限</a><a href="human-in-the-loop.html">人工介入</a><a href="multimodal.html">多模态输入与输出</a><h3>任务与上下文管理</h3><a href="context-engineering.html">上下文工程</a><a href="subagents.html">子智能体</a><a href="dynamic-subagents.html">动态子智能体</a><a href="async-subagents.html">异步子智能体</a><a href="streaming.html">流式输出</a><a href="event-streaming.html">事件流</a><a href="fault-tolerance.html">容错</a><a href="retrieval.html">检索</a><a href="rubric.html">评分标准</a><h3>应用教程</h3><a href="data-analysis.html">构建数据分析智能体</a><a href="content-builder.html">构建内容创作智能体</a><a href="deep-research.html">构建深度研究智能体</a><a href="rag.html">构建检索增强生成（RAG）智能体</a><h3>协议与集成</h3><a href="mcp.html">模型上下文协议（MCP）</a><a href="acp.html">智能体客户端协议（ACP）</a><a href="a2a.html">A2A 服务器</a><h3>前端开发</h3><a href="frontend--overview.html">前端集成概览</a><a href="frontend--sandbox.html">前端沙箱</a><a href="frontend--subagent-streaming.html">前端子智能体流式输出</a><a href="frontend--todo-list.html">前端待办事项列表</a><h3>生产环境与知识库</h3><a href="going-to-production.html">部署到生产环境</a><a href="openwiki.html">OpenWiki</a><h3>Coding Agent 源码解析</h3><a href="codex-source-analysis.html">Codex 源码解析</a><a href="claude-code-source-analysis.html">Claude Code 源码解析：公开 SDK 与运行时边界</a><h3>版本更新</h3><a href="changelog-py.html">Python 更新日志</a><a href="changelog-js.html">JavaScript / TypeScript 更新日志</a></aside><script src="../sidebar.js"></script><div class="reading-layout"><main><div class="meta">中文机器翻译 · 文档快照 2026-09-07 · <a href="https://docs.langchain.com/oss/python/deepagents/multimodal">在线原文</a> · <a href="../markdown/multimodal.md">编辑中文 Markdown</a> · <a href="../original-markdown/multimodal.md">英文原稿</a></div><h1 id="multimodal-inputs-and-outputs">多模态输入与输出</h1>
+<blockquote>
+<p>当您的模型支持多模式输入和工具结果时，将图像、音频、视频和文档与 Deep Agent 结合使用</p>
+</blockquote>
+<p>当您使用接受多模式输入和工具结果或返回多模式输出的<a href="https://docs.langchain.com/oss/python/integrations/chat">大型语言模型</a> 时，Deep Agents 支持多模式工作流程。您可以将图像和其他媒体附加到用户消息，使用内置 <code>read_file</code> 工具读取非文本文件，并从自定义工具返回多模式内容。</p>
+<p>内置的<a href="context-engineering.html#context-compression">上下文压缩</a>主要是面向文本的。相应地规划多模式工作负载：在后端存储大型媒体并在可能的情况下传递引用。</p>
+<h2 id="multimodal-user-input">多模式用户输入</h2>
+<p>使用与 LangChain 聊天模型相同的<a href="https://docs.langchain.com/oss/python/langchain/messages#standard-content-blocks">标准内容块</a>，在您发送给代理的 <code>messages</code> 中传递多模式内容：</p>
+<pre><code class="language-python">result = agent.invoke({
+    "messages": [{
+        "role": "user",
+        "content": [
+            {"type": "text", "text": "What is in this screenshot?"},
+            {"type": "image", "url": "https://example.com/screenshot.png"},
+        ],
+    }],
+})
+</code></pre>
+<p>有关块类型、提供商特定要求以及其他示例（PDF、音频、视频），请参阅<a href="https://docs.langchain.com/oss/python/langchain/messages#multimodal">多模式消息</a>。</p>
+<h2 id="built-in-read_file-tool">内置<code>read_file</code>工具</h2>
+<p>线束 <code>read_file</code> 工具返回受支持的多模式文件的 <a href="https://docs.langchain.com/oss/python/langchain/messages#standard-content-blocks">标准内容块</a>，而不是纯文本。当所选模型支持相应的模态时，代理可以检查存储在其<a href="overview.html#virtual-filesystem-access">文件系统</a>中的图像、文档和媒体。检查提供商的文档以了解您的模型支持的 MIME 类型。</p>
+<p><strong id="supported-multimodal-file-extensions">支持的多模式文件扩展名</strong></p>
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>扩展</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://docs.langchain.com/oss/python/langchain/messages#multimodal">图片</a></td>
+<td><code>.png</code>、<code>.jpg</code>、<code>.jpeg</code>、<code>.gif</code>、<code>.webp</code>、<code>.heic</code>、<code>.heif</code></td>
+</tr>
+<tr>
+<td><a href="https://docs.langchain.com/oss/python/langchain/messages#multimodal">视频</a></td>
+<td><code>.mp4</code>、<code>.mpeg</code>、<code>.mov</code>、<code>.avi</code>、<code>.flv</code>、<code>.mpg</code>、<code>.webm</code>、<code>.wmv</code>、<code>.3gpp</code></td>
+</tr>
+<tr>
+<td><a href="https://docs.langchain.com/oss/python/langchain/messages#multimodal">音频</a></td>
+<td><code>.wav</code>、<code>.mp3</code>、<code>.aiff</code>、<code>.aac</code>、<code>.ogg</code>、<code>.flac</code></td>
+</tr>
+<tr>
+<td><a href="https://docs.langchain.com/oss/python/langchain/messages#multimodal">文件</a></td>
+<td><code>.pdf</code>、<code>.ppt</code>、<code>.pptx</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="custom-tool-outputs">自定义工具输出</h2>
+<p><a href="tools.html#custom-tools">自定义工具</a>可以包含多模式文件，例如图像：</p>
+<pre><code class="language-python">from langchain.tools import tool
+
+
+@tool
+def capture_screenshot() -&gt; list[dict]:
+    """Capture a screenshot of the current page."""
+    return [
+        {"type": "text", "text": "Screenshot of the current page:"},
+        {"type": "image", "url": "https://example.com/page.png"},
+    ]
+</code></pre>
+<p>返回值将转换为模型在下一回合读取的 <code>ToolMessage</code>。在结果消息中使用 <code>content_blocks</code> 访问标准化表示。</p>
+<p>有关返回类型选项、序列化行为和 MCP 示例，请参阅<a href="https://docs.langchain.com/oss/python/langchain/mcp/tools#multimodal-content">多模式内容</a>。</p>
+<p>当工具生成图像或其他大型二进制数据时，将工件保存到[后端]（/oss/python/deepagents/backends）并返回简洁的文本描述以及路径或URL。这可以使消息历史记录更小，并且与<a href="context-engineering.html#context-compression">上下文压缩</a>配合使用效果更好。</p>
+<h2 id="context-compression-and-multimodal-content">上下文压缩和多模式内容</h2>
+<p>内置卸载和摘要针对文本和消息历史记录进行了优化：</p>
+<ul>
+<li><strong id="offloading">卸载</strong>仅测量文本标记。非文本块（包括图像）保留在替换消息中而不是压缩。仅包含图像的消息不会仅根据图像大小进行卸载。</li>
+<li><strong id="summarization">摘要</strong>将旧消息压缩为纯文本摘要。该范围内的图像、音频、视频和文件块不会被保留——模型只能看到摘要器写的关于它们的内容。最近低于保持阈值的消息保持不变。</li>
+</ul>
+<p>当摘要运行时，旧回合中的媒体块会从活动上下文中删除：</p>
+<pre><code class="language-python"># Before — model receives image blocks in older turns
+[
+    HumanMessage(
+        content=[
+            {"type": "text", "text": "What trends do you see in this chart?"},
+            {"type": "image", "base64": IMG, "mime_type": "image/png"},
+        ]
+    ),
+    ToolMessage(
+        content=[
+            {"type": "text", "text": "Updated chart:"},
+            {"type": "image", "base64": IMG, "mime_type": "image/png"},
+        ],
+        tool_call_id="call_chart_1",
+    ),
+    AIMessage(content="Revenue rose in Q3 based on the chart trend."),
+    HumanMessage(content="Reply with one sentence summarizing our analysis."),
+]
+
+# After — those turns collapse to text; image blocks are gone
+{"content": (
+    "User asked about trends in a chart screenshot. "
+    "Tool returned an updated chart. Agent identified Q3 revenue growth."
+)}
+</code></pre>
+<p>原始对话仍以文本形式写入文件系统。有关触发器、保持阈值和完整流程，请参阅<a href="context-engineering.html#summarization">摘要</a>。</p>
+<p>对于多模式繁重的工作负载：</p>
+<ul>
+<li>将图像、屏幕截图和图表存储在文件系统后端或外部对象存储中，然后通过消息传递文件路径或 URL。</li>
+<li>在长时间运行的对话中，优先选择引用而不是 base64 编码的图像块。</li>
+<li>使用 <a href="subagents.html">子智能体</a> 进行大量图像检查，以便主代理收到紧凑的文本结果。</li>
+<li>当您的提供商对图像收取大量令牌时，调整摘要阈值或提供自定义令牌计数器。</li>
+</ul>
+<p>有关卸载阈值、汇总触发器和自定义选项，请参阅<a href="context-engineering.html#context-compression">上下文压缩</a>。</p>
+<hr/>
+<div classname="source-links">
+
+
+
+
+[将这些文档](https://docs.langchain.com/use-these-docs) 通过 MCP 连接到 Claude、VSCode 等以获得实时答案。
+
+
+
+
+
+
+[在 GitHub 上编辑此页面](https://github.com/langchain-ai/docs/edit/main/src/oss/deepagents/multimodal.mdx) 或 [提交问题](https://github.com/langchain-ai/docs/issues/new/choose)。
+
+
+
+</div><footer>非官方中文离线整理版。代码与原图保留；在线演示需要联网。© LangChain · <a href="../LICENSE">MIT 许可</a></footer></main><nav class="page-toc" aria-label="本页目录"><h2>本页目录</h2><ul><li><a href="#multimodal-user-input">多模式用户输入</a></li><li><a href="#built-in-read_file-tool">内置read_file工具</a></li><li><a href="#custom-tool-outputs">自定义工具输出</a></li><li><a href="#context-compression-and-multimodal-content">上下文压缩和多模式内容</a></li></ul></nav></div></html>
