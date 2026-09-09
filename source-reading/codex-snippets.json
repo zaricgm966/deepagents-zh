@@ -1,0 +1,1862 @@
+{
+  "input-text": {
+    "path": "codex-rs/tui/src/chatwidget/input_submission.rs",
+    "start": 207,
+    "end": 212,
+    "title": "把普通文字加入输入项",
+    "focus": [
+      207,
+      208,
+      209
+    ],
+    "sha256": "1ce5b0a88514899301f24fdd79a0591378ae706a0444fd0c937832b4125a8f49",
+    "file_sha256": "05a752d68c7a0290b38df87a3567fb326823098283169304137d8ada80a0c8ca",
+    "focus_notes": [
+      {
+        "lines": [
+          207
+        ],
+        "reason": "非空判断决定本例的文字是否进入列表；这是用户输入与下面数据构造之间的条件。",
+        "flow_role": "这是整条提交链的起点：先确认筛选需求能进入输入列表，下面才有必要看 Text 的构造。"
+      },
+      {
+        "lines": [
+          208,
+          209
+        ],
+        "reason": "构造 Text 变体并加入 items，text 字段保存需求原文；后面要追的正是这个 items。",
+        "flow_role": "这一步把界面文字交接为 items。读完后带着这个变量进入下一段 user_turn，确认同一份需求怎样成为任务命令。"
+      }
+    ]
+  },
+  "input-command": {
+    "path": "codex-rs/tui/src/chatwidget/input_submission.rs",
+    "start": 370,
+    "end": 383,
+    "title": "把输入和运行设置打包成任务命令",
+    "focus": [
+      370,
+      372,
+      373
+    ],
+    "sha256": "7a508b8ccfa39880e2961ea9fe60fc957e937a2739befe565cbb5bf12f287e51",
+    "file_sha256": "05a752d68c7a0290b38df87a3567fb326823098283169304137d8ada80a0c8ca",
+    "focus_notes": [
+      {
+        "lines": [
+          370,
+          372
+        ],
+        "reason": "items 作为参数进入 user_turn，返回值被保存为 op；这一行解释了输入列表怎样变成可提交的任务命令。",
+        "flow_role": "承接上一段的 items，这里完成“输入列表 → 任务命令 op”的转换。下一段要寻找 op 的实际使用处，确认它何时被提交。"
+      },
+      {
+        "lines": [
+          373
+        ],
+        "reason": "命令同时携带项目工作目录，让后续处理知道这次需求针对哪个目录；先认清这个参数的用途，再把注意力放回 op。",
+        "flow_role": "这行补齐命令的项目环境，解释为什么不能只传一句需求。随后继续追 op，同时在后面的 turn_start 参数中核对 cwd 是否跟着传递。"
+      }
+    ]
+  },
+  "input-submit": {
+    "path": "codex-rs/tui/src/chatwidget.rs",
+    "start": 1804,
+    "end": 1817,
+    "title": "把命令交给应用事件或直接通道",
+    "focus": [
+      1807,
+      1813,
+      1816
+    ],
+    "sha256": "92d03351721a399d73ce97b28fd9321e37a34f6218beed07c807cc8ebc4c7dd0",
+    "file_sha256": "265e9c2eef585d3f8c677359df754c3ccdb7f6c6847405c2c6a5c7a04b2e4f18",
+    "focus_notes": [
+      {
+        "lines": [
+          1807
+        ],
+        "reason": "Direct 分支将 op 发送到对应通道；接收方将继续处理这个命令。",
+        "flow_role": "现在已进入上一段调用的 submit_op。这行展示 Direct 模式的发送出口；后面的线程路由是接收并处理命令的位置，不是本行之后的直接函数调用。"
+      },
+      {
+        "lines": [
+          1813,
+          1816
+        ],
+        "reason": "AppEvent 分支把同一个 op 包进 CodexOp 事件；true 表示这段提交过程通过。两条分支是可选去向，不是先后执行的两步。",
+        "flow_role": "这里补齐另一种发送出口，并说明 submit_op 何时返回 true。两种出口读完后，教学流程转到应用路由，追同一个 op 被接收后的用途。"
+      }
+    ]
+  },
+  "input-route": {
+    "path": "codex-rs/tui/src/app/thread_routing.rs",
+    "start": 798,
+    "end": 816,
+    "title": "线程路由把输入提交给 app-server",
+    "focus": [
+      799,
+      802,
+      803
+    ],
+    "sha256": "33a47e60d505af247c3d551c09a569338f5d58388f6996452f762207a6910694",
+    "file_sha256": "5b833c04cc98cb487fd110f8ca35c9e69c09d49974660e0b3946d047c9f12e5f",
+    "focus_notes": [
+      {
+        "lines": [
+          799,
+          802
+        ],
+        "reason": "应用路由调用 turn_start，并把从命令中取得的 items 传进去；这连接了应用内命令与下一段的客户端方法。",
+        "flow_role": "这是从发送端切到应用处理端：中间的事件分发已省略。此处取出 items 并调用 turn_start，为下一段进入该客户端方法提供实际调用点。"
+      },
+      {
+        "lines": [
+          803
+        ],
+        "reason": "cwd 也随输入继续传递，表明前面打包的项目环境没有在这次交接中丢掉。",
+        "flow_role": "这一行与前面 user_turn 中的 cwd 配对，核对项目环境没有在应用路由中丢失。核对后继续沿同一次 turn_start 调用进入协议请求构造。"
+      }
+    ]
+  },
+  "input-rpc": {
+    "path": "codex-rs/tui/src/app_server_session.rs",
+    "start": 1319,
+    "end": 1340,
+    "title": "构造 turn/start 请求",
+    "focus": [
+      1323,
+      1325,
+      1329
+    ],
+    "sha256": "e256a88f8ee07b232231126c006c61551b5f4467e51163f0d622310e8573b85f",
+    "file_sha256": "4d67d868fbde1a99b4fcead589552e06935f44d2998b682352a1e9e651922492",
+    "focus_notes": [
+      {
+        "lines": [
+          1323,
+          1325
+        ],
+        "reason": "request_typed 接收 TurnStart 请求及它的参数结构；这里是应用内数据变成服务请求的位置。",
+        "flow_role": "沿上一段 turn_start 调用进入这里后，应用内数据开始包装成客户端协议请求。本章在此到达发送端的协议边界，下一章从服务端接收后继续。"
+      },
+      {
+        "lines": [
+          1329
+        ],
+        "reason": "input: items 给出最直接的数据对应关系：之前的输入列表成为服务端将读取的 input 字段。",
+        "flow_role": "这是本章输入追踪的落点：最初的 items 成为请求 input。下一章先找服务端怎样转换这个 input，便能把协议两端接起来。"
+      }
+    ]
+  },
+  "start-convert": {
+    "path": "codex-rs/app-server/src/request_processors/turn_processor.rs",
+    "start": 599,
+    "end": 608,
+    "title": "客户端输入转换为核心输入",
+    "focus": [
+      600,
+      604,
+      605
+    ],
+    "sha256": "d8acfad4114171bae27f9d552e68c5827c5e7d71b3600c1c1c21b66952cc40ee",
+    "file_sha256": "a220c6f21bd72d7135d772536b414b1d7fbd7c1c332b2103f0029a3b22c5f7f1",
+    "focus_notes": [
+      {
+        "lines": [
+          600,
+          604
+        ],
+        "reason": "构造核心的 UserInput，并逐项调用 into_core；客户端输入在这个转换点获得核心使用的类型。",
+        "flow_role": "承接上一章发出的 TurnStartParams.input，这里从协议类型转换为核心类型。先认清这一转换，才能理解下一段 TurnInputRequest 为什么使用新的输入值。"
+      },
+      {
+        "lines": [
+          605
+        ],
+        "reason": "collect 将转换后的项重新组成列表，供下面 TurnInputRequest 使用。",
+        "flow_role": "转换后的输入项在此重新收拢为列表，完成类型转换这一小步。接下来追这个列表被放入哪个请求、交给哪个核心方法。"
+      }
+    ]
+  },
+  "start-request": {
+    "path": "codex-rs/app-server/src/request_processors/turn_processor.rs",
+    "start": 638,
+    "end": 667,
+    "title": "调用核心并区分启动与补充",
+    "focus": [
+      639,
+      640,
+      660,
+      661
+    ],
+    "sha256": "ccd1ef1b783b6d986a480abf2301dabfc0e58d3d848e76b0f6e964316576d351",
+    "file_sha256": "a220c6f21bd72d7135d772536b414b1d7fbd7c1c332b2103f0029a3b22c5f7f1",
+    "focus_notes": [
+      {
+        "lines": [
+          639,
+          640
+        ],
+        "reason": "输入被放入 TurnInputRequest 并交给 start_or_steer_turn；后续要追这个方法如何送达会话。",
+        "flow_role": "上一段已得到核心输入，这里把它交给线程的提交方法。接下来进入该方法委托的会话 I/O，追请求如何送达核心分发循环。"
+      },
+      {
+        "lines": [
+          660,
+          661
+        ],
+        "reason": "两个分支分别保留新启动和补充已有任务的结果；它们解释调用返回后服务端拿到的是什么。",
+        "flow_role": "这里先展示提交方法返回后的两种正常结果，建立“新启动或补充”的问题。下面再追发送与接收两端，解释这些结果由谁作出、怎样送回来。"
+      }
+    ]
+  },
+  "start-channel": {
+    "path": "codex-rs/core/src/session/mod.rs",
+    "start": 903,
+    "end": 924,
+    "title": "发送操作并等待接收确认",
+    "focus": [
+      913,
+      914,
+      916,
+      923
+    ],
+    "sha256": "fa5b643c2ee6456e22f4e3fab273b030817dde5c0425fe4c81d44424553871e5",
+    "file_sha256": "0bbe413f8e5e5cf6a2dd741d676b78e70745d03d2dbd3eb013124899d736edc9",
+    "focus_notes": [
+      {
+        "lines": [
+          913,
+          914,
+          916
+        ],
+        "reason": "Op::TurnInput 携带请求和 reply 发送端，把工作与回信地址一起交给核心分发。",
+        "flow_role": "现在从线程提交方法进入它委托的会话 I/O。这组行是请求的发送端；下一段要找 Op::TurnInput 的接收分支，并核对同一个 request 与 reply。"
+      },
+      {
+        "lines": [
+          923
+        ],
+        "reason": "reply_rx.await 等待提交结果；下一段的 reply.send 正好与这里配对。",
+        "flow_role": "这是发送端等待回信的位置。带着“谁会向 reply 写入什么结果”进入下一段接收分支，便能区分提交确认与任务执行结果。"
+      }
+    ]
+  },
+  "start-receive": {
+    "path": "codex-rs/core/src/session/handlers.rs",
+    "start": 585,
+    "end": 593,
+    "title": "核心分发收到 TurnInput",
+    "focus": [
+      590,
+      591
+    ],
+    "sha256": "54013e38614a9326c572276032e1834edfe09544bb2efbe6ef9a4e3a694d4745",
+    "file_sha256": "97ef06c7183ea5ace9833752bf4534821cbdec7005335638b2d878daa691e702",
+    "focus_notes": [
+      {
+        "lines": [
+          590
+        ],
+        "reason": "接收方把请求交给 turn_input::handle，真正的启动或补充决策在它后面发生。",
+        "flow_role": "这里切到通道接收端，与上一段发送的 Op::TurnInput 配对。后面将沿 handle 的普通启动路径追到 RegularTask，而不是把通道收信当作模型调用。"
+      },
+      {
+        "lines": [
+          591
+        ],
+        "reason": "决策结果通过 reply 送回上一段等待者；到此闭合了提交请求与确认结果的通道。",
+        "flow_role": "这行闭合了上一段 reply_rx.await 的等待，先把提交确认的去向解释完整。随后教学视角回到 handle 内部，继续追实际任务如何被创建。"
+      }
+    ]
+  },
+  "start-spawn": {
+    "path": "codex-rs/core/src/session/turn_input.rs",
+    "start": 293,
+    "end": 306,
+    "title": "把输入交给 RegularTask",
+    "focus": [
+      296,
+      298,
+      301
+    ],
+    "sha256": "47294154c7010de9b196b07b2f88e97317d37c5d1240a968894270fe62b89db2",
+    "file_sha256": "44c3b354a763fa150aeb0dab6b5636fc7c3ffde5bc4df7910935c63167fe1dae",
+    "focus_notes": [
+      {
+        "lines": [
+          296,
+          298
+        ],
+        "reason": "将附加上下文和用户输入整理为 task_input；它是新任务开始时接收的数据。",
+        "flow_role": "经过前面的启动或补充决策，这里只读没有活跃 Turn 的新启动路径。先将整理出的 task_input 记住，下一步核对它怎样交给任务对象。"
+      },
+      {
+        "lines": [
+          301
+        ],
+        "reason": "spawn_task 同时接收上下文、输入和 RegularTask；因此下一步要读 RegularTask 的 run，而不是寻找一次直接的模型调用。",
+        "flow_role": "这行完成“决定新启动 → 创建 RegularTask”的交接。下一段转到被创建任务的 run 实现，寻找真正接收这些输入的 run_turn 调用。"
+      }
+    ]
+  },
+  "start-regular": {
+    "path": "codex-rs/core/src/tasks/regular.rs",
+    "start": 75,
+    "end": 99,
+    "title": "先处理首次输入，再检查是否有补充需求",
+    "focus": [
+      75,
+      79,
+      82,
+      88,
+      91,
+      92,
+      94,
+      95,
+      97
+    ],
+    "sha256": "1883f0f270d09949c4cc408cc23a2147aa6920a936df3cd70cef4f6495dc4bda",
+    "file_sha256": "d1a989d36be677b726a42097254d6a99e9b071247def4f9fc08bda88213b920c",
+    "focus_notes": [
+      {
+        "lines": [
+          75
+        ],
+        "reason": "第一次进入这里时，input 是启动任务时收到的输入。本例包含“给待办列表增加已完成筛选，并运行测试”。next_input = input 把它设为这次要交给 run_turn 的输入。",
+        "flow_role": "上一段把 task_input 交给 RegularTask，这里在任务执行入口接住它。接下来用 next_input 与 run_turn 的第三个参数对应起来，闭合首次输入的传递。"
+      },
+      {
+        "lines": [
+          79,
+          82,
+          88
+        ],
+        "reason": "调用 run_turn，并将 next_input 传进去。它会在内部组织模型请求、处理工具调用和结果；这里的 await 等待这次 run_turn 调用返回。成功返回的 last_agent_message 是可选的最后一条助手消息，不是整段会话记录；如果返回 Err，? 会直接把错误向上传递。",
+        "flow_role": "这是本章“输入最终交给谁执行”的核心落点。先确认实际调用，再读它返回后的分支；下一章才进一步进入 run_turn，展开请求上下文准备。"
+      },
+      {
+        "lines": [
+          91,
+          92
+        ],
+        "reason": "run_turn 返回后，先看本轮是否已记录终止性错误。若有，就把最后消息交回上层，让任务进入结束处理；即使队列还有输入，也不在这里继续重启失败的处理。Ok(last_agent_message) 只表示这个 Rust 函数正常返回，不能单凭 Ok 判断业务任务成功。",
+        "flow_role": "阅读视角已从调用 run_turn 转到调用返回之后。这组行先排除必须终止的情况，只有未走此返回分支，才继续检查剩余输入。"
+      },
+      {
+        "lines": [
+          94,
+          95
+        ],
+        "reason": "没有终止性错误时，再问输入队列“还有没有没处理的补充消息”。前面的 ! 表示取反，所以没有待处理输入时进入这个分支，返回最后消息，退出 RegularTask 的这段循环。",
+        "flow_role": "承接上一组的无终止性错误路径，这里决定 RegularTask 是否可以退出。若队列仍有输入，就沿后面的 next_input 赋值继续读循环。"
+      },
+      {
+        "lines": [
+          97
+        ],
+        "reason": "能执行到这里，说明队列中仍有待处理输入。将 next_input 设为空列表后，loop 会再次调用 run_turn。这只清空下一次调用的初始输入参数，不会清空会话历史，也不会删除队列中的补充消息。",
+        "flow_role": "这是继续分支回到循环起点的连接处。读完后需要对照下文 run_turn 取待处理输入的代码，才能理解参数为空时任务怎样接续，而不会误以为补充需求被删掉。"
+      }
+    ]
+  },
+  "prompt-history": {
+    "path": "codex-rs/core/src/session/turn.rs",
+    "start": 420,
+    "end": 444,
+    "title": "从历史生成本次请求输入并传给采样函数",
+    "focus": [
+      421,
+      424,
+      432,
+      439
+    ],
+    "sha256": "bf3e55db1f438340c6573510941cd1856d6fe214cc125fa283b65fd4afbb7ff1",
+    "file_sha256": "9f9f1bd23950f8745a68a78fec742dbd98c0c9ab1f853a3f72a91828e625d3fd",
+    "focus_notes": [
+      {
+        "lines": [
+          421,
+          424
+        ],
+        "reason": "从会话历史生成 sampling_request_input；for_prompt 是本次追踪中需要展开的转换步骤。",
+        "flow_role": "上一章已进入 run_turn，这里开始回答“模型这次能看到什么”。先取得 sampling_request_input，随后展开 for_prompt，核对历史怎样变成请求输入。"
+      },
+      {
+        "lines": [
+          432,
+          439
+        ],
+        "reason": "同一个输入变量交给 run_sampling_request，建立请求准备与后续采样处理之间的联系。",
+        "flow_role": "这组行给出输入准备后的交出位置。教学上会先补读 for_prompt 的实现，再进入 run_sampling_request 中的 build_prompt 调用，沿同一份输入向前追。"
+      }
+    ]
+  },
+  "prompt-normalize": {
+    "path": "codex-rs/core/src/context_manager/history.rs",
+    "start": 421,
+    "end": 435,
+    "title": "请求输入经过归一化处理",
+    "focus": [
+      422,
+      424,
+      433
+    ],
+    "sha256": "fcc98845cec8a09323edeb9998a2bb482f8117f36faf069f055d34625a4eefd6",
+    "file_sha256": "73e5625014ece2d1e3a092318eac323629f51227fc14327fe954322cf79c69ff",
+    "focus_notes": [
+      {
+        "lines": [
+          422,
+          424
+        ],
+        "reason": "for_prompt 委托给保留注解的版本，再取出每个 envelope 中的响应项；这解释返回列表从何而来。",
+        "flow_role": "这是对上一段 for_prompt 调用的向下展开，解释 sampling_request_input 内的响应项从哪里来。读完转换过程后，应回到请求准备链，继续找 Prompt 的构造。"
+      },
+      {
+        "lines": [
+          433
+        ],
+        "reason": "历史在取出前先 normalize；本段只能确认调用顺序，具体整理规则还需展开该方法。",
+        "flow_role": "这行补查响应项取出前的整理步骤，界定当前片段能够证明的处理顺序。本节随后回到采样函数，不在这里继续展开全部历史整理规则。"
+      }
+    ]
+  },
+  "prompt-build": {
+    "path": "codex-rs/core/src/session/turn.rs",
+    "start": 1386,
+    "end": 1403,
+    "title": "把输入、工具规格与基础说明组成 Prompt",
+    "focus": [
+      1393,
+      1394,
+      1396,
+      1397
+    ],
+    "sha256": "0d82f09ee6dd4c779f51f3446be12cb1964881c250bb9c06837d5314705ec42e",
+    "file_sha256": "9f9f1bd23950f8745a68a78fec742dbd98c0c9ab1f853a3f72a91828e625d3fd",
+    "focus_notes": [
+      {
+        "lines": [
+          1393,
+          1394
+        ],
+        "reason": "input 放入消息列表，tools 放入模型可见的工具规格；两者共同决定本次模型可依据的信息与可请求的动作。",
+        "flow_role": "沿上一段 build_prompt 调用进入这里，先核对两个核心字段：输入列表与工具规格。它们说明前面准备的信息最后落在 Prompt 的什么位置。"
+      },
+      {
+        "lines": [
+          1396,
+          1397
+        ],
+        "reason": "基础说明和输出 schema 单独保存，说明 Prompt 并非把一切拼成一段用户文字。",
+        "flow_role": "这组行补齐同一个 Prompt 中的约束信息，完成本章的请求组装解释。读完后回到上一段的调用方，跟随返回的 prompt 进入采样与响应流。"
+      }
+    ]
+  },
+  "stream-open": {
+    "path": "codex-rs/core/src/session/turn.rs",
+    "start": 2296,
+    "end": 2313,
+    "title": "创建模型响应流与工具等待队列",
+    "focus": [
+      2297,
+      2308,
+      2310,
+      2311
+    ],
+    "sha256": "55073b2bcaa0d8ce4453df7e0ea995687e1bbbd04923f826da157ffa1590a26b",
+    "file_sha256": "9f9f1bd23950f8745a68a78fec742dbd98c0c9ab1f853a3f72a91828e625d3fd",
+    "focus_notes": [
+      {
+        "lines": [
+          2297,
+          2308
+        ],
+        "reason": "stream 取得模型响应流，并将取消信号接到等待过程；这是上一章 Prompt 的消费者。",
+        "flow_role": "这是上一章请求组装之后的下一站：在采样实现中使用已经准备好的 Prompt，取得响应流。后面将从“发出请求”转为“逐项消费返回事件”。"
+      },
+      {
+        "lines": [
+          2310,
+          2311
+        ],
+        "reason": "初始化工具等待队列和后续处理标记；下一段产生工具结果时会更新这两份状态。",
+        "flow_role": "这组行提前建立后面处理事件时使用的状态。记住 in_flight 与 needs_follow_up，下一段便能辨认完整响应项怎样改变它们。"
+      }
+    ]
+  },
+  "stream-completed-item": {
+    "path": "codex-rs/core/src/session/turn.rs",
+    "start": 2479,
+    "end": 2493,
+    "title": "完成项进入处理器，执行任务进入队列",
+    "focus": [
+      2480,
+      2487,
+      2488,
+      2493
+    ],
+    "sha256": "e86f90cc9fd46805da2be41da9810b019a8ab399c17be636ac2e4d2cb24995f1",
+    "file_sha256": "9f9f1bd23950f8745a68a78fec742dbd98c0c9ab1f853a3f72a91828e625d3fd",
+    "focus_notes": [
+      {
+        "lines": [
+          2480
+        ],
+        "reason": "完成项交给 handle_output_item_done 分类，返回的是后续处理所需的信息。",
+        "flow_role": "从响应流创建处跳到完整输出项分支后，这行是项处理器的调用点。第 05 节会沿这个调用展开工具识别，本节先看返回值怎样影响当前响应处理。"
+      },
+      {
+        "lines": [
+          2487,
+          2488,
+          2493
+        ],
+        "reason": "有工具 future 就入队，并汇总后续需求；这解释为什么读完一个响应项后还可能需要继续工作。",
+        "flow_role": "承接同一处理器的返回值，这组行把它接回前面初始化的队列和标记。工具结果何时真正取得留到第 07 节，本节接下来切到界面端看通知显示。"
+      }
+    ]
+  },
+  "stream-ui": {
+    "path": "codex-rs/tui/src/chatwidget/protocol.rs",
+    "start": 62,
+    "end": 84,
+    "title": "TUI 按通知类型更新界面",
+    "focus": [
+      73,
+      76,
+      79,
+      82,
+      83
+    ],
+    "sha256": "da652ec9a0dfea31829d1ad198f94219c54a8a81ba6383f6efbf361f01766625",
+    "file_sha256": "27dd6e12c25a50757f859f5e8ec2cbe6b072324b1947f142cfcfac53f040974a",
+    "focus_notes": [
+      {
+        "lines": [
+          82,
+          83
+        ],
+        "reason": "文字增量进入 on_agent_message_delta，解释用户看到的新文字由哪类通知触发。",
+        "flow_role": "这里从核心处理切换到 TUI 通知接收端，中间通知转换未展开。这两行回答用户为何能逐步看到文字，补齐本章的界面视角。"
+      },
+      {
+        "lines": [
+          73,
+          76,
+          79
+        ],
+        "reason": "轮次完成与单个 item 的开始、完成使用不同分支；对照这些分支才能区分“文字出现”和“任务结束”。",
+        "flow_role": "与文字增量分支对照，这组行标出其他状态通知的接收位置。分清显示与执行状态后，下一章再回到核心的完成项处理器追工具调用。"
+      }
+    ]
+  },
+  "tool-identify": {
+    "path": "codex-rs/core/src/stream_events_utils.rs",
+    "start": 290,
+    "end": 307,
+    "title": "完成响应项尝试转换为工具调用",
+    "focus": [
+      298,
+      300
+    ],
+    "sha256": "89c139541dd5131ee0e3a9a47db07f944dd3b6ba8d0e1aae0cca287d8d946f93",
+    "file_sha256": "9b51fca33a4e7a9f9e6de0b55e3fc695ec26248980bcde040f125a9408dc8abe",
+    "focus_notes": [
+      {
+        "lines": [
+          298,
+          300
+        ],
+        "reason": "转换结果为 Some(call) 才进入工具分支；这一步决定后面要准备执行，还是继续处理普通消息。",
+        "flow_role": "承接第 04 节 handle_output_item_done 的调用，这里进入其内部的工具识别步骤。确认得到 Some(call) 后，下一段才能沿这个 call 追执行安排。"
+      }
+    ]
+  },
+  "tool-schedule": {
+    "path": "codex-rs/core/src/stream_events_utils.rs",
+    "start": 317,
+    "end": 329,
+    "title": "先记录调用，再安排工具执行",
+    "focus": [
+      317,
+      324,
+      327,
+      328
+    ],
+    "sha256": "fa536b145969d1804c6b0f29e55a6120ececfe4f96dc20bfcfcfd91d828cffe2",
+    "file_sha256": "9b51fca33a4e7a9f9e6de0b55e3fc695ec26248980bcde040f125a9408dc8abe",
+    "focus_notes": [
+      {
+        "lines": [
+          317,
+          324
+        ],
+        "reason": "先保存模型提出的调用，再把 call 交给工具运行时，得到一个待等待的 future。",
+        "flow_role": "上一段已经识别出 call，这组行继续读同一分支，完成“识别工具 → 记录调用并安排执行”的交接。随后查看返回值如何把这项工作交回上层。"
+      },
+      {
+        "lines": [
+          327,
+          328
+        ],
+        "reason": "将继续处理标记和 future 一起返回；上一章的 in_flight 入队代码消费的正是这两个字段。",
+        "flow_role": "这是工具安排阶段的返回出口，与第 04 节的 in_flight 入队代码配对。交代上层如何接手后，再向工具运行时内部追路由与处理器。"
+      }
+    ]
+  },
+  "tool-route": {
+    "path": "codex-rs/core/src/tools/router.rs",
+    "start": 358,
+    "end": 381,
+    "title": "把工具身份和上下文交给注册表",
+    "focus": [
+      360,
+      373,
+      374,
+      380
+    ],
+    "sha256": "4f2e5d2e9d0f51149944fa8db3c7ccf9566fb7d9be4d8ebe7307d4e7f0623065",
+    "file_sha256": "466ee7a51fd9e6b741653b50313a2567bb08ce55a32af815a619a07cc38bafef",
+    "focus_notes": [
+      {
+        "lines": [
+          360,
+          373,
+          374
+        ],
+        "reason": "call_id 与 tool_name 从 call 进入 invocation；编号用于关联这一调用，名称用于选择处理能力。",
+        "flow_role": "从工具运行时继续追到路由时，先核对 call 的身份如何进入 ToolInvocation。这样后面切到具体 handler，仍能认出它处理的是同一次调用。"
+      },
+      {
+        "lines": [
+          380
+        ],
+        "reason": "注册表接收完整 invocation 并分发；这是从工具身份到具体处理器的交接位置。",
+        "flow_role": "这一行是路由交给注册表的分发出口。本节随后回到路由的调用方补查并发条件，下一章才选 apply_patch 进入具体 handler。"
+      }
+    ]
+  },
+  "tool-parallel": {
+    "path": "codex-rs/core/src/tools/parallel.rs",
+    "start": 155,
+    "end": 177,
+    "title": "通过并发门控后调用路由",
+    "focus": [
+      155,
+      156,
+      158,
+      167
+    ],
+    "sha256": "5bdd13434482bd739ebacf7f58cd3be378eb694451193bd0e4b8123c053fa0ea",
+    "file_sha256": "e01b784d80793d2af6d1e00a377ea618d5022b3f6d241ce3423778e866b784b3",
+    "focus_notes": [
+      {
+        "lines": [
+          155,
+          156,
+          158
+        ],
+        "reason": "并行能力决定取得共享锁还是独占锁；两种工具由这里控制进入执行区的时机。",
+        "flow_role": "这里是阅读顺序中的回查：上一段先看了路由做什么，现在回到它的调用方看何时允许进入。先获得对应锁，才会执行下面的分发调用。"
+      },
+      {
+        "lines": [
+          167
+        ],
+        "reason": "取得锁后才调用路由分发，因此这段是调用分发之前的门控，不是分发完成后的补充操作。",
+        "flow_role": "这行将并发检查重新接回刚读过的路由。至此工具识别、执行安排与分发条件已串好，下一章沿具体处理器继续查参数和审批。"
+      }
+    ]
+  },
+  "permission-payload": {
+    "path": "codex-rs/core/src/tools/handlers/apply_patch.rs",
+    "start": 375,
+    "end": 389,
+    "title": "格式错误在执行前返回模型",
+    "focus": [
+      375,
+      380,
+      382,
+      384
+    ],
+    "sha256": "cf17b15ae458dafdec8560c8c79143f439ab3c69377b3c33d0085355b2d92058",
+    "file_sha256": "c9a18003221446628bae2c7bc9ba3a302ac239e86474e0a932a2344b20855035",
+    "focus_notes": [
+      {
+        "lines": [
+          375,
+          380
+        ],
+        "reason": "先要求 Custom payload，再解析其中补丁文本；两步回答能否构造有效的补丁请求。",
+        "flow_role": "上一章已定位具体处理器，现在用 apply_patch 进入执行前检查的第一步。先认清可接受的参数形态，再看检查失败时怎样结束这条路径。"
+      },
+      {
+        "lines": [
+          382,
+          384
+        ],
+        "reason": "解析失败返回可交给模型的错误描述，下面的执行路径只在通过这些检查后才有意义。",
+        "flow_role": "这组行标明第一步的失败出口；下面的验证后执行入口只讨论通过检查的路径。这样从参数解析跳到编排器时，就不会漏掉进入它的前提。"
+      }
+    ]
+  },
+  "permission-requirement": {
+    "path": "codex-rs/core/src/tools/orchestrator.rs",
+    "start": 174,
+    "end": 217,
+    "title": "根据审批要求分流",
+    "focus": [
+      178,
+      179,
+      197,
+      209,
+      210,
+      212
+    ],
+    "sha256": "9f2bbea76c55a2fba3037e503e22ba2eaef7c4003b4fd6a3a29d91745d5eccbf",
+    "file_sha256": "0926333b469d44f0367879410ab8b33fe88ed0f424c3f5a082ce8871b605bab0",
+    "focus_notes": [
+      {
+        "lines": [
+          178,
+          179,
+          197
+        ],
+        "reason": "Skip 分支内仍有 strict_auto_review 检查，条件成立时请求批准；这解释为什么不能只看枚举名称判断审查行为。",
+        "flow_role": "沿上一段 run 调用进入编排器后，这组行细读 Skip 的内部条件，补齐“要求如何变成决定”这一步。确认它的条件后，再与其余要求分支对照。"
+      },
+      {
+        "lines": [
+          209,
+          210,
+          212
+        ],
+        "reason": "Forbidden 直接拒绝，NeedsApproval 进入审批准备；不同要求会改变动作是否继续执行。",
+        "flow_role": "这组行补齐禁止与需要审批的去向，完成本节的分支判断。随后回到 handler 的 match result，看本次调用的决定与执行结果如何交出。"
+      }
+    ]
+  },
+  "permission-patch-run": {
+    "path": "codex-rs/core/src/tools/handlers/apply_patch.rs",
+    "start": 606,
+    "end": 622,
+    "title": "补丁工具调用编排器并收集结果",
+    "focus": [
+      609,
+      613,
+      614,
+      622
+    ],
+    "sha256": "31c4e81f48ec76f1b48a39c14c265d36f567a7ec975883dd9d5670938c11e61f",
+    "file_sha256": "c9a18003221446628bae2c7bc9ba3a302ac239e86474e0a932a2344b20855035",
+    "focus_notes": [
+      {
+        "lines": [
+          609
+        ],
+        "reason": "具体补丁工具调用编排器 run；这是从 handler 跳到审批编排逻辑的调用依据。",
+        "flow_role": "通过前置检查后，这行给出补丁 handler 调用编排器的实际位置。下一段进入 orchestrator.run 的审批分支，就是沿此调用向下展开。"
+      },
+      {
+        "lines": [
+          613,
+          614,
+          622
+        ],
+        "reason": "返回后同时收集结果和已提交变更，再交给输出处理；失败分支也保留变更信息，所以要读真实执行结果。",
+        "flow_role": "这里先标出编排器返回后的接收位置。读完下一段的允许或拒绝分支，要回到这组行理解决定如何变成结果，再交给后续输出处理。"
+      }
+    ]
+  },
+  "result-envelope": {
+    "path": "codex-rs/core/src/tools/parallel.rs",
+    "start": 74,
+    "end": 90,
+    "title": "成功返回与可恢复错误都转成响应项",
+    "focus": [
+      83,
+      84,
+      85,
+      86,
+      87
+    ],
+    "sha256": "05525d40f00a966e6053cc3e03057308daa578e024e0a28bd5aa514b4a850a21",
+    "file_sha256": "e01b784d80793d2af6d1e00a377ea618d5022b3f6d241ce3423778e866b784b3",
+    "focus_notes": [
+      {
+        "lines": [
+          83,
+          84
+        ],
+        "reason": "等待 handler 的结果，并将成功值转换为响应 envelope；后面记录历史的方法接收这种结构。",
+        "flow_role": "上一章的具体 handler 已有返回，这里切到工具运行时接收它的位置。先看结果如何变成 envelope，后面的历史写入才有明确的记录对象。"
+      },
+      {
+        "lines": [
+          85,
+          86,
+          87
+        ],
+        "reason": "Fatal 向上返回，其他错误变成失败响应；由此可以定位哪些错误作为模型输入继续参与任务。",
+        "flow_role": "这是同一转换位置的错误分流，补齐成功路径之外的结果去向。只有能形成响应项的路径，才继续接到下面的结果收集与历史记录。"
+      }
+    ]
+  },
+  "result-drain-call": {
+    "path": "codex-rs/core/src/session/turn.rs",
+    "start": 2840,
+    "end": 2846,
+    "title": "采样返回前等待在途工具",
+    "focus": [
+      2845
+    ],
+    "sha256": "78522b44aabbc9773e9ceef4feb7838947dc32ca42d6b0dec5218fff6535f35f",
+    "file_sha256": "9f9f1bd23950f8745a68a78fec742dbd98c0c9ab1f853a3f72a91828e625d3fd",
+    "focus_notes": [
+      {
+        "lines": [
+          2845
+        ],
+        "reason": "传入 in_flight 并等待 drain 完成；要证明工具结果进入历史，就必须继续展开这个调用。",
+        "flow_role": "前面解释了单个工具返回的结构，现在回到采样函数看谁等待在途工具。这行提供下一段 drain_in_flight 实现的调用依据。"
+      }
+    ]
+  },
+  "result-drain": {
+    "path": "codex-rs/core/src/session/turn.rs",
+    "start": 2216,
+    "end": 2240,
+    "title": "等待结果并写入带注解的会话历史",
+    "focus": [
+      2222,
+      2224,
+      2231
+    ],
+    "sha256": "f845a7bf1e26f07eff4a078037432890bfcd372f15a14fe64d46d67ed0c76a9c",
+    "file_sha256": "9f9f1bd23950f8745a68a78fec742dbd98c0c9ab1f853a3f72a91828e625d3fd",
+    "focus_notes": [
+      {
+        "lines": [
+          2222,
+          2224
+        ],
+        "reason": "依次取得队列中的完成结果并拆出 envelope；这是“已安排工具”到“拿到结果”的转换。",
+        "flow_role": "沿上一段 drain_in_flight 调用进入函数体后，先接住第 04 节放入队列的工作结果。取得 envelope 后，继续向下找它的保存位置。"
+      },
+      {
+        "lines": [
+          2231
+        ],
+        "reason": "把 envelope 记入会话历史；这一行才回答结果保存到了哪里。",
+        "flow_role": "这是“工具完成 → 会话历史更新”的交接点。下一段回到 run_turn 判断是否继续，再核对后续请求是否重新读取了这份历史。"
+      }
+    ]
+  },
+  "result-follow-up": {
+    "path": "codex-rs/core/src/session/turn.rs",
+    "start": 461,
+    "end": 475,
+    "title": "将待处理输入与模型后续需求合并",
+    "focus": [
+      463,
+      464,
+      474
+    ],
+    "sha256": "b8bc7f17a1c46f8ea68a33e4036cc50c7c65ad27b4162bbdf21779bdd2e31555",
+    "file_sha256": "9f9f1bd23950f8745a68a78fec742dbd98c0c9ab1f853a3f72a91828e625d3fd",
+    "focus_notes": [
+      {
+        "lines": [
+          463,
+          464
+        ],
+        "reason": "检查队列是否还有输入，获得 has_pending_input，补足模型响应以外的继续原因。",
+        "flow_role": "工具结果收集结束后，阅读视角回到 run_turn 的采样结果处理。这两行补上来自用户输入队列的继续理由，下面再与模型返回的后续需求合并。"
+      },
+      {
+        "lines": [
+          474
+        ],
+        "reason": "与模型后续需求取逻辑或；正常继续时将回到下面的请求输入准备位置。",
+        "flow_role": "这行把两类继续理由合成一个判断依据。正常继续路径会回到下一段展示的输入准备位置；后面的结束检查另在第 09 节展开。"
+      }
+    ]
+  },
+  "result-next-input": {
+    "path": "codex-rs/core/src/session/turn.rs",
+    "start": 420,
+    "end": 427,
+    "title": "下一次请求从更新后的历史生成输入",
+    "focus": [
+      422,
+      424
+    ],
+    "sha256": "dc167989eebd280e95d3111b6d27912fe73c4f1302dbf6012c50828e1a0473fe",
+    "file_sha256": "9f9f1bd23950f8745a68a78fec742dbd98c0c9ab1f853a3f72a91828e625d3fd",
+    "focus_notes": [
+      {
+        "lines": [
+          422,
+          424
+        ],
+        "reason": "再次从更新后的历史取输入；把这里与上面的历史写入调用连起来，才能说明文件结果如何到达下一次请求。",
+        "flow_role": "这里展示的是继续处理时回到的循环位置，与第 03 节同源。将它和本章 record_annotated_conversation_items 对上，就闭合了“工具输出 → 历史 → 下一次请求”的整条路线。"
+      }
+    ]
+  },
+  "patch-verify": {
+    "path": "codex-rs/core/src/tools/handlers/apply_patch.rs",
+    "start": 401,
+    "end": 428,
+    "title": "解析补丁并在选定环境中验证",
+    "focus": [
+      403,
+      412,
+      420,
+      427
+    ],
+    "sha256": "ab0205ecc180c327d3304c67588b055b17d4e3558ab8e724933806f428af8c9b",
+    "file_sha256": "c9a18003221446628bae2c7bc9ba3a302ac239e86474e0a932a2344b20855035",
+    "focus_notes": [
+      {
+        "lines": [
+          403,
+          412
+        ],
+        "reason": "在当前环境验证补丁，Body 分支取得可应用的 changes；它连接了文本解析与实际文件变更。",
+        "flow_role": "第 06 节已介绍解析与审批，这里补读两者之间的补丁验证步骤。得到 changes 后，才能继续向下追真正执行文件变更的调用。"
+      },
+      {
+        "lines": [
+          420,
+          427
+        ],
+        "reason": "将 changes 交给 execute_verified_patch，再包装它的结果；读到这里可以继续追修改结果，而不是只看到补丁文本。",
+        "flow_role": "这是验证结果交给执行入口的位置，执行结果随后回接第 07 节。下一段测试代码属于后续可能发生的另一项工具调用，不是 execute_verified_patch 内的下一步。"
+      }
+    ]
+  },
+  "test-exec": {
+    "path": "codex-rs/core/src/tools/handlers/unified_exec/exec_command.rs",
+    "start": 441,
+    "end": 449,
+    "title": "命令进入进程管理器并返回工具输出",
+    "focus": [
+      443,
+      446,
+      449
+    ],
+    "sha256": "8fe1942769f0f664e848e70e11baffa6b3047febffbb10a9c4f475ac599126b8",
+    "file_sha256": "e024443896f596818af5830b416c59df26cab3bd793fd0abb179f4bbebad7b60",
+    "focus_notes": [
+      {
+        "lines": [
+          443,
+          446
+        ],
+        "reason": "根据 completion_timeout 选择等待完成的执行路径或普通执行路径；从这里知道命令交给了哪一个管理方法。",
+        "flow_role": "从补丁结果切换到后续测试工具调用后，这组行定位命令被交给哪个进程管理方法。确认提交位置后，再看管理器返回值怎样成为模型可接收的反馈。"
+      },
+      {
+        "lines": [
+          449
+        ],
+        "reason": "把管理器响应包装成工具输出；下一次模型读取测试反馈仍使用前一章的结果回传通路。",
+        "flow_role": "这是本章测试动作的返回出口，与第 07 节工具结果通路相接。后面的失败修复示例，就以这份实际测试反馈进入后续请求为前提。"
+      }
+    ]
+  },
+  "finish-hooks": {
+    "path": "codex-rs/core/src/session/turn.rs",
+    "start": 551,
+    "end": 559,
+    "title": "没有后续需求时先运行 stop hooks",
+    "focus": [
+      551,
+      553
+    ],
+    "sha256": "9c41fd16c58fcd155b3923d218c14aebe43e8f83c67a84ce84f9e937b79d36bb",
+    "file_sha256": "9f9f1bd23950f8745a68a78fec742dbd98c0c9ab1f853a3f72a91828e625d3fd",
+    "focus_notes": [
+      {
+        "lines": [
+          551,
+          553
+        ],
+        "reason": "没有后续需求时先调用 stop hooks，返回 stop_outcome；下一段就是消费这个结果的地方。",
+        "flow_role": "承接第 07 节合并出的 needs_follow_up，这里进入没有后续需求时的结束候选分支。先取得 stop_outcome，下一段再沿它判断本轮能否真的退出。"
+      }
+    ]
+  },
+  "finish-continuation": {
+    "path": "codex-rs/core/src/session/turn.rs",
+    "start": 570,
+    "end": 587,
+    "title": "hook 可把补充信息写回历史并继续",
+    "focus": [
+      570,
+      574,
+      586
+    ],
+    "sha256": "d4b12d9aabbecc6e171539366a3289d4cead74b3ba4341b2f33c2943c853ec22",
+    "file_sha256": "9f9f1bd23950f8745a68a78fec742dbd98c0c9ab1f853a3f72a91828e625d3fd",
+    "focus_notes": [
+      {
+        "lines": [
+          570,
+          574
+        ],
+        "reason": "hook 请求继续且提供补充文本时，把这段文本写回历史；继续任务需要有可处理的新信息。",
+        "flow_role": "上一段已得到 stop_outcome，这里消费它，并为继续处理准备历史输入。完成这一步后，再看控制流是否真的返回循环。"
+      },
+      {
+        "lines": [
+          586
+        ],
+        "reason": "continue 返回循环，而不是进入完成事件；这条控制流是检查题判断任务是否结束的依据。",
+        "flow_role": "这行给出继续分支的明确去向，说明当前路径还未走到任务完成。下一段改看生命周期的结束路径，不能把它理解成 continue 后紧接着执行的代码。"
+      }
+    ]
+  },
+  "finish-event": {
+    "path": "codex-rs/core/src/tasks/mod.rs",
+    "start": 819,
+    "end": 836,
+    "title": "任务生命周期生成结束事件",
+    "focus": [
+      826,
+      829,
+      836
+    ],
+    "sha256": "11e2fd3ff48ce0a0f190ee4730191baec603efba980aab455fae30c7beb18845",
+    "file_sha256": "127e3f5293ce7cf389d0a3f8427b395e04b1f1d897589ab1e688a629f5f2c27b",
+    "focus_notes": [
+      {
+        "lines": [
+          826,
+          829
+        ],
+        "reason": "构造轮次完成事件并携带 error，完成状态和成功状态因此可以区分。",
+        "flow_role": "这里从 run_turn 的结束判断切到上层任务生命周期处理，观察任务收束时生成什么事件。先看事件内容，再核对谁将它发出去。"
+      },
+      {
+        "lines": [
+          836
+        ],
+        "reason": "send_event 发出生命周期结果；与前面生成普通助手文字的路径不同，界面据此收束本轮状态。",
+        "flow_role": "这是本章生命周期通知的发送出口，与第 04 节的界面完成通知处理相呼应。读到这里，用户输入到最终状态显示的主线才闭合。"
+      }
+    ]
+  },
+  "command-status": {
+    "path": "codex-rs/tui/src/chatwidget/slash_dispatch.rs",
+    "start": 480,
+    "end": 494,
+    "title": "状态命令的界面处理",
+    "focus": [
+      481,
+      485,
+      486,
+      490
+    ],
+    "sha256": "2d8e12b16d4c12ff9b784571b4e325265dee44948285f4ff241a1feaec5fb980",
+    "file_sha256": "795f6fe86162088914de82a139331330369bc2670f1477f89322d1d7d2edfee0",
+    "focus_notes": [
+      {
+        "lines": [
+          481,
+          485,
+          486
+        ],
+        "reason": "需要刷新额度时，先输出带刷新状态的信息，再发出额度刷新事件；不能将它解释为一次模型采样。",
+        "flow_role": "本专题先用 Status 建立命令分发的第一个样本。这组行定位状态刷新时交给谁处理，为后面与 Compact 的动作去向作对照。"
+      },
+      {
+        "lines": [
+          490
+        ],
+        "reason": "另一分支直接显示状态，便于与下面必须提交压缩操作的命令对照。",
+        "flow_role": "这里补齐 Status 无需刷新的分支，完成状态命令的局部路线。下一段切换到另一种输入 /compact，不是本分支执行完后自动压缩。"
+      }
+    ]
+  },
+  "command-compact": {
+    "path": "codex-rs/tui/src/chatwidget/slash_dispatch.rs",
+    "start": 270,
+    "end": 288,
+    "title": "压缩命令转为应用操作",
+    "focus": [
+      286,
+      287
+    ],
+    "sha256": "2bdf811dbaca3d4a53b0ca6e24e6a2d9d1f98b3067d053ac66fdac05419090d6",
+    "file_sha256": "795f6fe86162088914de82a139331330369bc2670f1477f89322d1d7d2edfee0",
+    "focus_notes": [
+      {
+        "lines": [
+          286,
+          287
+        ],
+        "reason": "标记等待启动并提交 compact 操作；与上一段的状态展示相比，接收动作已经变化，后续要继续去核心追压缩。",
+        "flow_role": "与上一段 Status 对照，这里展示另一种命令怎样交出实际操作。确认 compact 的提交位置后，要追执行就进入核心压缩路径；要比较普通任务则回第 01 节。"
+      }
+    ]
+  },
+  "context-agents": {
+    "path": "codex-rs/core/src/agents_md.rs",
+    "start": 55,
+    "end": 85,
+    "title": "项目说明加载的信任与容量边界",
+    "focus": [
+      60,
+      61,
+      65,
+      77
+    ],
+    "sha256": "7c1f51f890fbda7e31a361a0cecc6dd7357db07a830eedeb8eeb9ab35856b3ba",
+    "file_sha256": "8bbaf068c099fdeeaf4fe49076d398da7671f20c9a962fde5c4eb7653008fed4",
+    "focus_notes": [
+      {
+        "lines": [
+          60,
+          61
+        ],
+        "reason": "从已有用户说明建立容器，再检查项目信任状态；这决定是否继续读取项目约定。",
+        "flow_role": "本专题先从程序自动加载说明的路径开始。这组行交代已有说明从哪里接入、项目资料在什么前提下继续读取，下一步再追实际文件读取。"
+      },
+      {
+        "lines": [
+          65,
+          77
+        ],
+        "reason": "设置剩余读取预算并调用 read_agents_md；文件存在并非加载成功的全部条件，还需要通过此处的读取过程。",
+        "flow_role": "这是“允许读取 → 实际按预算读取”的交接点。读完后再切到用户主动提交截图与文字的路径，对照两种资料进入系统的不同入口。"
+      }
+    ]
+  },
+  "context-media": {
+    "path": "codex-rs/tui/src/chatwidget/input_submission.rs",
+    "start": 193,
+    "end": 212,
+    "title": "图片和普通文字采用不同输入变体",
+    "focus": [
+      201,
+      208
+    ],
+    "sha256": "f658e4e17f29a496f069c6500c9eb62af6f4e7f12415e4a998f3bb63caf58368",
+    "file_sha256": "05a752d68c7a0290b38df87a3567fb326823098283169304137d8ada80a0c8ca",
+    "focus_notes": [
+      {
+        "lines": [
+          201,
+          208
+        ],
+        "reason": "同一个 items 中分别构造 LocalImage 和 Text；要判断发送了什么信息，先看输入项种类，而不是只看界面显示文字。",
+        "flow_role": "这里从项目说明加载切回用户输入提交，不是 read_agents_md 的后续调用。确认图片与文字如何一起成为 items 后，再回第 03 节检查它们经过后续处理怎样进入请求。"
+      }
+    ]
+  },
+  "compact-select": {
+    "path": "codex-rs/core/src/compact.rs",
+    "start": 683,
+    "end": 715,
+    "title": "从较新的用户消息开始按预算选择",
+    "focus": [
+      693,
+      697,
+      702,
+      714
+    ],
+    "sha256": "81e2e0d23ab4bfaaa2299ecb302214a110a2bcd0cace64615fe4c71b422b78e5",
+    "file_sha256": "d0da046cc7e24928563b51b033b21221f36c4517267929e842352ec92f721888",
+    "focus_notes": [
+      {
+        "lines": [
+          693,
+          697,
+          702
+        ],
+        "reason": "预算决定何时停止、整条保留或截断文本；这些分支解释压缩后哪些输入可能减少。",
+        "flow_role": "承接主线中历史持续增长的问题，这里进入压缩后的用户消息选择步骤。先看哪些消息能进入 selected_messages，再看如何恢复它们的顺序。"
+      },
+      {
+        "lines": [
+          714
+        ],
+        "reason": "选取后恢复时间顺序，再交给后续重建；因此下面应追新历史如何替换旧历史。",
+        "flow_role": "这行结束消息选择阶段，为重建历史准备有序材料。下一段回到调用此重建函数的位置，追 new_history 怎样真正替换当前历史。"
+      }
+    ]
+  },
+  "compact-replace": {
+    "path": "codex-rs/core/src/compact.rs",
+    "start": 367,
+    "end": 400,
+    "title": "替换当前历史并记录压缩检查点",
+    "focus": [
+      367,
+      387
+    ],
+    "sha256": "bd9c632b25fec46ae294e2b0f560876e3a7084dfa08003207974fe171328427c",
+    "file_sha256": "d0da046cc7e24928563b51b033b21221f36c4517267929e842352ec92f721888",
+    "focus_notes": [
+      {
+        "lines": [
+          367,
+          387
+        ],
+        "reason": "先生成 new_history，再调用 replace_compacted_history；前者只是构造结果，后者才改变后续请求使用的历史。",
+        "flow_role": "上一段展开了重建函数内的选择逻辑，这里回到调用方，区分构造 new_history 与让它生效。完成替换后，再到第 07 节的历史读取处观察后续请求输入如何改变。"
+      }
+    ]
+  },
+  "retry-connection": {
+    "path": "codex-rs/core/src/responses_retry.rs",
+    "start": 58,
+    "end": 83,
+    "title": "特定配置下的连接失败退避",
+    "focus": [
+      62,
+      63,
+      78,
+      79
+    ],
+    "sha256": "b5990a30aa2b206120eb78dbe31f9cb4ee36e11603221d4c841310089c0cb844",
+    "file_sha256": "29dc6a5f6df9784e79c39e1b455eadfc63b44d9ce7f51309c278cf6a52f397d0",
+    "focus_notes": [
+      {
+        "lines": [
+          62,
+          63
+        ],
+        "reason": "分支同时限制采样请求和连接失败类型；测试断言失败不会仅因为含有“失败”二字就进入这里。",
+        "flow_role": "从主线的模型响应流切到故障处理后，先用这组条件判断错误是否适用当前恢复路径。符合条件才继续读下面的等待与退避，测试失败则要回工具结果通路分析。"
+      },
+      {
+        "lines": [
+          78,
+          79
+        ],
+        "reason": "先等待当前延时，再更新下一次延时；要理解退避，就追这个状态怎样跨尝试变化。",
+        "flow_role": "这组行解释当前恢复分支怎样准备下一次尝试。下一段是本函数另一个条件分支的传输回退，不是每次等待结束都必然执行的步骤。"
+      }
+    ]
+  },
+  "retry-fallback": {
+    "path": "codex-rs/core/src/responses_retry.rs",
+    "start": 85,
+    "end": 100,
+    "title": "重试耗尽时尝试传输回退",
+    "focus": [
+      85,
+      86,
+      98
+    ],
+    "sha256": "e560c1e6b1172e1a4aa6667a86198fe0ff07221c2882b25a9d8fedc01c704660",
+    "file_sha256": "29dc6a5f6df9784e79c39e1b455eadfc63b44d9ce7f51309c278cf6a52f397d0",
+    "focus_notes": [
+      {
+        "lines": [
+          85,
+          86
+        ],
+        "reason": "次数达到上限且能够切换传输时才走回退分支；它与上一段特定连接错误的等待策略有不同条件。",
+        "flow_role": "前面的特定连接错误路径未生效时，才继续看这里的回退条件。这组行先判断能否切换传输，成功后再看计数如何更新。"
+      },
+      {
+        "lines": [
+          98
+        ],
+        "reason": "切换后重置请求重试计数，供后续请求尝试使用；这个变量不记录文件工具是否已经执行。",
+        "flow_role": "这是回退成功后为后续请求准备状态的位置，至此通信恢复的局部路线结束。下一段转到工具取消，处理对象变了，不沿这个重试计数继续执行工具。"
+      }
+    ]
+  },
+  "cancel-tool": {
+    "path": "codex-rs/core/src/tools/parallel.rs",
+    "start": 180,
+    "end": 209,
+    "title": "等待结果与取消信号竞争",
+    "focus": [
+      182,
+      184,
+      185,
+      190
+    ],
+    "sha256": "f8d42586c625bb29b7897c11a1878ff6bb9c713c9750e1776b4fc29dbfc65450",
+    "file_sha256": "e01b784d80793d2af6d1e00a377ea618d5022b3f6d241ce3423778e866b784b3",
+    "focus_notes": [
+      {
+        "lines": [
+          182,
+          184,
+          185
+        ],
+        "reason": "等待工具完成与等待取消发生竞争；观察到取消时还会确认任务是否已经达到终态。",
+        "flow_role": "现在从模型通信恢复切到工具运行时的取消等待。这组行先判断完成与取消竞争时应走哪条分支，下面才定位尚未完成时的中止动作。"
+      },
+      {
+        "lines": [
+          190
+        ],
+        "reason": "尚未完成的分支中止 dispatch_handle；读此行是为了确定取消实际作用于哪个执行任务。",
+        "flow_role": "这是取消分支作用到执行任务的实际位置。与上一组的已完成结果返回对照后，再回主线区分工具状态、界面通知及任务结束。"
+      }
+    ]
+  },
+  "policy-branches": {
+    "path": "codex-rs/core/src/tools/orchestrator.rs",
+    "start": 174,
+    "end": 217,
+    "title": "审批要求的三个分支",
+    "focus": [
+      179,
+      197,
+      209,
+      210,
+      212
+    ],
+    "sha256": "9f2bbea76c55a2fba3037e503e22ba2eaef7c4003b4fd6a3a29d91745d5eccbf",
+    "file_sha256": "0926333b469d44f0367879410ab8b33fe88ed0f424c3f5a082ce8871b605bab0",
+    "focus_notes": [
+      {
+        "lines": [
+          179,
+          197
+        ],
+        "reason": "严格自动审查会进入 request_approval；追这个条件与调用，才能判断具体动作的决定来源。",
+        "flow_role": "承接主线审批概览，这里再次进入编排器，细读 Skip 内部的审查决定来源。明确这一条件后，再比较禁止与需要批准的分支。"
+      },
+      {
+        "lines": [
+          209,
+          210,
+          212
+        ],
+        "reason": "禁止和需要批准分别控制是否继续；不要将它们仅理解为界面上不同的按钮样式。",
+        "flow_role": "这组行补齐另外两种审批要求的控制去向。读完决定阶段，下一段返回具体补丁 handler，查获准或拒绝最终怎样体现在实际结果中。"
+      }
+    ]
+  },
+  "policy-apply-result": {
+    "path": "codex-rs/core/src/tools/handlers/apply_patch.rs",
+    "start": 606,
+    "end": 622,
+    "title": "最终仍由具体执行结果确认变更",
+    "focus": [
+      609,
+      613,
+      614,
+      622
+    ],
+    "sha256": "31c4e81f48ec76f1b48a39c14c265d36f567a7ec975883dd9d5670938c11e61f",
+    "file_sha256": "c9a18003221446628bae2c7bc9ba3a302ac239e86474e0a932a2344b20855035",
+    "focus_notes": [
+      {
+        "lines": [
+          609,
+          613,
+          614
+        ],
+        "reason": "编排器返回后分别保存成功输出或错误，并附上变更信息；这里可以区分获准与执行结果。",
+        "flow_role": "这里回到上一段编排器的调用方，闭合“审批及运行 → 返回结果”的过程。先看成功、错误与已提交变更怎样一起保存，再追这些信息交给谁。"
+      },
+      {
+        "lines": [
+          622
+        ],
+        "reason": "结果交给 emitter.finish，向后回接工具结果与界面事件通路。",
+        "flow_role": "这是具体工具把结果交给输出处理的位置，接回主线第 07 节。至此审批决定、执行结果与后续反馈有了连续的对应关系。"
+      }
+    ]
+  },
+  "process-start": {
+    "path": "codex-rs/core/src/tools/handlers/unified_exec/exec_command.rs",
+    "start": 441,
+    "end": 449,
+    "title": "完成等待与普通执行分别进入管理器",
+    "focus": [
+      443,
+      446
+    ],
+    "sha256": "8fe1942769f0f664e848e70e11baffa6b3047febffbb10a9c4f475ac599126b8",
+    "file_sha256": "e024443896f596818af5830b416c59df26cab3bd793fd0abb179f4bbebad7b60",
+    "focus_notes": [
+      {
+        "lines": [
+          443,
+          446
+        ],
+        "reason": "根据调用约束进入两条进程管理路径；这一步提交命令，下面再看如何找到已存在的进程。",
+        "flow_role": "承接主线的测试命令，这里重看首次提交到进程管理器的位置。只有返回仍在运行的进程标识，下一段才使用它继续操作已有进程。"
+      }
+    ]
+  },
+  "process-continue": {
+    "path": "codex-rs/core/src/tools/handlers/unified_exec/write_stdin.rs",
+    "start": 81,
+    "end": 101,
+    "title": "session_id 被映射为已有进程的 process_id",
+    "focus": [
+      87,
+      90,
+      91,
+      92
+    ],
+    "sha256": "30a93022d54a252db9a9a6bb94fcdb553393993bddb881da342cd21d7f413604",
+    "file_sha256": "cf67f1a7cf1fce73bb321428a05a7604db2f3790e0a61303e03f3b6d257dd451",
+    "focus_notes": [
+      {
+        "lines": [
+          87,
+          90
+        ],
+        "reason": "write_stdin 使用 session_id 填入 process_id，这个映射说明继续操作针对哪一个已有进程。",
+        "flow_role": "现在进入后续一次 write_stdin 调用，与首次 exec_command 并非同一个 handler。这个字段映射先证明找到的是已有进程，下面再看本次要对它做什么。"
+      },
+      {
+        "lines": [
+          91,
+          92
+        ],
+        "reason": "输入内容和本次等待时长随请求传入；它们控制一次后续交互，不是重新构造原来的测试命令。",
+        "flow_role": "确认进程身份后，这组行补齐本次交互的输入和等待设置。返回输出仍走第 07 节的结果通路，后续据结束状态判断测试是否已完成。"
+      }
+    ]
+  },
+  "question-wait": {
+    "path": "codex-rs/core/src/tools/handlers/request_user_input.rs",
+    "start": 74,
+    "end": 103,
+    "title": "参数规范化、请求答复和序列化结果",
+    "focus": [
+      84,
+      85,
+      89,
+      99
+    ],
+    "sha256": "09fde478485839c7c5aeb2f38430eabdb8bce430a07be75b60d528488e912f34",
+    "file_sha256": "8d8ccc07e621ddbd2b99c388dc6d86ba2caeb079fbb5b68ca6cf43536e475bf3",
+    "focus_notes": [
+      {
+        "lines": [
+          84,
+          85
+        ],
+        "reason": "阻塞方式随模式决定，自动解决时间在这里未设置；这是本段提问等待行为的具体配置。",
+        "flow_role": "本专题先看澄清工具，这两行解释它向会话提出输入请求时采用什么等待设置。明确这些条件后，再沿实际答复追它如何变成工具结果。"
+      },
+      {
+        "lines": [
+          89,
+          99
+        ],
+        "reason": "先等待会话接受的回答，再序列化 response；这给出用户答案变成工具输出内容的交接顺序。",
+        "flow_role": "这里完成“收到用户答复 → 生成可回传内容”的交接，随后接回第 07 节。下一段的计划更新是另一项工具调用，用来对照返回成功的不同含义。"
+      }
+    ]
+  },
+  "plan-event": {
+    "path": "codex-rs/core/src/tools/handlers/plan.rs",
+    "start": 87,
+    "end": 99,
+    "title": "计划工具只发送计划更新事件",
+    "focus": [
+      93,
+      95,
+      98
+    ],
+    "sha256": "2eb33df0361a65ed683f70e96070081b6c87217e9f7b2d7a0cdb24e4548c507d",
+    "file_sha256": "f1e0acbe71dc6160ade7f4751f00c98f2d5e999d6c0954d015bf7709c382ce50",
+    "focus_notes": [
+      {
+        "lines": [
+          93,
+          95
+        ],
+        "reason": "解析计划参数后发送 PlanUpdate，实际动作是发布计划状态。",
+        "flow_role": "从澄清答复切到计划工具后，这组行定位真正发生的动作：发送计划状态。先确认这个动作，才能正确解释下面的成功返回。"
+      },
+      {
+        "lines": [
+          98
+        ],
+        "reason": "立即返回计划工具输出；结合前面的事件调用，才能确定成功指的是计划更新而非业务代码测试。",
+        "flow_role": "这是计划工具的返回出口，闭合上一组事件发送的流程。后文再转到 Steer 补充输入，比较答案、计划和新要求各自怎样影响任务。"
+      }
+    ]
+  },
+  "mcp-call": {
+    "path": "codex-rs/core/src/mcp_tool_call.rs",
+    "start": 441,
+    "end": 456,
+    "title": "取服务器、工具、参数并进入已准备的调用",
+    "focus": [
+      442,
+      443,
+      444,
+      455,
+      456
+    ],
+    "sha256": "73cc5951f2eae6b486cb97f84fff3a947097d6b7f2737bef738b7a04bd4326ec",
+    "file_sha256": "8971564fc9aaa3e087097f98d629ed731beb490cdc88fea8362ce5cbf65ffca2",
+    "focus_notes": [
+      {
+        "lines": [
+          442,
+          443,
+          444
+        ],
+        "reason": "从 invocation 取服务器、工具名和参数，建立这次外部调用的身份。",
+        "flow_role": "承接通用工具路由，这里进入已经获准的 MCP 调用路径。先核对 invocation 中的外部工具身份与参数，再看准备好的调用对象如何使用它们。"
+      },
+      {
+        "lines": [
+          455,
+          456
+        ],
+        "reason": "使用已准备的调用对象执行；下一段要追这个调用返回的 result 怎样整理。",
+        "flow_role": "这是外部调用的执行交接点。下一段仍追同一次调用，沿返回的 result 看外部格式怎样被整理为后续可用内容。"
+      }
+    ]
+  },
+  "mcp-result": {
+    "path": "codex-rs/core/src/mcp_tool_call.rs",
+    "start": 534,
+    "end": 561,
+    "title": "返回结果经过面向模型的整理",
+    "focus": [
+      538,
+      547,
+      551
+    ],
+    "sha256": "2532dcc87e264e98a0b0a808f5d7908df813717cc8b217cf22d4ce58c7178c10",
+    "file_sha256": "8971564fc9aaa3e087097f98d629ed731beb490cdc88fea8362ce5cbf65ffca2",
+    "focus_notes": [
+      {
+        "lines": [
+          538,
+          547
+        ],
+        "reason": "先处理外部工具结果，再按模型输入模态整理内容；这说明外部 result 不会原样无条件送入下一次请求。",
+        "flow_role": "上一段外部调用已返回，这组行依次处理同一个 result，完成模型输入适配这一步。接下来还要查是否进入认证交互相关处理，才能继续追最终回传。"
+      },
+      {
+        "lines": [
+          551
+        ],
+        "reason": "整理后的结果进入后续认证交互处理，这一分支解释外部调用返回后为什么还可能有额外处理。",
+        "flow_role": "这行补查结果整理后的条件分支，说明调用返回与最终结果交出之间仍有处理。随后回第 07 节，把工具输出接到统一的记录与再次请求通路。"
+      }
+    ]
+  },
+  "agent-spawn": {
+    "path": "codex-rs/core/src/tools/handlers/multi_agents/spawn.rs",
+    "start": 58,
+    "end": 74,
+    "title": "解析子任务并检查深度",
+    "focus": [
+      65,
+      68,
+      70
+    ],
+    "sha256": "c2af88a5f651ec184aecdbe4eee75d0250daedf784a4f058e8ada75378999bf4",
+    "file_sha256": "9edcfc832ca1466dd28e2e2eea9fc78def64df568cde88ac9b2e5d1b2ae1a1f3",
+    "focus_notes": [
+      {
+        "lines": [
+          65
+        ],
+        "reason": "将子任务消息变为 input_items；这是将来交给子任务的工作内容。",
+        "flow_role": "这是子任务创建路径的输入准备步骤：先把分出去的需求变成 input_items。接下来查深度限制，确定这些输入是否有机会继续交给新任务。"
+      },
+      {
+        "lines": [
+          68,
+          70
+        ],
+        "reason": "计算子层级并检查上限；读此处是为了确定创建请求何时会在启动前被拒绝。",
+        "flow_role": "这组行标出创建前的限制条件，完成“是否允许启动”的检查。下一段跳到等待工具，讨论创建之后如何判断结束；中间创建与投递过程没有在此展开。"
+      }
+    ]
+  },
+  "agent-wait": {
+    "path": "codex-rs/core/src/tools/handlers/multi_agents/wait.rs",
+    "start": 307,
+    "end": 327,
+    "title": "检查当前状态，再等待变化直到终态",
+    "focus": [
+      313,
+      318,
+      320,
+      323
+    ],
+    "sha256": "137751ffce55341ea0da165732d916e32f49cc879e0fe2173063421cad7f8ad0",
+    "file_sha256": "b6488dcb36c98f604e56fb56da11c0fbdaf26604a8b4f0f9e51786cfa5841b00",
+    "focus_notes": [
+      {
+        "lines": [
+          313,
+          318
+        ],
+        "reason": "先检查现有状态，未到终态才等待状态变化；已完成的任务不需要再等一次通知。",
+        "flow_role": "现在切到创建之后的等待逻辑，先回答等待开始时任务是否已经结束。只有尚未终结，才需要继续看状态变化后的处理。"
+      },
+      {
+        "lines": [
+          320,
+          323
+        ],
+        "reason": "通道关闭或状态更新后都检查终态，再决定返回；等待完成的依据是状态，而不是固定等待了多久。",
+        "flow_role": "这组行补齐等待过程的返回条件，完成从“开始等待”到“有状态依据可以返回”的解释。读完后再回主任务生命周期，比较子任务终态与整项工作完成的关系。"
+      }
+    ]
+  },
+  "history-queue": {
+    "path": "codex-rs/rollout/src/recorder.rs",
+    "start": 970,
+    "end": 982,
+    "title": "记录进入写入队列",
+    "focus": [
+      975,
+      976
+    ],
+    "sha256": "c655a94f61693a785cc7552cda06dd4d9a3d262117d7582242c378788852ee7b",
+    "file_sha256": "79e0e5d04fc13f3895c670ce0dbce0542ca1ac6538cdb8b50bb3d0b3c3d67e87",
+    "focus_notes": [
+      {
+        "lines": [
+          975,
+          976
+        ],
+        "reason": "记录被送入写入器队列；这段 await 等的是发送操作，下面需要另外寻找写入完成的确认。",
+        "flow_role": "本专题先从记录提交方开始，定位“交给写入器”的位置。下面另外读 Flush，寻找写入器完成处理后的确认，避免把这次发送等待当作刷新完成。"
+      }
+    ]
+  },
+  "history-flush": {
+    "path": "codex-rs/rollout/src/recorder.rs",
+    "start": 1005,
+    "end": 1024,
+    "title": "flush 发送请求并等待写入器确认",
+    "focus": [
+      1012,
+      1019
+    ],
+    "sha256": "789886123b2f7e1cc8955bf95f0971be246081b6d26c8b7630011b6ce219e884",
+    "file_sha256": "79e0e5d04fc13f3895c670ce0dbce0542ca1ac6538cdb8b50bb3d0b3c3d67e87",
+    "focus_notes": [
+      {
+        "lines": [
+          1012,
+          1019
+        ],
+        "reason": "Flush 命令带着 ack 通道，调用方再等 rx 的答复；这两端共同解释“已要求刷新”如何变为“收到刷新确认”。",
+        "flow_role": "这是与 AddItems 对照的另一项写入器操作，不是每次 AddItems 后都会自动调用的下一行。发送端与确认端配对后，再看回退为什么既重建内存历史又提交持久记录。"
+      }
+    ]
+  },
+  "history-rollback": {
+    "path": "codex-rs/core/src/session/handlers.rs",
+    "start": 329,
+    "end": 349,
+    "title": "将回退标记加入重建输入并持久化",
+    "focus": [
+      334,
+      336,
+      348
+    ],
+    "sha256": "d650d6c2a2664d26f4eefa1233bf7ab129c5baf54d147190c75ccd2f5c41b33f",
+    "file_sha256": "97ef06c7183ea5ace9833752bf4534821cbdec7005335638b2d878daa691e702",
+    "focus_notes": [
+      {
+        "lines": [
+          334,
+          336
+        ],
+        "reason": "把回退标记加入已有记录，再执行历史重建；输入记录变了，保留的对话也随之改变。",
+        "flow_role": "了解记录与刷新后，现在切到回退处理的使用场景。这组行先解释当前有效历史怎样改变，下一组再补上供以后恢复使用的记录。"
+      },
+      {
+        "lines": [
+          348
+        ],
+        "reason": "单独保存回退标记，使后续恢复能够看到这次回退；重建内存与持久化标记是两步。",
+        "flow_role": "这是回退流程中的持久记录提交处，和上面的内存历史重建配成两步。读完后回第 03 节，核对恢复或回退后的有效历史如何进入后续请求。"
+      }
+    ]
+  },
+  "memory-gate": {
+    "path": "codex-rs/memories/write/src/start.rs",
+    "start": 24,
+    "end": 52,
+    "title": "记忆流程的适用条件",
+    "focus": [
+      33,
+      34,
+      35,
+      49
+    ],
+    "sha256": "bc5dcad8e48d90da30d3d35e2bca0cf2903760664f0507ff9f12c05e22ffda76",
+    "file_sha256": "63224a4415f95e69666245702818118abf6833f53814117c43d5342cccf8585c",
+    "focus_notes": [
+      {
+        "lines": [
+          33,
+          34,
+          35
+        ],
+        "reason": "临时会话、功能开关和 Agent 来源共同决定是否跳过，这些条件界定记忆流程的适用范围。",
+        "flow_role": "本专题先判断是否会进入记忆流程。这组条件是第一道适用范围检查，通过后还要继续核对下面的存储前提。"
+      },
+      {
+        "lines": [
+          49
+        ],
+        "reason": "没有状态数据库时也退出；通过前一组条件后仍需满足实际存储前提。",
+        "flow_role": "这一行补齐启动前需要具备的状态数据库条件。通过这些检查后，下一段才进入被安排的异步任务体，解释阶段如何推进。"
+      }
+    ]
+  },
+  "memory-pipeline": {
+    "path": "codex-rs/memories/write/src/start.rs",
+    "start": 64,
+    "end": 81,
+    "title": "清理、额度检查与两阶段流程",
+    "focus": [
+      66,
+      68,
+      78,
+      80
+    ],
+    "sha256": "1a4c58b45b88d625849ffa8edfee16508ad404bbbb27e2bb8cf707fca06e93f9",
+    "file_sha256": "63224a4415f95e69666245702818118abf6833f53814117c43d5342cccf8585c",
+    "focus_notes": [
+      {
+        "lines": [
+          66,
+          68
+        ],
+        "reason": "先做清理，再检查额度，说明进入函数与真正开始模型相关工作之间还有条件。",
+        "flow_role": "上一段通过了启动门槛，这里切到异步任务体的准备阶段。先完成清理与额度检查，再沿后面的调用看记忆处理的两个阶段。"
+      },
+      {
+        "lines": [
+          78,
+          80
+        ],
+        "reason": "依次等待 phase1 与 phase2，下一阶段接在前一阶段之后；这就是本专题比较独立流水线与主任务循环的依据。",
+        "flow_role": "这两行是阶段之间的实际交接点，完成本专题从“是否启动”到“按什么顺序运行”的主线。若继续深入，就分别进入 phase1 与 phase2，看提取和整合的具体结果。"
+      }
+    ]
+  },
+  "boundary-client": {
+    "path": "codex-rs/tui/src/app_server_session.rs",
+    "start": 1319,
+    "end": 1333,
+    "title": "客户端构造类型化请求",
+    "focus": [
+      1323,
+      1329
+    ],
+    "sha256": "c9ba8b3e2e6ed75152d3f8aed531e983e849af009b9ae7f3dc01407ee4fca375",
+    "file_sha256": "4d67d868fbde1a99b4fcead589552e06935f44d2998b682352a1e9e651922492",
+    "focus_notes": [
+      {
+        "lines": [
+          1323,
+          1329
+        ],
+        "reason": "客户端以 TurnStart 请求传递 input；确认发送接口和字段后，才能去服务端找对应接收位置。",
+        "flow_role": "这是协议两端对照的发送端，先记住请求类型和 input 字段。下一段转到服务端，不依赖两个文件相邻，而是沿同一份输入的转换继续找核心入口。"
+      }
+    ]
+  },
+  "boundary-server": {
+    "path": "codex-rs/app-server/src/request_processors/turn_processor.rs",
+    "start": 638,
+    "end": 651,
+    "title": "服务端提交给线程核心",
+    "focus": [
+      639,
+      640
+    ],
+    "sha256": "d030519bd6742db01cbf03b61b31501fe2b60e0150f8280f734e55e1bd222542",
+    "file_sha256": "a220c6f21bd72d7135d772536b414b1d7fbd7c1c332b2103f0029a3b22c5f7f1",
+    "focus_notes": [
+      {
+        "lines": [
+          639,
+          640
+        ],
+        "reason": "服务端将转换后的输入放入核心 TurnInputRequest，再调用线程方法；到这里才跨到核心任务提交层。",
+        "flow_role": "这是上一段客户端请求经过接收、校验及类型转换后的核心提交位置。把两端接起来后，再回第 02 节追 RegularTask；比较其他客户端时也先寻找这样的交接点。"
+      }
+    ]
+  },
+  "input-submit-call": {
+    "path": "codex-rs/tui/src/chatwidget/input_submission.rs",
+    "start": 409,
+    "end": 415,
+    "title": "构造命令后，实际调用 submit_op",
+    "focus": [
+      409,
+      410,
+      414
+    ],
+    "file_sha256": "05a752d68c7a0290b38df87a3567fb326823098283169304137d8ada80a0c8ca",
+    "sha256": "55247666f8abc829d2a6b0554f3d3e3c0241c682fe5ec612acd9d5fc6bbda72c",
+    "focus_notes": [
+      {
+        "lines": [
+          409
+        ],
+        "reason": "把刚构造的 op 传给 submit_op；有了这个调用点，才有理由进入下一段函数实现。",
+        "flow_role": "上一段只得到 op，这里首次给出交出它的调用点。下一段进入 submit_op 的实现，是沿此处的调用向下读。"
+      },
+      {
+        "lines": [
+          410,
+          414
+        ],
+        "reason": "提交返回 false 时立即报告失败；后面的 pending_start 标记记录等待任务启动的 UI 状态。它说明提交阶段怎样影响界面。",
+        "flow_role": "这组行补查提交调用对界面的影响：失败时报告错误，通过后等待启动。确认这一分界后，再向下追命令的发送去向。"
+      }
+    ]
+  },
+  "prompt-call": {
+    "path": "codex-rs/core/src/session/turn.rs",
+    "start": 1462,
+    "end": 1478,
+    "title": "请求输入经 build_prompt 后交给采样处理",
+    "focus": [
+      1462,
+      1463,
+      1467,
+      1475
+    ],
+    "file_sha256": "9f9f1bd23950f8745a68a78fec742dbd98c0c9ab1f853a3f72a91828e625d3fd",
+    "sha256": "3246ccacb388c887cbeb787ef22b4d71fe41db1a53545e53325e44f9309c55e6",
+    "focus_notes": [
+      {
+        "lines": [
+          1462,
+          1463
+        ],
+        "reason": "prompt_input 成为 build_prompt 的实参，补上“输入列表怎样进入 Prompt”的调用证据。",
+        "flow_role": "补读完 for_prompt 后，现在来到 run_sampling_request 内部。这组行是下一段 build_prompt 实现的调用依据，让“已有输入列表 → 构造 Prompt”连续起来。"
+      },
+      {
+        "lines": [
+          1467,
+          1475
+        ],
+        "reason": "返回的 prompt 被传入 try_run_sampling_request；读完构造函数后，就沿这个参数进入下一章。",
+        "flow_role": "这里先标出 Prompt 构造完毕后的接收者。下一段解释各字段如何赋值后，再沿 try_run_sampling_request 进入第 04 节的响应流处理。"
+      }
+    ]
+  }
+}

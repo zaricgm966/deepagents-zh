@@ -1,0 +1,196 @@
+{
+  "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+  "chapters": [
+    {
+      "slug": "codex-01-input",
+      "title": "01 · 点击发送后，任务去了哪里",
+      "kind": "main",
+      "question": "用户的文字怎样跨过界面与核心之间的边界？",
+      "position": 0,
+      "related": [
+        "codex-topic-entry",
+        "codex-topic-boundaries"
+      ]
+    },
+    {
+      "slug": "codex-02-turn",
+      "title": "02 · 一轮任务怎样开始",
+      "kind": "main",
+      "question": "收到输入后，哪段代码真正启动 run_turn？",
+      "position": 1,
+      "related": [
+        "codex-topic-collaboration"
+      ]
+    },
+    {
+      "slug": "codex-03-context",
+      "title": "03 · 模型第一次会收到什么",
+      "kind": "main",
+      "question": "历史、说明和工具如何组成模型请求？",
+      "position": 2,
+      "related": [
+        "codex-topic-context",
+        "codex-topic-compact"
+      ]
+    },
+    {
+      "slug": "codex-04-stream",
+      "title": "04 · 一次请求怎样持续返回结果",
+      "kind": "main",
+      "question": "文字和工具调用如何从响应流中被分开处理？",
+      "position": 3,
+      "related": [
+        "codex-topic-stream"
+      ]
+    },
+    {
+      "slug": "codex-05-tools",
+      "title": "05 · 工具调用怎样变成真实动作",
+      "kind": "main",
+      "question": "从响应项到工具处理器，中间传递了哪些数据？",
+      "position": 4,
+      "related": [
+        "codex-topic-mcp",
+        "codex-topic-agents"
+      ]
+    },
+    {
+      "slug": "codex-06-permissions",
+      "title": "06 · 执行前需要满足哪些条件",
+      "kind": "main",
+      "question": "参数验证、审批和沙箱分别在哪一步起作用？",
+      "position": 5,
+      "related": [
+        "codex-topic-permissions"
+      ]
+    },
+    {
+      "slug": "codex-07-results",
+      "title": "07 · 工具结果怎样回到下一次请求",
+      "kind": "main",
+      "question": "为什么工具读到文件后，模型下一次才有依据修改？",
+      "position": 6,
+      "related": [
+        "codex-topic-compact",
+        "codex-topic-collaboration"
+      ]
+    },
+    {
+      "slug": "codex-08-edit-test",
+      "title": "08 · 从修改文件到测试反馈",
+      "kind": "main",
+      "question": "修改和测试怎样复用工具结果循环？",
+      "position": 7,
+      "related": [
+        "codex-topic-process"
+      ]
+    },
+    {
+      "slug": "codex-09-finish",
+      "title": "09 · 什么时候结束，用户看到什么",
+      "kind": "main",
+      "question": "一次响应完成为什么不等于本轮任务完成？",
+      "position": 8,
+      "related": [
+        "codex-topic-history",
+        "codex-topic-stream"
+      ]
+    },
+    {
+      "slug": "codex-topic-entry",
+      "title": "专题 · 启动参数与斜杠命令",
+      "kind": "topic",
+      "question": "为什么有些输入不进入模型请求？",
+      "position": 9,
+      "related": []
+    },
+    {
+      "slug": "codex-topic-context",
+      "title": "专题 · 项目说明、文件引用与图片",
+      "kind": "topic",
+      "question": "不同来源的信息怎样成为请求中的上下文？",
+      "position": 9,
+      "related": []
+    },
+    {
+      "slug": "codex-topic-compact",
+      "title": "专题 · 上下文压缩",
+      "kind": "topic",
+      "question": "日志越来越长时，后续请求怎样继续？",
+      "position": 9,
+      "related": []
+    },
+    {
+      "slug": "codex-topic-stream",
+      "title": "专题 · 流式事件、重试与取消",
+      "kind": "topic",
+      "question": "网络断开、测试失败和取消各自怎样收束？",
+      "position": 9,
+      "related": []
+    },
+    {
+      "slug": "codex-topic-permissions",
+      "title": "专题 · 审批、沙箱与自动审查",
+      "kind": "topic",
+      "question": "获准执行之后，为什么仍可能失败？",
+      "position": 9,
+      "related": []
+    },
+    {
+      "slug": "codex-topic-process",
+      "title": "专题 · 后台命令与持续输出",
+      "kind": "topic",
+      "question": "测试跑得很久时，如何继续读取而不重复启动？",
+      "position": 9,
+      "related": []
+    },
+    {
+      "slug": "codex-topic-collaboration",
+      "title": "专题 · 澄清、计划与运行中输入",
+      "kind": "topic",
+      "question": "新答案和补充要求怎样影响正在执行的任务？",
+      "position": 9,
+      "related": []
+    },
+    {
+      "slug": "codex-topic-mcp",
+      "title": "专题 · MCP 工具如何接回主循环",
+      "kind": "topic",
+      "question": "远程工具返回的内容在哪里变成模型可用信息？",
+      "position": 9,
+      "related": []
+    },
+    {
+      "slug": "codex-topic-agents",
+      "title": "专题 · 子 Agent 的创建与等待",
+      "kind": "topic",
+      "question": "分出去的任务怎样有开始，也有可验证的结束？",
+      "position": 9,
+      "related": []
+    },
+    {
+      "slug": "codex-topic-history",
+      "title": "专题 · 会话记录、恢复与回退",
+      "kind": "topic",
+      "question": "关闭程序后，什么信息能被接续使用？",
+      "position": 9,
+      "related": []
+    },
+    {
+      "slug": "codex-topic-memory",
+      "title": "专题 · 长期记忆的独立流程",
+      "kind": "topic",
+      "question": "跨任务的经验与当前轮次压缩有什么区别？",
+      "position": 9,
+      "related": []
+    },
+    {
+      "slug": "codex-topic-boundaries",
+      "title": "专题 · 客户端与核心的边界",
+      "kind": "topic",
+      "question": "哪些实现可以复用理解，哪些必须重新核对？",
+      "position": 9,
+      "related": []
+    }
+  ]
+}

@@ -7,10 +7,16 @@ R=Path(__file__).resolve().parent
 sys.path.insert(0,str(R/'vendor'))
 import markdown
 from bs4 import BeautifulSoup
+import source_reader as reader
+reader.validate_sources()
 rows=json.loads((R/'manifest.json').read_text());assets=json.loads((R/'assets.json').read_text())
 TITLES={'overview':'Deep Agents 概览','quickstart':'快速入门','models':'模型选择','comparison':'与 Claude Agent SDK 的对比','code-link':'Deep Agents Code 简介','customization':'自定义 Deep Agents','tools':'工具','profiles':'配置档案','backends':'文件系统后端','interpreters':'代码解释器','sandboxes':'沙箱','memory':'记忆','skills':'技能','permissions':'权限','human-in-the-loop':'人工介入','multimodal':'多模态输入与输出','context-engineering':'上下文工程','subagents':'子智能体','dynamic-subagents':'动态子智能体','async-subagents':'异步子智能体','streaming':'流式输出','event-streaming':'事件流','fault-tolerance':'容错','retrieval':'检索','rubric':'评分标准','data-analysis':'构建数据分析智能体','content-builder':'构建内容创作智能体','deep-research':'构建深度研究智能体','rag':'构建检索增强生成（RAG）智能体','mcp':'模型上下文协议（MCP）','acp':'智能体客户端协议（ACP）','a2a':'A2A 服务器','frontend--overview':'前端集成概览','frontend--sandbox':'前端沙箱','frontend--subagent-streaming':'前端子智能体流式输出','frontend--todo-list':'前端待办事项列表','going-to-production':'部署到生产环境','openwiki':'OpenWiki','changelog-py':'Python 更新日志','changelog-js':'JavaScript / TypeScript 更新日志'}
 TITLES.update({'codex-source-analysis': 'Codex 源码解析', 'claude-code-source-analysis': 'Claude Code 源码解析：公开 SDK 与运行时边界'})
 GROUPS=[('入门与选型','overview quickstart models comparison code-link'),('配置与核心能力','customization tools profiles backends interpreters sandboxes memory skills permissions human-in-the-loop multimodal'),('任务与上下文管理','context-engineering subagents dynamic-subagents async-subagents streaming event-streaming fault-tolerance retrieval rubric'),('应用教程','data-analysis content-builder deep-research rag'),('协议与集成','mcp acp a2a'),('前端开发','frontend--overview frontend--sandbox frontend--subagent-streaming frontend--todo-list'),('生产环境与知识库','going-to-production openwiki'),('Coding Agent 源码解析','codex-source-analysis claude-code-source-analysis'),('版本更新','changelog-py changelog-js')]
+TITLES['codex-source-analysis']='Codex 源码精读'
+TITLES.update({c['slug']:c['title'] for c in reader.COURSE['chapters']})
+GROUPS.insert(-1,('Codex 连续主线',' '.join(c['slug'] for c in reader.COURSE['chapters'] if c['kind']=='main')))
+GROUPS.insert(-1,('Codex 深入专题',' '.join(c['slug'] for c in reader.COURSE['chapters'] if c['kind']=='topic')))
 lookup={r['file'][:-3]:r for r in rows};assert set(lookup)==set(' '.join(s for _,s in GROUPS).split())
 urlmap={r['url'].rstrip('/'):r['file'][:-3] for r in rows if r.get('kind') != 'source-analysis'}
 for r in rows:
@@ -29,6 +35,7 @@ def rewrite(u,extension='.html'):
 def nav(prefix='',index='../index.html'):
  out='<a class="brand" href="'+index+'">Deep Agents<span>中文离线文档</span></a>'
  for group,slugs in GROUPS:
+  if group.startswith('Codex '):continue
   out+='<h3>'+group+'</h3>'+''.join('<a href="'+prefix+slug+'.html">'+TITLES[slug]+'</a>' for slug in slugs.split())
  return out
 css='''*{box-sizing:border-box}body{margin:0;color:#243b32;background:#fafcf9;font:17px/1.8 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}aside{position:fixed;inset:0 auto 0 0;width:280px;overflow:auto;padding:26px 24px;background:#edf2eb;border-right:1px solid #dbe3d8}aside a{display:block;font-size:14px;padding:4px 0}aside a[aria-current=page]{font-weight:700;color:#174d35;background:#dce8d5;border-radius:4px}aside h3{font-size:17px;font-weight:700;line-height:1.5;letter-spacing:0;color:#304c3c;margin:30px 0 10px;padding-bottom:8px;border-bottom:1px solid #cddac8}.brand{font-size:24px;font-weight:700}.brand span{display:block;font-size:13px;font-weight:400}main{margin-left:280px;padding:42px 56px;max-width:1120px}a{color:#246b4d;text-decoration:none}a:hover{text-decoration:underline}h1{font-size:34px;line-height:1.35}h2{font-size:25px;margin-top:2em;padding-bottom:8px;border-bottom:1px solid #dce5d8}h3{font-size:20px}pre{padding:20px;background:#192c23;color:#eaf5eb;overflow:auto;font-size:14px;line-height:1.55;border-radius:5px}code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}p code,li code{background:#e7eee3;padding:2px 4px}blockquote{border-left:3px solid #92ab87;margin:20px 0;padding-left:18px;color:#53644f}img,video{max-width:100%;height:auto}table{display:block;overflow:auto;border-collapse:collapse;font-size:15px}td,th{border:1px solid #d3dfce;padding:10px;min-width:110px}th{background:#edf3e8}.meta{font-size:13px;color:#6c7b65}.intro{font-size:19px;max-width:750px}.toc{font-size:14px;background:#eef3eb;padding:12px 20px;border-radius:4px}.toc ul{padding-left:20px}summary{cursor:pointer}footer{margin-top:60px;border-top:1px solid #dce5d8;padding-top:16px;font-size:13px;color:#6c7b65}input{font:inherit;width:100%;padding:12px 16px;border:1px solid #c7d6bf;border-radius:4px;background:white}.chapter{padding:0;list-style:none}.chapter li{padding:6px 0}@media(max-width:800px){aside{position:static;width:auto;max-height:240px}main{margin:0;padding:24px}h1{font-size:28px}}'''
@@ -83,7 +90,18 @@ for slug,r in lookup.items():
  page='<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>'+TITLES[slug]+' · Deep Agents</title><link rel="stylesheet" href="../style.css">'+diagram_scripts+'<aside>'+nav()+'</aside><script src="../sidebar.js"></script><div class="reading-layout"><main>'+meta+str(soup)+'<footer>非官方中文离线整理版。代码与原图保留；在线演示需要联网。© LangChain · <a href="../LICENSE">MIT 许可</a></footer></main>'+toc+'</div></html>'
  if authored:
   page=page.replace('非官方中文离线整理版。代码与原图保留；在线演示需要联网。© LangChain · <a href="../LICENSE">MIT 许可</a>', '新增非官方源码分析，不属于 LangChain 文档译文。引用源码的版权与许可见 <a href="../source-snapshots/README.md">来源说明</a>。')
+ if reader.is_course(slug):
+  reader.decorate(soup,slug)
+  links='<link rel="stylesheet" href="../assets/source-reader/reader.css"><link rel="stylesheet" href="../assets/source-reader/highlight.css"><script defer src="../assets/source-reader/reader.js"></script>'
+  course_meta='<div class="meta">非官方源码教学 · 固定提交 '+reader.COMMIT[:12]+' · <a href="../markdown/'+r['file']+'">本页 Markdown</a> · <a href="../source-snapshots/README.md">源码与许可</a></div>'
+  page='<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>'+TITLES[slug]+' · Deep Agents</title><link rel="stylesheet" href="../style.css">'+links+diagram_scripts+'</head><body class="course-page"><aside>'+reader.course_nav()+'</aside><script src="../sidebar.js"></script><div class="reading-layout"><main>'+reader.before(slug)+str(soup)+reader.after(slug)+course_meta+'<footer>依据公开固定版本源码编写。案例为教学示例，源码引用保留原许可。</footer></main>'+toc+'</div></body></html>'
  (R/'pages'/(slug+'.html')).write_text(page)
 items=''.join('<section><h2>'+group+'</h2><ul class="chapter">'+''.join('<li><a href="pages/'+slug+'.html">'+TITLES[slug]+'</a></li>' for slug in slugs.split())+'</ul></section>' for group,slugs in GROUPS)
 (R/'index.html').write_text('<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Deep Agents 中文离线文档</title><link rel="stylesheet" href="style.css"><aside>'+nav('pages/','index.html')+'</aside><script src="sidebar.js"></script><main><div class="meta">40 篇 Deep Agents 文档 + 2 篇源码解析</div><h1>Deep Agents 中文离线文档</h1><p class="intro">从入门配置到应用开发，按主题重新整理。中文正文可离线阅读，译文附英文原稿，新增源码解析附固定版本源码快照。</p><p><a href="pages/data-analysis.html">从「构建数据分析智能体」开始 →</a></p><p class="meta">Deep Agents 正文采用机器翻译；新增 Coding Agent 源码解析为独立中文分析，并标明公开实现的范围。</p><input aria-label="筛选文章标题" placeholder="输入关键词筛选目录，例如：沙箱、记忆、前端" oninput="document.querySelectorAll(\'.chapter li\').forEach(x=>x.hidden=!x.textContent.toLowerCase().includes(this.value.toLowerCase()))">'+items+'<footer>编辑 markdown 中的文件后，运行 python3 build.py 更新阅读版。<br><a href="README.md">使用说明</a> · <a href="LICENSE">MIT 许可</a></footer></main></html>')
-(R/'build-report.json').write_text(json.dumps({'pages':len(rows),'heading_warnings':issues},ensure_ascii=False,indent=2));print('已生成',len(rows),'个页面；标题结构警告',len(issues))
+home=(R/'index.html').read_text()
+home=home.replace('<link rel="stylesheet" href="style.css">','<link rel="stylesheet" href="style.css"><link rel="stylesheet" href="assets/source-reader/reader.css">')
+home=home.replace('40 篇 Deep Agents 文档 + 2 篇源码解析','40 篇 Deep Agents 文档 · Codex 源码精读与 Claude Code 解析')
+home=home.replace('<input aria-label="筛选文章标题"',reader.homepage()+'<input aria-label="筛选文章标题"')
+(R/'index.html').write_text(home)
+source_pages=reader.build_source_pages()
+(R/'build-report.json').write_text(json.dumps({'pages':len(rows),'heading_warnings':issues,'codex_chapters':len(reader.COURSE['chapters']),'verified_snippets':len(reader.SNIPPETS),'source_pages':source_pages},ensure_ascii=False,indent=2));print('已生成',len(rows),'个页面；标题结构警告',len(issues),'；源码片段',len(reader.SNIPPETS))

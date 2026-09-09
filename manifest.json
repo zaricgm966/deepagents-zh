@@ -280,14 +280,14 @@
     "original_title": "Tools"
   },
   {
-    "title": "Codex 源码解析",
+    "title": "Codex 源码精读",
     "url": "https://github.com/openai/codex/tree/121f91fd5d9dc66017866ce9bdc49f1e182721df",
     "file": "codex-source-analysis.md",
-    "bytes": 38417,
+    "bytes": 8808,
     "kind": "source-analysis",
     "original_title": null,
-    "topic_count": 19,
-    "revision": "2026-09-07-expanded"
+    "topic_count": 21,
+    "revision": "2026-09-09-guided-reading"
   },
   {
     "title": "Claude Code 源码解析：公开 SDK 与运行时边界",
@@ -298,5 +298,194 @@
     "original_title": null,
     "topic_count": 19,
     "revision": "2026-09-07-expanded"
+  },
+  {
+    "title": "01 · 点击发送后，任务去了哪里",
+    "url": "https://github.com/openai/codex/tree/121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex-01-input.md",
+    "kind": "source-analysis",
+    "original_title": null,
+    "revision": "2026-09-09-guided-reading",
+    "bytes": 15078
+  },
+  {
+    "title": "02 · 一轮任务怎样开始",
+    "url": "https://github.com/openai/codex/tree/121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex-02-turn.md",
+    "kind": "source-analysis",
+    "original_title": null,
+    "revision": "2026-09-09-guided-reading",
+    "bytes": 20745
+  },
+  {
+    "title": "03 · 模型第一次会收到什么",
+    "url": "https://github.com/openai/codex/tree/121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex-03-context.md",
+    "kind": "source-analysis",
+    "original_title": null,
+    "revision": "2026-09-09-guided-reading",
+    "bytes": 11304
+  },
+  {
+    "title": "04 · 一次请求怎样持续返回结果",
+    "url": "https://github.com/openai/codex/tree/121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex-04-stream.md",
+    "kind": "source-analysis",
+    "original_title": null,
+    "revision": "2026-09-09-guided-reading",
+    "bytes": 9659
+  },
+  {
+    "title": "05 · 工具调用怎样变成真实动作",
+    "url": "https://github.com/openai/codex/tree/121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex-05-tools.md",
+    "kind": "source-analysis",
+    "original_title": null,
+    "revision": "2026-09-09-guided-reading",
+    "bytes": 10653
+  },
+  {
+    "title": "06 · 执行前需要满足哪些条件",
+    "url": "https://github.com/openai/codex/tree/121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex-06-permissions.md",
+    "kind": "source-analysis",
+    "original_title": null,
+    "revision": "2026-09-09-guided-reading",
+    "bytes": 10285
+  },
+  {
+    "title": "07 · 工具结果怎样回到下一次请求",
+    "url": "https://github.com/openai/codex/tree/121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex-07-results.md",
+    "kind": "source-analysis",
+    "original_title": null,
+    "revision": "2026-09-09-guided-reading",
+    "bytes": 11962
+  },
+  {
+    "title": "08 · 从修改文件到测试反馈",
+    "url": "https://github.com/openai/codex/tree/121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex-08-edit-test.md",
+    "kind": "source-analysis",
+    "original_title": null,
+    "revision": "2026-09-09-guided-reading",
+    "bytes": 7801
+  },
+  {
+    "title": "09 · 什么时候结束，用户看到什么",
+    "url": "https://github.com/openai/codex/tree/121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex-09-finish.md",
+    "kind": "source-analysis",
+    "original_title": null,
+    "revision": "2026-09-09-guided-reading",
+    "bytes": 8792
+  },
+  {
+    "title": "专题 · 启动参数与斜杠命令",
+    "url": "https://github.com/openai/codex/tree/121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex-topic-entry.md",
+    "kind": "source-analysis",
+    "original_title": null,
+    "revision": "2026-09-09-guided-reading",
+    "bytes": 6407
+  },
+  {
+    "title": "专题 · 项目说明、文件引用与图片",
+    "url": "https://github.com/openai/codex/tree/121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex-topic-context.md",
+    "kind": "source-analysis",
+    "original_title": null,
+    "revision": "2026-09-09-guided-reading",
+    "bytes": 6895
+  },
+  {
+    "title": "专题 · 上下文压缩",
+    "url": "https://github.com/openai/codex/tree/121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex-topic-compact.md",
+    "kind": "source-analysis",
+    "original_title": null,
+    "revision": "2026-09-09-guided-reading",
+    "bytes": 7961
+  },
+  {
+    "title": "专题 · 流式事件、重试与取消",
+    "url": "https://github.com/openai/codex/tree/121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex-topic-stream.md",
+    "kind": "source-analysis",
+    "original_title": null,
+    "revision": "2026-09-09-guided-reading",
+    "bytes": 9877
+  },
+  {
+    "title": "专题 · 审批、沙箱与自动审查",
+    "url": "https://github.com/openai/codex/tree/121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex-topic-permissions.md",
+    "kind": "source-analysis",
+    "original_title": null,
+    "revision": "2026-09-09-guided-reading",
+    "bytes": 8649
+  },
+  {
+    "title": "专题 · 后台命令与持续输出",
+    "url": "https://github.com/openai/codex/tree/121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex-topic-process.md",
+    "kind": "source-analysis",
+    "original_title": null,
+    "revision": "2026-09-09-guided-reading",
+    "bytes": 5996
+  },
+  {
+    "title": "专题 · 澄清、计划与运行中输入",
+    "url": "https://github.com/openai/codex/tree/121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex-topic-collaboration.md",
+    "kind": "source-analysis",
+    "original_title": null,
+    "revision": "2026-09-09-guided-reading",
+    "bytes": 7143
+  },
+  {
+    "title": "专题 · MCP 工具如何接回主循环",
+    "url": "https://github.com/openai/codex/tree/121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex-topic-mcp.md",
+    "kind": "source-analysis",
+    "original_title": null,
+    "revision": "2026-09-09-guided-reading",
+    "bytes": 6847
+  },
+  {
+    "title": "专题 · 子 Agent 的创建与等待",
+    "url": "https://github.com/openai/codex/tree/121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex-topic-agents.md",
+    "kind": "source-analysis",
+    "original_title": null,
+    "revision": "2026-09-09-guided-reading",
+    "bytes": 6965
+  },
+  {
+    "title": "专题 · 会话记录、恢复与回退",
+    "url": "https://github.com/openai/codex/tree/121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex-topic-history.md",
+    "kind": "source-analysis",
+    "original_title": null,
+    "revision": "2026-09-09-guided-reading",
+    "bytes": 8012
+  },
+  {
+    "title": "专题 · 长期记忆的独立流程",
+    "url": "https://github.com/openai/codex/tree/121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex-topic-memory.md",
+    "kind": "source-analysis",
+    "original_title": null,
+    "revision": "2026-09-09-guided-reading",
+    "bytes": 6809
+  },
+  {
+    "title": "专题 · 客户端与核心的边界",
+    "url": "https://github.com/openai/codex/tree/121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex-topic-boundaries.md",
+    "kind": "source-analysis",
+    "original_title": null,
+    "revision": "2026-09-09-guided-reading",
+    "bytes": 6309
   }
 ]

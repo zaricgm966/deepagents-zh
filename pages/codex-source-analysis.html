@@ -1,261 +1,184 @@
-<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Codex 源码解析 · Deep Agents</title><link rel="stylesheet" href="../style.css"><script defer src="../assets/mermaid/mermaid.min.js"></script><script defer src="../assets/mermaid/render-diagrams.js"></script><aside><a class="brand" href="../index.html">Deep Agents<span>中文离线文档</span></a><h3>入门与选型</h3><a href="overview.html">Deep Agents 概览</a><a href="quickstart.html">快速入门</a><a href="models.html">模型选择</a><a href="comparison.html">与 Claude Agent SDK 的对比</a><a href="code-link.html">Deep Agents Code 简介</a><h3>配置与核心能力</h3><a href="customization.html">自定义 Deep Agents</a><a href="tools.html">工具</a><a href="profiles.html">配置档案</a><a href="backends.html">文件系统后端</a><a href="interpreters.html">代码解释器</a><a href="sandboxes.html">沙箱</a><a href="memory.html">记忆</a><a href="skills.html">技能</a><a href="permissions.html">权限</a><a href="human-in-the-loop.html">人工介入</a><a href="multimodal.html">多模态输入与输出</a><h3>任务与上下文管理</h3><a href="context-engineering.html">上下文工程</a><a href="subagents.html">子智能体</a><a href="dynamic-subagents.html">动态子智能体</a><a href="async-subagents.html">异步子智能体</a><a href="streaming.html">流式输出</a><a href="event-streaming.html">事件流</a><a href="fault-tolerance.html">容错</a><a href="retrieval.html">检索</a><a href="rubric.html">评分标准</a><h3>应用教程</h3><a href="data-analysis.html">构建数据分析智能体</a><a href="content-builder.html">构建内容创作智能体</a><a href="deep-research.html">构建深度研究智能体</a><a href="rag.html">构建检索增强生成（RAG）智能体</a><h3>协议与集成</h3><a href="mcp.html">模型上下文协议（MCP）</a><a href="acp.html">智能体客户端协议（ACP）</a><a href="a2a.html">A2A 服务器</a><h3>前端开发</h3><a href="frontend--overview.html">前端集成概览</a><a href="frontend--sandbox.html">前端沙箱</a><a href="frontend--subagent-streaming.html">前端子智能体流式输出</a><a href="frontend--todo-list.html">前端待办事项列表</a><h3>生产环境与知识库</h3><a href="going-to-production.html">部署到生产环境</a><a href="openwiki.html">OpenWiki</a><h3>Coding Agent 源码解析</h3><a href="codex-source-analysis.html">Codex 源码解析</a><a href="claude-code-source-analysis.html">Claude Code 源码解析：公开 SDK 与运行时边界</a><h3>版本更新</h3><a href="changelog-py.html">Python 更新日志</a><a href="changelog-js.html">JavaScript / TypeScript 更新日志</a></aside><script src="../sidebar.js"></script><div class="reading-layout"><main><div class="meta">中文原创源码分析 · 核对日期 2026-09-07 · <a href="https://github.com/openai/codex/tree/121f91fd5d9dc66017866ce9bdc49f1e182721df">固定版本源码</a> · <a href="../markdown/codex-source-analysis.md">编辑 Markdown</a> · <a href="../source-snapshots/README.md">离线源码与许可</a></div><h1 id="codex">Codex 源码解析</h1>
-<p><strong id="github">GitHub 源码：</strong> <a href="https://github.com/openai/codex">openai/codex</a> · <a href="codex-source-analysis.html">本章固定提交</a></p>
-<p>本章依据完整仓库快照 <code>121f91fd5d9dc66017866ce9bdc49f1e182721df</code>，讲解公开 Rust 实现。代码采用 Apache-2.0 许可。阅读所需的关键文件附有离线副本；<a href="../source-snapshots/source-reading-method.md">下载与版本说明</a>记录完整源码的获取方法。本章没有运行付费模型请求，下面的任务是贯穿讲解的假设案例，流程图和伪代码都是为阅读而简化的。</p>
-<h2 id="01">01. 从一个具体需求开始：这次我们要追踪什么</h2>
-<p>假设你在待办应用的项目目录里打开 Codex，输入：“给列表增加已完成筛选，按截图调整按钮，最后运行测试。”你看到的是一个聊天框，但这句话要经过好几个程序部件才会变成代码修改。</p>
-<p>先给它们分工。<strong>模型</strong>根据已有信息提出下一步；<strong>工具</strong>是真正读文件、改代码、运行命令的程序；<strong>运行时</strong>负责把模型与工具接起来，记录结果并决定是否继续；<strong>界面</strong>接收你的输入，把运行过程显示给你。源码中这些部件并不总是一一对应一个文件，不过这四个职责足以帮助我们找到主线。</p>
-<p>还要分清两个时间范围。<strong id="session">会话（session）</strong>是一段可以继续多次的对话；<strong id="turn">一轮任务（turn）</strong>从接收这次用户要求开始，直到这轮处理结束。一次用户任务可能向模型发送多次请求。例如第一次决定读代码，第二次决定改代码，第三次根据测试结果决定继续修复。代码中的模型请求次数，不能直接当成用户发消息的次数。</p>
-<pre><code class="language-mermaid">flowchart TD
-  A[用户提交任务] --&gt; B[准备本轮可用的信息与工具]
-  B --&gt; C[请求模型]
-  C --&gt; D{模型输出什么}
-  D --&gt;|工具调用| E[校验参数和权限]
-  E --&gt; F[执行并记录结果]
-  F --&gt; C
-  D --&gt;|文字与结束信号| G{还有待处理工作吗}
-  G --&gt;|有| B
-  G --&gt;|无| H[结束本轮并保留会话]
-</code></pre>
-<p>先把图读成一句话：<strong>拿到信息，请模型决定下一步，把执行结果交回去，直到本轮无需继续。</strong> 接下来每节都只追这句话中的一段。文件名用于定位证据，不要求你先背下整个仓库。</p>
-<h2 id="02">02. 输入进入系统：命令与普通任务在这里分开</h2>
-<p>在终端输入 <code>codex</code> 时，程序先处理启动参数。进入聊天界面后输入 <code>/status</code>，则是在操作已经运行的程序。这两种“命令”有不同入口：前者看 <code>cli/src/main.rs</code>，后者看 <code>tui/src/slash_command.rs</code> 与 <code>chatwidget/slash_dispatch.rs</code>。TUI 是 Terminal User Interface 的缩写，意思就是终端界面。</p>
-<p>在 <code>SlashCommand</code> 中先找 <code>Status</code> 与 <code>Compact</code>，再到 <code>dispatch_command()</code> 看对应分支。你会发现命令名称只是入口，真正行为由分支决定：展示状态可以在程序内部完成，压缩上下文则需要把请求交给核心逻辑。由此能解释一个日常现象：不是每一次键盘输入都会消耗一次模型请求。</p>
-<p>我们的“增加筛选”属于普通任务，接下来要由核心层处理。此时先记下一个调试问题：如果点击发送后没有任何反应，应该先确认界面是否提交了任务，而不是立即怀疑模型接口。界面接收到文字与核心开始处理，是两个可以分别观察的步骤。</p>
-<p><strong>顺着源码读：</strong> 先看枚举中的两个命令，再看分发函数对应分支；不用把所有命令逐个读完。下一节开始，我们跟着普通任务离开界面。</p>
-<details>
-<summary>打开本节源码入口</summary>
-<ul>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/tui/src/slash_command.rs">命令枚举</a> · <a href="../source-snapshots/codex/codex-rs/tui/src/slash_command.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/tui/src/chatwidget/slash_dispatch.rs">命令分发</a> · <a href="../source-snapshots/codex/codex-rs/tui/src/chatwidget/slash_dispatch.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/cli/src/main.rs">启动参数入口</a> · <a href="../source-snapshots/codex/codex-rs/cli/src/main.rs">离线文件</a></li>
-</ul>
-</details>
-<h2 id="03">03. 模型第一次看到什么：上下文、文件引用与图片</h2>
-<p>模型不能凭空看见你的硬盘。程序必须把任务所需的信息组织进请求，或者让模型通过工具读取。<strong id="context">上下文（context）</strong>就是本次请求提供给模型的信息，包括对话历史、项目说明、当前任务以及已经获得的工具结果。</p>
-<p>打开 <code>core/src/session/turn.rs</code>，在 <code>run_turn()</code> 的前半段找 <code>capture_step_context_with_required_mcp_servers</code>、<code>record_context_updates_and_set_reference_context_item</code> 与 <code>build_skills_and_plugins</code>。名字很长，但依次回答的是：“这一步有哪些环境和能力”“哪些环境信息需要记入历史”“这次任务额外需要哪些说明”。这里的 step 是一次推进所使用的工作信息，先把它理解为本次模型请求前的准备即可。</p>
-<p><code>AGENTS.md</code> 等项目说明提供项目约定；技能与插件可能补充当前任务相关的说明。<strong>注入</strong>只是源码讨论中对“由程序加入这些信息”的简称，不意味着它们一定来自用户刚输入的文字。查问题时需要问清楚这段话来自用户、项目文件还是工具结果，不能只看它们最后都变成了文本。</p>
-<p>我们输入 <code>@src/App.tsx</code>，是帮助程序定位文件。引用路径、加载全文、把全文送进请求是不同步骤：需要继续追输入处理和后续读取工具，不能看到路径就认定模型已读完文件。截图同理，文本路径不能替代图像数据。图片内容需要以支持的输入形式进入系统；源码中的 <code>view_image</code> 又提供了通过工具查看图片的另一条路径。</p>
-<p>回到案例：第一次请求至少需要知道“要增加筛选”，随后可能读取组件文件和截图。如果答案无视现有代码，优先检查这些资料是否真正进入了请求，而不是只加强提示词语气。信息准备好后，才轮到模型作决定。</p>
-<details>
-<summary>打开本节源码入口</summary>
-<ul>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/tui/src/bottom_pane/chat_composer.rs">文件补全及测试</a> · <a href="../source-snapshots/codex/codex-rs/tui/src/bottom_pane/chat_composer.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/protocol/src/user_input.rs">结构化输入类型</a> · <a href="../source-snapshots/codex/codex-rs/protocol/src/user_input.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/agents_md.rs">项目说明加载</a> · <a href="../source-snapshots/codex/codex-rs/core/src/agents_md.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/context/mod.rs">上下文片段</a> · <a href="../source-snapshots/codex/codex-rs/core/src/context/mod.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/agents_md_manager.rs">项目说明管理</a> · <a href="../source-snapshots/codex/codex-rs/core/src/agents_md_manager.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/tools/handlers/view_image.rs">查看图片工具</a> · <a href="../source-snapshots/codex/codex-rs/core/src/tools/handlers/view_image.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/image_preparation.rs">图片准备</a> · <a href="../source-snapshots/codex/codex-rs/core/src/image_preparation.rs">离线文件</a></li>
-</ul>
-</details>
-<h2 id="04-run_turn">04. 沿 run_turn 读主循环：一次回答为什么会请求模型多次</h2>
-<p>继续往下找到 <code>run_turn()</code> 中的 <code>loop</code>。Rust 的 <code>loop</code> 表示反复执行这段代码，直到分支明确退出；<code>await</code> 表示等待一个尚未完成的操作，并不意味着程序只能停在那里什么也不做。</p>
-<p>循环中一个关键片段是 <code>sess.clone_history().await.for_prompt(...)</code>：先取出会话历史，再整理成这次模型可用的输入。随后调用 <code>run_sampling_request(...)</code>。这里 sampling 指模型生成输出，不需要先学习概率采样公式才能读懂本段，它在主线中就是“一次模型请求”。</p>
-<p>请求结束后，函数取出 <code>model_needs_follow_up</code>，还会检查 <code>has_pending_input</code>，最后合成 <code>needs_follow_up</code>。这些字段分别表达“模型处理链还需要继续”和“用户运行中又补充了内容”。因此一次流结束后，循环可能继续准备新请求。</p>
-<p>对应判断在源码中直接体现为下面这一行。两边用 <code>||</code> 连接，意思是任意一个条件成立就继续处理：</p>
-<pre><code class="language-rust">let needs_follow_up = model_needs_follow_up || has_pending_input;
-</code></pre>
-<pre><code class="language-text">教学伪代码，省略了错误、取消和压缩分支：
-重复：
-    接收本轮允许处理的新输入
-    准备当前环境与会话历史
-    请求模型，并处理本次返回的工具调用
-    把新的输出和工具结果记入会话
-    如果仍需后续处理或存在待处理输入：继续
-    否则：结束这一轮
-</code></pre>
-<p>在案例里，模型第一次提出读取 <code>App.tsx</code>。文件内容成为历史的一部分，下一次请求才有依据生成修改。工具执行结果如何回到循环，正是下一节要补上的连接。</p>
-<details>
-<summary>打开本节源码入口</summary>
-<ul>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/session/turn.rs">run_turn 主循环</a> · <a href="../source-snapshots/codex/codex-rs/core/src/session/turn.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/stream_events_utils.rs">响应项与工具执行</a> · <a href="../source-snapshots/codex/codex-rs/core/src/stream_events_utils.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/tui/src/chatwidget/streaming.rs">终端流式呈现</a> · <a href="../source-snapshots/codex/codex-rs/tui/src/chatwidget/streaming.rs">离线文件</a></li>
-</ul>
-</details>
-<h2 id="05">05. 模型提出读文件：工具调用如何变成真实动作</h2>
-<p><strong id="tool-call">工具调用（tool call）</strong>是一份结构化请求，通常包含工具名、参数和调用编号。结构化是指这些信息分开存放，程序可以逐项读取，而不是从“我想读一下 App.tsx”这句话中猜路径。</p>
-<p>响应处理代码 <code>stream_events_utils.rs</code> 识别模型返回的响应项，将工具调用交给工具执行路径。<code>ToolRouter</code> 可以理解为工具分发表：用工具身份找到相应处理程序。<code>call_id</code> 是调用编号，用来把某个结果对应回原来的请求；没有这层关联，同时读两个文件时就容易把结果接错。</p>
-<p>对于本例，数据流是：读文件请求 → 读取工具 → 文件内容或错误 → 带关联信息的工具结果 → 会话历史 → 下一次模型请求。<strong>模型说“我要读取”和程序确实读到了内容，必须分成两个状态。</strong> 日志里只有前者，不能证明读取已经成功。</p>
-<p>源码中还会遇到 future，可以先理解为“一个将来完成的操作”。创建这样的对象不等于动作已经完成，调用方还要等待它的结果。工具的并发执行也不是随意同时开跑：某些动作可以并行，某些动作依赖前一步结果。例如必须先读到当前文件，才能合理地基于它生成修改。</p>
-<p>追到这里，我们已经能执行读文件，但修改和命令可能带来实际影响。执行路径还需要回答一个更早的问题：这个动作被允许吗？</p>
-<details>
-<summary>打开本节源码入口</summary>
-<ul>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/session/turn.rs">run_turn 主循环</a> · <a href="../source-snapshots/codex/codex-rs/core/src/session/turn.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/stream_events_utils.rs">响应项与工具执行</a> · <a href="../source-snapshots/codex/codex-rs/core/src/stream_events_utils.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/tui/src/chatwidget/streaming.rs">终端流式呈现</a> · <a href="../source-snapshots/codex/codex-rs/tui/src/chatwidget/streaming.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/responses_retry.rs">重试、退避与传输回退</a> · <a href="../source-snapshots/codex/codex-rs/core/src/responses_retry.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/tools/parallel.rs">工具生命周期与取消</a> · <a href="../source-snapshots/codex/codex-rs/core/src/tools/parallel.rs">离线文件</a></li>
-</ul>
-</details>
-<p>分发入口补充：<a href="../source-snapshots/codex/codex-rs/core/src/tools/router.rs">ToolRouter 离线源码</a>。</p>
-<h2 id="06">06. 写文件之前：权限审批与沙箱各自负责什么</h2>
-<p>假设模型准备修改 <code>src/App.tsx</code>。<strong>权限审批</strong>判断这个具体动作是否获得允许；<strong id="sandbox">沙箱（sandbox）</strong>是执行环境施加的访问限制，例如只能写入某些目录。允许一次工具调用，并不自动解除环境的所有限制。</p>
-<p>在 <code>tools/orchestrator.rs</code> 的 <code>run()</code> 中，先关注标着 Approval 的部分。它读取当前审批策略，计算工具需要什么批准，再安排执行环境。Orchestrator 直译容易让人困惑，这里把它理解为“统一安排审批与执行顺序的代码”就够了。不同工具仍有各自参数和执行实现。</p>
-<p>把路径想具体：读取项目文件可能直接允许；写到另一个目录可能需要额外权限；用户拒绝后，应把拒绝作为这次调用的结果处理。不能把拒绝简单转换成“换个命令再做同一件事”。下一次模型请求需要知道真实约束，才能提出可行方案。</p>
-<p><strong id="auto">auto 审批</strong>改变的是某些批准决定如何作出。固定版本中能看到自动审查相关路径，但它仍然需要结合工具要求、配置和环境理解，不能归纳为“完全不检查”。阅读时沿同一个动作追踪：要求由谁计算、决定由谁返回、执行端还限制什么。这样不会把界面上的一个模式名称当成完整权限模型。</p>
-<p>经过这一关，我们才可以讨论编辑工具究竟怎样改文件。</p>
-<details>
-<summary>打开本节源码入口</summary>
-<ul>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/tools/orchestrator.rs">工具审批与执行编排</a> · <a href="../source-snapshots/codex/codex-rs/core/src/tools/orchestrator.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/tools/handlers/apply_patch.rs">文件编辑的权限路径</a> · <a href="../source-snapshots/codex/codex-rs/core/src/tools/handlers/apply_patch.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/guardian/mod.rs">自动审查总览</a> · <a href="../source-snapshots/codex/codex-rs/core/src/guardian/mod.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/guardian/review.rs">具体审查路径</a> · <a href="../source-snapshots/codex/codex-rs/core/src/guardian/review.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/ext/guardian-v2/src/lib.rs">另一代扩展入口</a> · <a href="../source-snapshots/codex/codex-rs/ext/guardian-v2/src/lib.rs">离线文件</a></li>
-</ul>
-</details>
-<h2 id="07">07. 真正修改代码：为什么要验证补丁，再运行测试</h2>
-<p>Codex 的 <code>apply_patch</code> 接收的是描述变化的文本。<strong id="patch">补丁（patch）</strong>写明增加、删除或修改哪些内容；修改片段附近的旧代码帮助程序找到位置。它比一句“把筛选功能加上”具体得多，执行端可以检查格式和目标是否匹配。</p>
-<p>从工具处理入口继续读 <code>apply-patch</code> 的解析和应用逻辑：先解析修改请求，定位文件与片段，再尝试将变更应用到当前内容。这里“当前”很重要。模型生成修改时看到的是先前读取的内容，如果你刚好也在编辑，目标内容可能已变化。找不到预期位置应返回失败，让模型重新读取并调整方案。</p>
-<p>本例的正常链条因此是：读取组件 → 生成变更 → 检查权限 → 应用补丁 → 查看结果 → 运行测试。前四步成功，只证明文本已按请求修改，并不证明筛选逻辑正确。测试失败的输出需要进入历史，让模型修正条件判断或补齐测试。</p>
-<p><strong>幂等</strong>是源码讨论中常见的术语，意思是重复执行是否仍得到相同结果。读文件往往容易重复，给文件追加一段代码则可能重复追加。因此网络中断后不能不分青红皂白重做写入；要先看动作是否已完成。这也把我们带到失败处理与实时反馈。</p>
-<details>
-<summary>打开本节源码入口</summary>
-<ul>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/tools/handlers/apply_patch.rs">编辑工具入口</a> · <a href="../source-snapshots/codex/codex-rs/core/src/tools/handlers/apply_patch.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/apply-patch/src/lib.rs">补丁执行</a> · <a href="../source-snapshots/codex/codex-rs/apply-patch/src/lib.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/apply-patch/src/seek_sequence.rs">上下文匹配</a> · <a href="../source-snapshots/codex/codex-rs/apply-patch/src/seek_sequence.rs">离线文件</a></li>
-</ul>
-</details>
-<h2 id="08">08. 边执行边显示：流式输出与错误分别怎样返回</h2>
-<p>用户不想等整个任务结束才知道它在做什么。<strong id="streaming">流式输出（streaming）</strong>是结果分批到达就分批处理；<strong id="delta">增量（delta）</strong>是本次新增加的一小段，例如几个新字符。它与已经拼好的完整消息并不相同。</p>
-<p>核心向外发送事件，TUI 的 streaming 代码把事件转换成终端显示。这样“模型开始解释”“工具开始运行”“工具结束”能分别呈现。前端应按事件类型与编号更新对应位置，如果把完整消息再次接到增量后面，屏幕就会出现重复文本。</p>
-<p>测试失败与网络失败也要分开。测试进程返回非零退出码，通常是可供模型分析的工具结果；模型连接断开，则进入通信恢复相关逻辑。<code>responses_retry.rs</code> 包含重试等待与传输回退路径。<strong>退避</strong>就是连续失败时延长两次尝试之间的等待，避免立即重复请求。具体次数和分支受配置与错误类型影响。</p>
-<p>如果我们的测试因为断言错误而失败，正确下一步是把错误交给模型修代码；如果因为连接中断没有拿到模型回复，应处理连接。把这两种情况都显示成“正在重试”，会让用户和开发者都无法判断系统到底卡在哪里。</p>
-<p>至此已经有一个能读、改、测的最小闭环。下一节处理一种不能靠测试解决的阻碍：需求本身不明确。</p>
-<details>
-<summary>打开本节源码入口</summary>
-<ul>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/session/turn.rs">run_turn 主循环</a> · <a href="../source-snapshots/codex/codex-rs/core/src/session/turn.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/stream_events_utils.rs">响应项与工具执行</a> · <a href="../source-snapshots/codex/codex-rs/core/src/stream_events_utils.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/tui/src/chatwidget/streaming.rs">终端流式呈现</a> · <a href="../source-snapshots/codex/codex-rs/tui/src/chatwidget/streaming.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/responses_retry.rs">重试、退避与传输回退</a> · <a href="../source-snapshots/codex/codex-rs/core/src/responses_retry.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/tools/parallel.rs">工具生命周期与取消</a> · <a href="../source-snapshots/codex/codex-rs/core/src/tools/parallel.rs">离线文件</a></li>
-</ul>
-</details>
-<h2 id="09">09. 不知道筛选规则怎么办：澄清问题与任务计划</h2>
-<p>“已完成筛选”可能指只看已完成，也可能指提供“全部、未完成、已完成”三个选项。这里缺的是用户意图，不能靠重试网络或多读几次代码补出来。请求用户输入的工具把问题送到界面，等待答案，再让结果回到任务。</p>
-<p>这种等待与权限审批的区别是：澄清问“应该做什么”，审批问“已经明确的动作能不能做”。即使界面都用了弹窗，也应在内部保留不同含义。用户尚未回答时，系统可以继续已确定的独立工作，但不能把等待超时解释成用户选中了某个选项。</p>
-<p>另一种工具维护任务计划，例如“了解现有组件 → 修改筛选 → 运行测试”。计划是让用户和 Agent 看见进度的数据，不是自动执行这些步骤的程序。把状态改为完成并不会自动运行测试，是否完成还要由真正的执行结果支持。</p>
-<p>在我们的主线里，澄清答案补充到下一次请求，计划则帮助跟踪剩余工作。任务变复杂后，一个模型可能需要别人帮忙调查，测试也可能运行很久；下一节再引入这些扩展。</p>
-<details>
-<summary>打开本节源码入口</summary>
-<ul>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/tools/handlers/request_user_input.rs">问题工具处理器</a> · <a href="../source-snapshots/codex/codex-rs/core/src/tools/handlers/request_user_input.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/protocol/src/request_user_input.rs">问题与回答协议</a> · <a href="../source-snapshots/codex/codex-rs/protocol/src/request_user_input.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/tools/handlers/plan_spec.rs">计划 schema</a> · <a href="../source-snapshots/codex/codex-rs/core/src/tools/handlers/plan_spec.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/tools/handlers/plan.rs">计划事件处理</a> · <a href="../source-snapshots/codex/codex-rs/core/src/tools/handlers/plan.rs">离线文件</a></li>
-</ul>
-</details>
-<h2 id="10-mcp-agent">10. 工作变多以后：MCP、后台命令与子 Agent</h2>
-<p>如果任务需要查外部接口，首先需要一种把外部能力交给 Agent 的方式。<strong id="mcpmodel-context-protocol">MCP（Model Context Protocol）</strong>是一套工具连接协议：服务器说明自己提供哪些工具，客户端发现并调用它们。注册 MCP 服务器之后，工具结果仍然要回到前面已经读过的工具循环。连接成功、工具可见、动作获准、动作成功，是四件不同的事。</p>
-<p>如果测试很久才结束，不必一直占着一次前台等待。后台命令保留进程或会话标识，后续用标识继续获取输出和退出状态。<code>session_id</code> 在这里可能指命令会话，不要因为它也叫 session 就与聊天会话混淆。关键是知道这个 ID 由哪个模块创建、后续交给哪个接口。</p>
-<p><strong id="agent">子 Agent</strong>则是带着单独任务与上下文工作的另一段 Agent 执行。例如让它只调查测试入口，主任务继续检查界面。它与后台 shell 的区别在于，它还会调用模型并使用工具，而不是只运行一个固定命令。子任务需要返回结论和依据，主任务再决定如何使用。</p>
-<p>不同上下文不自动意味着不同磁盘目录。如果父子任务同时编辑同一个文件，仍可能冲突。因此本例更适合分开做调查，再由一个执行者统一修改。源码中要追踪的是创建、消息传递、等待、结束与清理，不能只看到 spawn 这个“启动”动作就算读完子 Agent。</p>
-<details>
-<summary>打开本节源码入口</summary>
-<ul>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/mcp.rs">McpManager</a> · <a href="../source-snapshots/codex/codex-rs/core/src/mcp.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/codex-mcp/src/lib.rs">MCP 运行时模块</a> · <a href="../source-snapshots/codex/codex-rs/codex-mcp/src/lib.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/mcp_tool_call.rs">MCP 调用路径</a> · <a href="../source-snapshots/codex/codex-rs/core/src/mcp_tool_call.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/tools/handlers/unified_exec.rs">命令与 stdin 工具</a> · <a href="../source-snapshots/codex/codex-rs/core/src/tools/handlers/unified_exec.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/unified_exec/process_manager.rs">进程和输出管理</a> · <a href="../source-snapshots/codex/codex-rs/core/src/unified_exec/process_manager.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/tools/handlers/multi_agents.rs">协作工具总览</a> · <a href="../source-snapshots/codex/codex-rs/core/src/tools/handlers/multi_agents.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/tools/handlers/multi_agents/spawn.rs">创建子任务</a> · <a href="../source-snapshots/codex/codex-rs/core/src/tools/handlers/multi_agents/spawn.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/tools/handlers/multi_agents/wait.rs">等待子任务</a> · <a href="../source-snapshots/codex/codex-rs/core/src/tools/handlers/multi_agents/wait.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/agent/control.rs">AgentControl</a> · <a href="../source-snapshots/codex/codex-rs/core/src/agent/control.rs">离线文件</a></li>
-</ul>
-</details>
-<h2 id="11">11. 运行中又收到消息：外部事件如何重新接回循环</h2>
-<p>用户可能在测试时补一句“不要改按钮颜色”，后台任务也可能返回结果。主循环因此不仅等待模型，还要处理新输入。前面见过的 <code>has_pending_input</code> 就在这里派上用场：<strong id="pending-input">pending input</strong> 是已到达、尚待处理的输入。</p>
-<p>更一般的外部事件可以是构建完成、文件变化或监控工具发现状态变化。事件必须经过系统提供的输入或通知路径，才能参与后续处理，文件发生变化并不自动等于模型知道变化。</p>
-<p>阅读监控相关工具时，要把“启动监听”“发现事件”“投递给会话”“模型处理”画成四步。重复事件可能造成重复工作，永远没有新变化的监听则不应被误认为当前任务永远无法结束。取消时还需要处理正在等待的监听与命令。</p>
-<p>这也解释了为什么事件文本不能自动获得更高权限：它描述外部发生了什么，不能自行批准新的动作。输入会影响接下来模型的决定，但真实执行仍走第 6 节的检查。事件越多，历史越长，我们接下来必须解决信息容量问题。</p>
-<details>
-<summary>打开本节源码入口</summary>
-<ul>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/session/turn_input.rs">启动、steer 与待处理输入</a> · <a href="../source-snapshots/codex/codex-rs/core/src/session/turn_input.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/session/turn.rs">后续输入的循环条件</a> · <a href="../source-snapshots/codex/codex-rs/core/src/session/turn.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/context/mod.rs">带来源的消息片段</a> · <a href="../source-snapshots/codex/codex-rs/core/src/context/mod.rs">离线文件</a></li>
-</ul>
-</details>
-<h2 id="12">12. 历史太长怎么办：上下文压缩与长期记忆</h2>
-<p>模型一次能处理的信息量有限，通常用 <strong id="token">token</strong> 计量，它是模型处理文本的单位，不严格等于一个汉字或一个英文词。文件内容、测试日志和来回对话都会占用空间。</p>
-<p><strong id="compact">compact（压缩上下文）</strong>把近期任务仍需要的信息整理成更短的表示，为后续请求腾出空间。回到 <code>run_turn()</code>，会发现首次请求前以及请求完成后的容量检查。压缩参与循环的推进，而不是只在用户手动输入命令时才相关。压缩后的历史与用户界面显示的全部历史也不必完全相同。</p>
-<p>在案例里，需要保留“用户要三个筛选项、相关文件在哪里、测试失败的原因”，而大量重复日志可以减少。压缩不是无损归档：摘要漏掉关键条件，后续行为就可能偏离任务。排查长任务失忆，应看压缩前后哪些事实被留下，而不是只看摘要有没有生成。</p>
-<p><strong>长期记忆</strong>解决另一个时间尺度的问题：新任务开始时，能否复用过往的稳定经验。源码中的记忆流程有自己的生成、整理和使用路径，它不等于模型权重被修改，也不等于复制所有旧消息。项目约定可能长期有用，某次临时测试结果则可能很快过期。</p>
-<p>当前任务被压缩后仍可继续，但关掉程序后怎么接着做？这需要下一节的磁盘记录。</p>
-<details>
-<summary>打开本节源码入口</summary>
-<ul>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/memories/write/src/start.rs">记忆启动流程</a> · <a href="../source-snapshots/codex/codex-rs/memories/write/src/start.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/memories/write/src/phase1.rs">第一阶段提取</a> · <a href="../source-snapshots/codex/codex-rs/memories/write/src/phase1.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/memories/write/src/phase2.rs">第二阶段整合</a> · <a href="../source-snapshots/codex/codex-rs/memories/write/src/phase2.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/ext/memories/src/lib.rs">记忆工具入口</a> · <a href="../source-snapshots/codex/codex-rs/ext/memories/src/lib.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/compact.rs">本地压缩与历史重建</a> · <a href="../source-snapshots/codex/codex-rs/core/src/compact.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/session/turn.rs">运行中的压缩触发</a> · <a href="../source-snapshots/codex/codex-rs/core/src/session/turn.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/compact_remote.rs">远端压缩入口</a> · <a href="../source-snapshots/codex/codex-rs/core/src/compact_remote.rs">离线文件</a></li>
-</ul>
-</details>
-<h2 id="13">13. 结束、恢复与回退：三种状态不要混在一起</h2>
-<p><strong>持久化</strong>就是把内存中的信息保存到程序结束后仍能读取的存储。Codex 的 <code>RolloutRecorder</code> 负责写入会话记录，JSONL 表示“每行一条 JSON 记录”。写入器收到记录、记录写到文件、数据满足某种断电保存保证，是不同阶段，源码里的 flush 要结合具体调用路径理解。</p>
-<p><strong id="resume">resume（恢复会话）</strong>读取已有记录并重建历史，使下一次任务能够接着此前的信息继续。它并非把终端屏幕截图重新给模型：工具调用与结果的关系、压缩记录、回退记录都可能影响重建。</p>
-<p><strong id="rewind">rewind（回退）</strong>改变的是你希望保留到哪个位置。对话回退、工作区代码恢复和外部世界回滚必须分开看。撤掉某轮对话，不会天然撤回已经发送的外部请求；恢复文件也不意味着把所有外部服务回到之前状态。固定版本中的回退与文件快照相关路径应分别追踪，不能从一个按钮名称推断全部保证。</p>
-<p>最终，我们的测试通过，Agent 给出修改说明，本轮结束。会话仍可恢复，代码仍在工作区；如果发现需求理解错误，应先明确是要继续修正、回到旧对话，还是还原文件。到这里，一次用户任务才算从输入走到了可继续工作的状态。</p>
-<details>
-<summary>打开本节源码入口</summary>
-<ul>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/rollout/src/recorder.rs">RolloutRecorder 与 JSONL 写入</a> · <a href="../source-snapshots/codex/codex-rs/rollout/src/recorder.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/session/mod.rs">恢复与历史重建</a> · <a href="../source-snapshots/codex/codex-rs/core/src/session/mod.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/rollout.rs">核心层适配</a> · <a href="../source-snapshots/codex/codex-rs/core/src/rollout.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/session/handlers.rs">thread_rollback</a> · <a href="../source-snapshots/codex/codex-rs/core/src/session/handlers.rs">离线文件</a></li>
-<li><a href="https://github.com/openai/codex/blob/121f91fd5d9dc66017866ce9bdc49f1e182721df/codex-rs/core/src/thread_rollout_truncation.rs">回退后的有效历史</a> · <a href="../source-snapshots/codex/codex-rs/core/src/thread_rollout_truncation.rs">离线文件</a></li>
-</ul>
-</details>
-<h2 id="14">14. 第二遍怎样读源码：把主线变成自己的调试地图</h2>
-<p>第一次只沿本文读懂数据如何移动；第二次打开源码，给案例记录下面这张表。它不是实际运行日志，而是建议你亲手补全的观察记录。</p>
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Codex 源码精读 · Deep Agents</title><link rel="stylesheet" href="../style.css"><link rel="stylesheet" href="../assets/source-reader/reader.css"><link rel="stylesheet" href="../assets/source-reader/highlight.css"><script defer src="../assets/source-reader/reader.js"></script><script defer src="../assets/mermaid/mermaid.min.js"></script><script defer src="../assets/mermaid/render-diagrams.js"></script></head><body class="course-page"><aside><a class="brand" href="../index.html">Deep Agents<span>中文离线文档</span></a><a class="course-home" href="codex-source-analysis.html">← Codex 源码精读 · 总览</a><h3>跟完一次任务</h3><a href="codex-01-input.html">01 · 点击发送后，任务去了哪里</a><a href="codex-02-turn.html">02 · 一轮任务怎样开始</a><a href="codex-03-context.html">03 · 模型第一次会收到什么</a><a href="codex-04-stream.html">04 · 一次请求怎样持续返回结果</a><a href="codex-05-tools.html">05 · 工具调用怎样变成真实动作</a><a href="codex-06-permissions.html">06 · 执行前需要满足哪些条件</a><a href="codex-07-results.html">07 · 工具结果怎样回到下一次请求</a><a href="codex-08-edit-test.html">08 · 从修改文件到测试反馈</a><a href="codex-09-finish.html">09 · 什么时候结束，用户看到什么</a><h3>按问题深入</h3><a href="codex-topic-entry.html">专题 · 启动参数与斜杠命令</a><a href="codex-topic-context.html">专题 · 项目说明、文件引用与图片</a><a href="codex-topic-compact.html">专题 · 上下文压缩</a><a href="codex-topic-stream.html">专题 · 流式事件、重试与取消</a><a href="codex-topic-permissions.html">专题 · 审批、沙箱与自动审查</a><a href="codex-topic-process.html">专题 · 后台命令与持续输出</a><a href="codex-topic-collaboration.html">专题 · 澄清、计划与运行中输入</a><a href="codex-topic-mcp.html">专题 · MCP 工具如何接回主循环</a><a href="codex-topic-agents.html">专题 · 子 Agent 的创建与等待</a><a href="codex-topic-history.html">专题 · 会话记录、恢复与回退</a><a href="codex-topic-memory.html">专题 · 长期记忆的独立流程</a><a href="codex-topic-boundaries.html">专题 · 客户端与核心的边界</a></aside><script src="../sidebar.js"></script><div class="reading-layout"><main><div class="reader-toolbar"><a href="../index.html">文档首页</a><a href="codex-source-analysis.html">课程总览</a><button type="button" data-reading-width aria-pressed="false">宽屏阅读</button></div><p class="course-kicker">CODEX / 源码精读 · 2026-09-09 本地扩展版</p><h1 id="codex">Codex 源码精读</h1>
+<p>从一条用户需求开始，沿着输入、模型请求、工具执行和结果回传，读懂一次任务如何完成。正文直接展示固定版本源码，不需要反复离开文章找文件。</p>
+<h2 id="_1">从一个具体需求开始</h2>
+<p>假设你正在开发一个待办事项应用，列表目前会显示所有任务，包括未完成和已完成的任务。现在，你希望增加一个筛选选项，让列表可以只显示已完成的任务。</p>
+<p>你在这个项目目录中打开 Codex，在输入框中输入下面这句话，然后按下发送：</p>
+<blockquote>
+<p>给待办列表增加已完成筛选，并运行测试。</p>
+</blockquote>
+<p>本课程就从按下发送的这一刻开始，追踪这条需求在程序中的完整过程：输入框里的文字怎样成为结构化数据，怎样提交给核心运行时；模型怎样通过工具读取现有代码、提出修改并运行测试；工具结果又怎样回到模型，直到这一轮任务结束。</p>
+<p>后续章节提到的“案例”或“这次任务”，都指这条需求。每一节会接着上一节的状态，继续追踪其中一个环节。</p>
+<p>这是用于讲解源码流程的假设场景，课程没有附带可运行的待办应用，也没有实际执行模型请求。文中的案例数据与测试输出均为教学示例；展示的 Codex 源码则来自已标明的固定版本。</p>
+<h2 id="_2">先认识四种时间范围</h2>
 <table>
 <thead>
 <tr>
-<th>观察位置</th>
-<th>你要记下的证据</th>
-<th>它回答什么</th>
+<th>名称</th>
+<th>在教程中表示什么</th>
+<th>不要混淆</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>输入分发</td>
-<td>普通输入还是本地命令</td>
-<td>任务是否进入核心</td>
+<td>会话 / session</td>
+<td>可接续的对话与状态</td>
+<td>命令工具返回的进程 session_id</td>
 </tr>
 <tr>
-<td>请求准备</td>
-<td>历史与文件来源</td>
-<td>模型是否有足够依据</td>
+<td>一轮任务 / turn</td>
+<td>一次用户任务的处理生命周期</td>
+<td>一次模型响应</td>
 </tr>
 <tr>
-<td>工具请求</td>
-<td>工具名、参数、调用编号</td>
-<td>模型想做什么</td>
+<td>模型请求 / sampling</td>
+<td>请求模型生成并处理一段响应流</td>
+<td>用户发消息的次数</td>
 </tr>
 <tr>
-<td>审批与执行</td>
-<td>允许/拒绝、结果或退出码</td>
-<td>实际做了什么</td>
-</tr>
-<tr>
-<td>后续判断</td>
-<td>是否还有工具或新输入</td>
-<td>为什么继续或结束</td>
-</tr>
-<tr>
-<td>会话记录</td>
-<td>会话标识、保存与恢复位置</td>
-<td>重启后能否接着工作</td>
+<td>工具调用 / tool call</td>
+<td>带参数和编号的一次动作请求</td>
+<td>动作已经成功</td>
 </tr>
 </tbody>
 </table>
-<p>不熟悉 Rust 时，先认出 <code>struct</code> 是一组数据字段，<code>enum</code> 是几种可能情况，<code>match</code> 是按情况分支，<code>Result</code> 是成功或错误的返回值，再看业务调用顺序。暂时跳过泛型、所有权细节和性能优化，也能追完整条执行链；遇到读不懂的类型时，先问它承载的是任务、结果还是控制信号。</p>
-<p>现在再读<a href="claude-code-source-analysis.html">Claude Code 与官方 SDK 源码解析</a>，重点对比同一条主线在哪里跨过了进程边界，而不是机械寻找同名函数。两份源码的公开范围不同，下一章会把这个区别画出来。</p><footer>新增非官方源码分析，不属于 LangChain 文档译文。引用源码的版权与许可见 <a href="../source-snapshots/README.md">来源说明</a>。</footer></main><nav class="page-toc" aria-label="本页目录"><h2>本页目录</h2><ul><li><a href="#01">01. 从一个具体需求开始：这次我们要追踪什么</a></li><li><a href="#02">02. 输入进入系统：命令与普通任务在这里分开</a></li><li><a href="#03">03. 模型第一次看到什么：上下文、文件引用与图片</a></li><li><a href="#04-run_turn">04. 沿 run_turn 读主循环：一次回答为什么会请求模型多次</a></li><li><a href="#05">05. 模型提出读文件：工具调用如何变成真实动作</a></li><li><a href="#06">06. 写文件之前：权限审批与沙箱各自负责什么</a></li><li><a href="#07">07. 真正修改代码：为什么要验证补丁，再运行测试</a></li><li><a href="#08">08. 边执行边显示：流式输出与错误分别怎样返回</a></li><li><a href="#09">09. 不知道筛选规则怎么办：澄清问题与任务计划</a></li><li><a href="#10-mcp-agent">10. 工作变多以后：MCP、后台命令与子 Agent</a></li><li><a href="#11">11. 运行中又收到消息：外部事件如何重新接回循环</a></li><li><a href="#12">12. 历史太长怎么办：上下文压缩与长期记忆</a></li><li><a href="#13">13. 结束、恢复与回退：三种状态不要混在一起</a></li><li><a href="#14">14. 第二遍怎样读源码：把主线变成自己的调试地图</a></li></ul></nav></div></html>
+<h2 id="_3">沿这条主线阅读</h2>
+<pre><code class="language-mermaid">flowchart TD
+    A[01 文字成为输入] --&gt; B[02 app-server 提交核心任务]
+    B --&gt; C[03 整理历史与工具规格]
+    C --&gt; D[04 模型请求与响应流]
+    D --&gt; E[05 识别并路由工具调用]
+    E --&gt; F[06 校验与执行]
+    F --&gt; G[07 结果进入历史]
+    G --&gt; C
+    G --&gt; H[08 修改与测试复用同一循环]
+    H --&gt; C
+    D --&gt; I[09 检查后续工作与结束路径]
+</code></pre>
+<p>这是一张教学数据流图，省略错误、取消和专题分支。每节的实际调用位置由正文源码片段给出。</p>
+<table>
+<thead>
+<tr>
+<th>章节</th>
+<th>这一节带走的问题</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="codex-01-input.html">01 · 点击发送后，任务去了哪里</a></td>
+<td>用户的文字怎样跨过界面与核心之间的边界？</td>
+</tr>
+<tr>
+<td><a href="codex-02-turn.html">02 · 一轮任务怎样开始</a></td>
+<td>收到输入后，哪段代码真正启动 run_turn？</td>
+</tr>
+<tr>
+<td><a href="codex-03-context.html">03 · 模型第一次会收到什么</a></td>
+<td>历史、说明和工具如何组成模型请求？</td>
+</tr>
+<tr>
+<td><a href="codex-04-stream.html">04 · 一次请求怎样持续返回结果</a></td>
+<td>文字和工具调用如何从响应流中被分开处理？</td>
+</tr>
+<tr>
+<td><a href="codex-05-tools.html">05 · 工具调用怎样变成真实动作</a></td>
+<td>从响应项到工具处理器，中间传递了哪些数据？</td>
+</tr>
+<tr>
+<td><a href="codex-06-permissions.html">06 · 执行前需要满足哪些条件</a></td>
+<td>参数验证、审批和沙箱分别在哪一步起作用？</td>
+</tr>
+<tr>
+<td><a href="codex-07-results.html">07 · 工具结果怎样回到下一次请求</a></td>
+<td>为什么工具读到文件后，模型下一次才有依据修改？</td>
+</tr>
+<tr>
+<td><a href="codex-08-edit-test.html">08 · 从修改文件到测试反馈</a></td>
+<td>修改和测试怎样复用工具结果循环？</td>
+</tr>
+<tr>
+<td><a href="codex-09-finish.html">09 · 什么时候结束，用户看到什么</a></td>
+<td>一次响应完成为什么不等于本轮任务完成？</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_4">怎样读一段源码</h2>
+<p>每段先读问题和当前位置，再看带原始行号的代码。代码头部可以复制项目路径、切换换行，正文下方可以展开前后文；需要查整个文件时，打开同一份离线高亮源码并定位到该行。</p>
+<p>语法高亮、代码和上下文都在本地页面里。源码保持原文；中文说明放在代码外。函数太长时分段展示，段与段之间的行号不会伪装成连续代码。</p>
+<p>不熟悉 Rust 时，先认 <code>struct</code> 是字段集合，<code>enum</code> 是不同形态，<code>match</code> 是分支，<code>Result</code> 是成功或错误。遇到 <code>await</code> 先追等待的结果会交给谁，不必先学完所有所有权规则。</p>
+<h2 id="_5">仓库地图</h2>
+<table>
+<thead>
+<tr>
+<th>路径</th>
+<th>主要职责</th>
+<th>从哪里开始读</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>codex-rs/tui/src/</code></td>
+<td>终端输入与显示</td>
+<td>主线 01、04</td>
+</tr>
+<tr>
+<td><code>codex-rs/app-server/src/</code></td>
+<td>客户端请求适配</td>
+<td>主线 02</td>
+</tr>
+<tr>
+<td><code>codex-rs/core/src/session/</code></td>
+<td>任务、输入、历史和模型循环</td>
+<td>主线 02—04、07、09</td>
+</tr>
+<tr>
+<td><code>codex-rs/core/src/tools/</code></td>
+<td>工具路由、处理器与运行时</td>
+<td>主线 05—08</td>
+</tr>
+<tr>
+<td><code>codex-rs/rollout/src/</code></td>
+<td>会话记录与读取</td>
+<td>会话专题</td>
+</tr>
+<tr>
+<td><code>codex-rs/memories/write/src/</code></td>
+<td>跨任务记忆流水线</td>
+<td>记忆专题</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_6">按问题深入专题</h2>
+<p>先完成相关主线，再选择下面的专题。每篇开头都会标出前置知识。</p>
+<ul>
+<li><a href="codex-topic-entry.html">专题 · 启动参数与斜杠命令</a>：为什么有些输入不进入模型请求？</li>
+<li><a href="codex-topic-context.html">专题 · 项目说明、文件引用与图片</a>：不同来源的信息怎样成为请求中的上下文？</li>
+<li><a href="codex-topic-compact.html">专题 · 上下文压缩</a>：日志越来越长时，后续请求怎样继续？</li>
+<li><a href="codex-topic-stream.html">专题 · 流式事件、重试与取消</a>：网络断开、测试失败和取消各自怎样收束？</li>
+<li><a href="codex-topic-permissions.html">专题 · 审批、沙箱与自动审查</a>：获准执行之后，为什么仍可能失败？</li>
+<li><a href="codex-topic-process.html">专题 · 后台命令与持续输出</a>：测试跑得很久时，如何继续读取而不重复启动？</li>
+<li><a href="codex-topic-collaboration.html">专题 · 澄清、计划与运行中输入</a>：新答案和补充要求怎样影响正在执行的任务？</li>
+<li><a href="codex-topic-mcp.html">专题 · MCP 工具如何接回主循环</a>：远程工具返回的内容在哪里变成模型可用信息？</li>
+<li><a href="codex-topic-agents.html">专题 · 子 Agent 的创建与等待</a>：分出去的任务怎样有开始，也有可验证的结束？</li>
+<li><a href="codex-topic-history.html">专题 · 会话记录、恢复与回退</a>：关闭程序后，什么信息能被接续使用？</li>
+<li><a href="codex-topic-memory.html">专题 · 长期记忆的独立流程</a>：跨任务的经验与当前轮次压缩有什么区别？</li>
+<li><a href="codex-topic-boundaries.html">专题 · 客户端与核心的边界</a>：哪些实现可以复用理解，哪些必须重新核对？</li>
+</ul>
+<h2 id="_7">版本与证据</h2>
+<p>本课程依据公开源码固定提交 <code>121f91fd5d9dc66017866ce9bdc49f1e182721df</code>。页面中每个摘录都有文件路径、原始行号和校验记录；不把旧快照实现等同于所有现行客户端。</p>
+<p>源码摘录以 Apache-2.0 许可保留，完整文件内的版权说明保持不变。更多信息见 <a href="../source-snapshots/README.md">离线源码与许可</a>。本地构建检查源码片段和固定快照一致，再生成高亮页面。</p>
+<h2 id="_8">原版章节索引</h2>
+<p>旧链接仍可定位到这里的对应项。内容已经拆为连续主线与专题。</p>
+<p id="01"><a href="codex-01-input.html">01. 从一个具体需求开始：这次我们要追踪什么 →</a></p>
+<p id="02"><a href="codex-topic-entry.html">02. 输入进入系统：命令与普通任务在这里分开 →</a></p>
+<p id="03"><a href="codex-03-context.html">03. 模型第一次看到什么：上下文、文件引用与图片 →</a></p>
+<p id="04-run_turn"><a href="codex-02-turn.html">04. 沿 run_turn 读主循环：一次回答为什么会请求模型多次 →</a></p>
+<p id="05"><a href="codex-05-tools.html">05. 模型提出读文件：工具调用如何变成真实动作 →</a></p>
+<p id="06"><a href="codex-06-permissions.html">06. 写文件之前：权限审批与沙箱各自负责什么 →</a></p>
+<p id="07"><a href="codex-08-edit-test.html">07. 真正修改代码：为什么要验证补丁，再运行测试 →</a></p>
+<p id="08"><a href="codex-04-stream.html">08. 边执行边显示：流式输出与错误分别怎样返回 →</a></p>
+<p id="09"><a href="codex-topic-collaboration.html">09. 不知道筛选规则怎么办：澄清问题与任务计划 →</a></p>
+<p id="10-mcp-agent"><a href="codex-topic-mcp.html">10. 工作变多以后：MCP、后台命令与子 Agent →</a></p>
+<p id="11"><a href="codex-topic-collaboration.html">11. 运行中又收到消息：外部事件如何重新接回循环 →</a></p>
+<p id="12"><a href="codex-topic-compact.html">12. 历史太长怎么办：上下文压缩与长期记忆 →</a></p>
+<p id="13"><a href="codex-topic-history.html">13. 结束、恢复与回退：三种状态不要混在一起 →</a></p>
+<p id="14"><a href="codex-09-finish.html">14. 第二遍怎样读源码：把主线变成自己的调试地图 →</a></p><a class="course-start" href="codex-01-input.html">从第 01 节开始阅读 →</a><div class="meta">非官方源码教学 · 固定提交 121f91fd5d9d · <a href="../markdown/codex-source-analysis.md">本页 Markdown</a> · <a href="../source-snapshots/README.md">源码与许可</a></div><footer>依据公开固定版本源码编写。案例为教学示例，源码引用保留原许可。</footer></main><nav class="page-toc" aria-label="本页目录"><h2>本页目录</h2><ul><li><a href="#_1">从一个具体需求开始</a></li><li><a href="#_2">先认识四种时间范围</a></li><li><a href="#_3">沿这条主线阅读</a></li><li><a href="#_4">怎样读一段源码</a></li><li><a href="#_5">仓库地图</a></li><li><a href="#_6">按问题深入专题</a></li><li><a href="#_7">版本与证据</a></li><li><a href="#_8">原版章节索引</a></li></ul></nav></div></body></html>

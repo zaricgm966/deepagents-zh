@@ -418,5 +418,71 @@
     "commit": "efd4d865ef1795daffee3cd24cce45307aed8a51",
     "file": "claude-agent-sdk-python/src/claude_agent_sdk/_internal/transport/subprocess_cli.py",
     "sha256": "748227e42cb9802d7316fabc836428d69bd219b63ef1b2f9f8f7a86a72a03e45"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/tui/src/chatwidget/input_submission.rs",
+    "sha256": "05a752d68c7a0290b38df87a3567fb326823098283169304137d8ada80a0c8ca"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/tui/src/chatwidget.rs",
+    "sha256": "265e9c2eef585d3f8c677359df754c3ccdb7f6c6847405c2c6a5c7a04b2e4f18"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/tui/src/app/thread_routing.rs",
+    "sha256": "5b833c04cc98cb487fd110f8ca35c9e69c09d49974660e0b3946d047c9f12e5f"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/tui/src/app_server_session.rs",
+    "sha256": "4d67d868fbde1a99b4fcead589552e06935f44d2998b682352a1e9e651922492"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/app-server/src/request_processors/turn_processor.rs",
+    "sha256": "a220c6f21bd72d7135d772536b414b1d7fbd7c1c332b2103f0029a3b22c5f7f1"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/core/src/tasks/regular.rs",
+    "sha256": "d1a989d36be677b726a42097254d6a99e9b071247def4f9fc08bda88213b920c"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/core/src/context_manager/history.rs",
+    "sha256": "73e5625014ece2d1e3a092318eac323629f51227fc14327fe954322cf79c69ff"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/tui/src/chatwidget/protocol.rs",
+    "sha256": "27dd6e12c25a50757f859f5e8ec2cbe6b072324b1947f142cfcfac53f040974a"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/core/src/tools/handlers/unified_exec/exec_command.rs",
+    "sha256": "e024443896f596818af5830b416c59df26cab3bd793fd0abb179f4bbebad7b60"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/core/src/tasks/mod.rs",
+    "sha256": "127e3f5293ce7cf389d0a3f8427b395e04b1f1d897589ab1e688a629f5f2c27b"
+  },
+  {
+    "project": "codex",
+    "commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df",
+    "file": "codex/codex-rs/core/src/tools/handlers/unified_exec/write_stdin.rs",
+    "sha256": "cf67f1a7cf1fce73bb321428a05a7604db2f3790e0a61303e03f3b6d257dd451"
   }
 ]

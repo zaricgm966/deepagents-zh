@@ -1,0 +1,18 @@
+{
+  "reviewed_chapters": 21,
+  "main_chapters": 9,
+  "topics": 12,
+  "explained_source_excerpts": 62,
+  "new_call_site_excerpts": [
+    "input-submit-call",
+    "prompt-call"
+  ],
+  "changes": [
+    "Explicit caller/callee and protocol-side transitions",
+    "Reasons for every highlighted line",
+    "Questions tied to displayed code with evidence links",
+    "Specific return links for all topics",
+    "Removed unrelated input, file and UI asides"
+  ],
+  "source_commit": "121f91fd5d9dc66017866ce9bdc49f1e182721df"
+}
